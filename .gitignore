@@ -1,0 +1,129 @@
+temp/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment variables
+.env
+.env.local
+*.env
+
+# Testing / Coverage
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+.nox/
+
+# mypy / type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Geospatial data files
+*.gpkg
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+*.sbn
+*.sbx
+*.geojson
+*.json
+!package.json
+!*.config.json
+*.kml
+*.kmz
+*.gml
+*.gdb/
+*.mdb
+
+# Raster data
+*.tif
+*.tiff
+*.geotiff
+*.img
+*.hdf
+*.nc
+*.asc
+*.dem
+*.vrt
+
+# Large data files
+*.csv
+*.parquet
+*.feather
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.zip
+*.gz
+*.tar
+*.7z
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# LaTeX build files
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.synctex(busy)
+*.bbl
+*.blg
+*.bcf
+*.run.xml
+*.nav
+*.snm
+*.vrb
+*.dvi
+*.xdv
+_minted-*/
+*.pyg
+*.auxlock
+*.md5
+*.dpth
+*.pdf

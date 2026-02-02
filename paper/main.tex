@@ -1,0 +1,409 @@
+\documentclass[12pt,a4paper]{article}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{natbib}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{setspace}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\geometry{margin=2.5cm}
+\onehalfspacing
+
+% Title
+\title{Urban Form as Energy Infrastructure: Quantifying the Systemic Efficiency of Compact Morphologies in the United Kingdom}
+
+\author{
+  Gareth Simons\\
+  \textit{Affiliation}\\
+  \texttt{email@example.com}
+}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+% ============================================================================
+% ABSTRACT
+% ============================================================================
+\begin{abstract}
+  Prevailing decarbonisation policies predominantly focus on technological substitutions---enhancing building fabric efficiency, promoting vehicle electrification, and deploying renewable energy systems. However, evidence suggests that urban spatial form fundamentally shapes both the viability and effectiveness of these technological interventions. Dispersed, low-density urban patterns, characteristic of post-war development in the United Kingdom, constrain the efficiency of district heating networks, reduce public transport viability, and limit opportunities for active travel---collectively increasing per-capita energy demand through multiple reinforcing mechanisms.
+
+  This research quantifies the association between urban morphology and building energy consumption across designated urban areas in England and Wales. We integrate Energy Performance Certificate (EPC) data, street network analysis, Census 2021 socio-demographic indicators, and accessibility metrics into a high-resolution spatial dataset aggregated at the street-network level. Multi-level regression models isolate morphological effects whilst controlling for building fabric characteristics, tenure, and socio-economic factors.
+
+  We identify which features of urban form---density, compactness, mixed-use intensity, and network connectivity---most strongly correlate with per-capita building energy efficiency. This work addresses a significant gap in UK-specific empirical research, where building energy-morphology relationships remain under-quantified compared to the transport sector. The resulting dataset and analysis inform policy alignment between spatial planning, building standards, and climate targets, whilst explicitly acknowledging methodological limitations including the distinction between correlation and causation, potential rebound effects, embodied carbon implications of densification strategies, and equity considerations for existing communities.
+
+  \vspace{1em}
+  \noindent\textbf{Keywords:} urban morphology; building energy consumption; compact city; Energy Performance Certificates; spatial lock-in; United Kingdom
+\end{abstract}
+
+\newpage
+
+% ============================================================================
+% 1. INTRODUCTION
+% ============================================================================
+\section{Introduction}
+
+The United Kingdom has committed to achieving net-zero greenhouse gas emissions by 2050, with legally binding carbon budgets setting interim targets \citep{ukgovernment2023}. Buildings account for approximately 17\% of UK territorial emissions directly, with residential buildings responsible for the majority of this share \citep{ccc2023}. Current decarbonisation strategies emphasise technological solutions: improving building fabric through insulation and glazing upgrades, transitioning heating systems from gas boilers to heat pumps, and enhancing appliance efficiency. While these interventions are necessary, a growing body of evidence suggests that urban spatial form fundamentally constrains their effectiveness and deployment viability.
+
+The relationship between urban morphology and energy consumption has been extensively studied in the transport sector. \citet{newman1989} established the foundational observation that urban density correlates inversely with per-capita transport energy consumption across global cities. Subsequent research has refined this relationship, identifying mechanisms including public transport viability thresholds, walking and cycling distances, and trip-chaining opportunities \citep{cervero2013, rode2017}. Recent work by \citet{winkler2023} demonstrates that even aggressive electrification and modal shift policies are insufficient to meet emissions targets without substantial reductions in vehicle kilometres travelled---reductions fundamentally constrained by dispersed land-use patterns.
+
+However, the building energy dimension of this relationship remains comparatively under-researched, particularly in the UK context. Theoretical arguments suggest multiple mechanisms through which compact urban forms should reduce per-capita building energy demand: reduced surface area-to-volume ratios in attached and multi-family housing, shared walls reducing heat loss, district heating viability at higher densities, and reduced dwelling sizes in denser areas due to land value effects \citep{rode2014, norman2006}. Yet empirical quantification of these effects using UK data remains sparse.
+
+This paper addresses this gap by constructing a high-resolution spatial dataset integrating building energy performance, urban morphological characteristics, accessibility metrics, and socio-demographic controls for designated urban areas in England and Wales. We employ the street network as the fundamental unit of analysis, capturing walkable catchments and enabling morphological characterisation at a scale relevant to both building physics and human behaviour. Our analysis quantifies the strength and consistency of associations between urban form metrics and per-capita building energy consumption, explicitly controlling for confounding factors including building age, construction type, tenure, and household composition.
+
+The contribution of this work is threefold. First, we provide UK-specific empirical evidence on building energy-morphology relationships at unprecedented spatial resolution. Second, we develop and document a reproducible methodology for integrating heterogeneous spatial datasets, releasing both code and data to facilitate replication and extension. Third, we situate our findings within the policy context of spatial planning and climate targets, identifying where evidence supports densification strategies and where important caveats apply.
+
+The remainder of this paper is organised as follows. Section~\ref{sec:literature} reviews relevant literature on urban form and energy consumption, identifies gaps in current knowledge, and positions our contribution. Section~\ref{sec:data} describes the datasets employed and their characteristics. Section~\ref{sec:methodology} details our analytical approach, including the spatial framework, variable construction, and statistical models. Section~\ref{sec:results} presents findings on morphology-energy associations. Section~\ref{sec:discussion} interprets results, acknowledges limitations, and discusses policy implications. Section~\ref{sec:conclusion} concludes.
+
+% ============================================================================
+% 2. LITERATURE REVIEW
+% ============================================================================
+\section{Literature Review}
+\label{sec:literature}
+
+\subsection{Theoretical Foundations: The Compact City and Energy}
+
+The compact city concept emerged in the 1970s as a response to concerns about suburban sprawl, resource consumption, and automobile dependence \citep{dantzig1973}. Proponents argue that higher-density, mixed-use development patterns reduce per-capita energy consumption through multiple mechanisms: shorter travel distances enabling walking and cycling; population thresholds supporting viable public transport; reduced building heat loss through attached construction; and infrastructure efficiency gains from concentrated demand \citep{jenks1996, newman1999}.
+
+\citet{rode2014} provide perhaps the most rigorous theoretical treatment of morphology-heat energy relationships, demonstrating through simulation that urban-morphology-induced heat-energy efficiency can produce up to a factor of six difference in heat demand between morphological types. Compact and tall building configurations exhibited the greatest efficiency at the neighbourhood scale. This work establishes clear physical mechanisms---primarily surface area-to-volume ratios and solar exposure---linking form to thermal performance.
+
+\subsection{Empirical Evidence: International Studies}
+
+International empirical studies broadly support the compact city hypothesis, though with important qualifications. \citet{norman2006} compared high-density urban cores to low-density suburban development in Toronto, finding 40-50\% lower per-capita energy consumption in dense scenarios across a lifecycle analysis including operational and transport energy. However, when embodied energy of construction was included, the advantage narrowed, particularly for scenarios involving demolition and rebuilding.
+
+A systematic review by \citet{quan2021} synthesised findings across 150 studies examining urban form and building energy relationships. They identified 10 key urban form variables with consistent effects, though noted substantial heterogeneity in effect sizes across contexts. Critically, they observed that density effects are often non-linear: benefits plateau or even reverse at very high densities due to overshadowing, reduced daylight, and mechanical ventilation requirements.
+
+\subsection{Critical Perspectives}
+
+The compact city paradigm has attracted significant criticism. \citet{gaigne2012} challenge simple density-emissions relationships using economic theory, demonstrating that compact development can increase emissions under certain conditions---for instance, when higher land values in dense areas displace lower-income households to peripheral locations, increasing their commute distances. This highlights the importance of considering system-wide and distributional effects rather than focusing solely on per-capita metrics within dense areas.
+
+\citet{mindali2004} questioned the methodology of foundational density-energy studies, arguing that confounding factors including income, climate, fuel prices, and cultural preferences explain much of the observed variation. More recent work has attempted to address these concerns through more sophisticated statistical controls, though the challenge of causal inference from observational data remains \citep{ewing2017}.
+
+\subsection{UK-Specific Research}
+
+UK-specific research on building energy and urban form remains limited. \citet{rode2014} included London case studies but focused on theoretical simulation rather than empirical measurement. \citet{jones2015} examined the influence of building characteristics on gas and electricity consumption using English Housing Survey data, identifying building type, age, and floor area as key determinants---but without explicit morphological characterisation of the surrounding urban context.
+
+Research using Energy Performance Certificate (EPC) data has grown since the database became publicly accessible. \citet{fuerst2015} validated EPC ratings against transaction prices, demonstrating market recognition of energy efficiency. More recently, the NEBULA dataset \citep{nebula2025} provides neighbourhood-level building energy modelling for England and Wales, though at coarser spatial resolution than street-network analysis permits.
+
+The transport-energy dimension is better developed in UK research. \citet{winkler2023} modelled sustainable mobility transitions, demonstrating that electrification alone is insufficient and that land-use change enabling reduced vehicle travel is essential for meeting carbon targets.
+
+\subsection{Research Gap and Contribution}
+
+This review identifies a significant gap: while theoretical mechanisms linking urban morphology to building energy performance are well-established, UK-specific empirical quantification remains sparse. Most studies either (a) focus on transport energy, (b) use coarse spatial units (local authority or region), or (c) examine building characteristics without morphological context.
+
+Our contribution addresses this gap by:
+\begin{enumerate}
+  \item Constructing a high-resolution dataset linking EPC data to street-network-level morphological metrics
+  \item Explicitly controlling for building fabric, socio-demographic, and tenure confounders
+  \item Providing UK-specific effect size estimates for key morphological variables
+  \item Releasing reproducible code and data to enable replication and extension
+\end{enumerate}
+
+% ============================================================================
+% 3. DATA
+% ============================================================================
+\section{Data and Study Area}
+\label{sec:data}
+
+This section summarises the key datasets. Full documentation including data dictionaries, download scripts, and processing code is available in the project repository.
+
+\subsection{Study Area}
+
+The study encompasses designated urban areas in England and Wales as defined by the Office for National Statistics (ONS) 2021 Built Up Area classification. Scotland and Northern Ireland are excluded due to differences in data availability.
+
+\subsection{Energy Performance Certificates}
+
+Energy Performance Certificates (EPCs) provide standardised assessments of building energy efficiency, mandatory in England and Wales since 2007 for properties sold or rented. The EPC register contains over 27 million domestic certificates with address-level geographic identifiers \citep{epcopendatacommunities}.
+
+Since November 2021, EPC records include Unique Property Reference Numbers (UPRNs), enabling direct linkage to Ordnance Survey address products. For records predating UPRN inclusion, we employ address-based matching via postcode and property identifier fields, achieving approximately 90-95\% match rates at postcode level with subsequent disambiguation using fuzzy string matching on house numbers and names.
+
+Key variables include energy efficiency ratings (SAP score and A-G bands), estimated annual consumption (kWh), floor area, building type, construction age, and heating system characteristics. EPC records are georeferenced through linkage to OS Open UPRN (41.4 million property reference points), enabling assignment to street network segments.
+
+\textbf{Limitations.} EPC energy estimates are modelled using the Standard Assessment Procedure (SAP) rather than metered consumption. SAP assumes standardised occupancy (2.4 persons) and heating schedules (21$^\circ$C living areas, 18$^\circ$C elsewhere), potentially diverging from actual energy use by 15-30\% \citep{sunikka-blank2012}. Coverage is non-random: rental properties and recently transacted homes are over-represented relative to long-term owner-occupied dwellings. Properties may have multiple certificates over the 10-year validity period; we use the most recent valid certificate for each property. We validate aggregate patterns against sub-national metered consumption statistics from DESNZ.
+
+\subsection{Street Network Data}
+
+Street network geometry is derived from Ordnance Survey Open Roads, the authoritative UK road network dataset providing complete coverage of Great Britain with consistent classification and topology. OS Open Roads is preferred over OpenStreetMap for this analysis due to its systematic classification scheme (A roads, B roads, minor roads, local streets) and guaranteed national completeness. The \texttt{cityseer} package \citep{simons2023} provides native support for OS Open Roads via the \texttt{nx\_from\_open\_roads} function, which constructs a NetworkX graph with appropriate edge attributes for pedestrian analysis.
+
+The network is filtered to pedestrian-accessible classifications (excluding motorways), validated for topology, and converted to a primal graph where edges represent street segments between intersections. Analysis employs a 400m pedestrian walking threshold (~5 minutes), with sensitivity analyses at 300m and 800m catchments.
+
+\subsection{Urban Morphology and Accessibility}
+
+Morphological metrics are computed using the \texttt{momepy} library \citep{fleischmann2019} and aggregated to street network segments. Variables include density measures (building coverage, floor area ratio, population density), form metrics (building heights, block sizes), and network characteristics (street density, connectivity, betweenness centrality).
+
+Accessibility metrics capture public transport access (NaPTAN stop locations), retail proximity (OSM points of interest), and mixed-use intensity (Shannon entropy of land-use diversity within walking catchment).
+
+\subsection{Socio-demographic Controls}
+
+Census 2021 data at Lower Layer Super Output Area (LSOA) level provide controls for household composition, tenure, socio-economic classification, and car ownership. LSOA values are assigned to street segments via spatial overlay.
+
+% ============================================================================
+% 4. METHODOLOGY
+% ============================================================================
+\section{Methodology}
+\label{sec:methodology}
+
+\subsection{Spatial Framework}
+
+The fundamental unit of analysis is the street network segment, defined as the portion of street between intersections (nodes). This scale is chosen for several reasons:
+\begin{enumerate}
+  \item It captures the walkable catchment relevant to both building physics (microclimate, shelter) and human behaviour (access to amenities, transport)
+  \item It provides finer resolution than administrative units (LSOA), which exhibit substantial internal morphological heterogeneity
+  \item It aligns with established urban morphology methods (space syntax, cityseer)
+  \item It enables direct integration with building-level EPC data through UPRN-based address matching
+\end{enumerate}
+
+\subsubsection{Building-to-Segment Assignment}
+
+Each georeferenced property (via UPRN) is assigned to its nearest street segment using a two-stage spatial indexing approach:
+\begin{enumerate}
+  \item \textbf{Spatial partitioning:} The study area is divided into 10km grid cells; properties and segments are indexed within each cell using R-tree spatial indices
+  \item \textbf{Nearest-segment assignment:} For each property, the perpendicular distance to candidate segments within the cell (plus a buffer for boundary properties) is computed; the property is assigned to the segment with minimum distance
+\end{enumerate}
+
+For properties near segment intersections (``corner properties''), we apply network-distance weighting to assign partial contributions to multiple segments, reducing boundary artefacts. Properties more than 50m from any segment (primarily rural isolated dwellings) are flagged for sensitivity analysis.
+
+\subsubsection{Network-Weighted Catchments}
+
+Morphological metrics are computed within a 400m network-weighted catchment around each segment centroid. Unlike Euclidean buffers, network catchments follow the street network, better representing pedestrian accessibility. The catchment for segment $s$ includes all segments reachable within 400m walking distance along the network from any point on $s$.
+
+\subsection{Variable Construction}
+
+\subsubsection{Dependent Variable}
+
+The primary dependent variable is per-capita building energy consumption, calculated as:
+\begin{equation}
+  E_{pc} = \frac{\sum_{i \in s} E_i}{\sum_{i \in s} O_i}
+\end{equation}
+where $E_i$ is the EPC-estimated annual energy consumption for building $i$, $O_i$ is the estimated occupancy, and $s$ denotes the street segment.
+
+We also examine energy use intensity (EUI, kWh/m$^2$) as a secondary outcome to distinguish area effects from occupancy effects.
+
+\subsubsection{Independent Variables}
+
+Morphological variables are computed following established protocols \citep{fleischmann2019, boeing2017, dibble2019}:
+
+\begin{table}[h]
+  \centering
+  \caption{Key independent variables}
+  \label{tab:variables}
+  \begin{tabular}{llp{6cm}}
+    \toprule
+    \textbf{Category} & \textbf{Variable} & \textbf{Definition} \\
+    \midrule
+    Density & Building density & Properties per hectare within 400m catchment \\
+    & Floor area ratio (FAR) & $\sum \text{floor area} / \text{catchment area}$ \\
+    & Population density & Census residents per hectare (LSOA-weighted) \\
+    \midrule
+    Form & Mean building height & Average storeys (from EPC where available) \\
+    & Compactness ratio & $4\pi \cdot \text{area} / \text{perimeter}^2$ for catchment \\
+    & Block size & Mean area of enclosed urban blocks \\
+    \midrule
+    Network & Street density & Total street length (km) per km$^2$ catchment \\
+    & Connectivity & Mean node degree at intersections \\
+    & Betweenness centrality & Normalised segment betweenness \citep{simons2023} \\
+    \midrule
+    Accessibility & PT accessibility & Proportion of catchment within 400m of transit stop \\
+    & Retail proximity & Mean distance to nearest retail POI (metres) \\
+    & Mixed-use index & Shannon entropy of land-use categories \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\textbf{Density metrics} are computed by counting properties (via UPRN) within the network catchment and dividing by catchment area. Floor area ratio uses total floor area from EPC records where available.
+
+\textbf{Network metrics} follow the cityseer methodology \citep{simons2023}, which computes localised centrality measures that avoid edge effects common in global network analysis. Betweenness centrality measures how often a segment lies on shortest paths between other segments, indicating through-movement potential.
+
+\textbf{Accessibility metrics} integrate NaPTAN public transport stop locations (bus, rail, tram) and OpenStreetMap points of interest. The mixed-use index employs Shannon entropy:
+\begin{equation}
+  H = -\sum_{i=1}^{n} p_i \ln(p_i)
+\end{equation}
+where $p_i$ is the proportion of land use category $i$ within the catchment. Values are normalised to [0,1] by dividing by $\ln(n)$.
+
+\subsubsection{Control Variables}
+
+Building-level controls from EPC data:
+\begin{itemize}
+  \item Building type (detached, semi-detached, terraced, flat)
+  \item Construction age band
+  \item Wall and roof construction type
+  \item Heating system and fuel type
+\end{itemize}
+
+Area-level controls from Census 2021:
+\begin{itemize}
+  \item Tenure composition
+  \item Household size
+  \item Socio-economic deprivation (IMD income domain)
+\end{itemize}
+
+\subsection{Statistical Models}
+
+\subsubsection{Multi-level Regression}
+
+We employ multi-level (hierarchical) linear models to account for the nested data structure:
+\begin{equation}
+  E_{ijs} = \beta_0 + \beta_1 X_{ijs} + \beta_2 M_s + \beta_3 C_j + u_s + v_j + \epsilon_{ijs}
+\end{equation}
+where:
+\begin{itemize}
+  \item $E_{ijs}$ is energy consumption for building $i$ in street segment $s$ within LSOA $j$
+  \item $X_{ijs}$ are building-level characteristics
+  \item $M_s$ are street-segment-level morphological variables
+  \item $C_j$ are LSOA-level census controls
+  \item $u_s$ and $v_j$ are random effects for street segments and LSOAs
+  \item $\epsilon_{ijs}$ is the residual error
+\end{itemize}
+
+This structure accounts for spatial clustering: buildings on the same street share unobserved characteristics, as do streets within the same LSOA.
+
+\subsubsection{Sensitivity Analyses}
+
+We conduct several sensitivity analyses to assess robustness:
+
+\begin{enumerate}
+  \item \textbf{Scale sensitivity (MAUP):} Repeat analysis at 300m and 800m network catchments, and at LSOA and MSOA administrative levels, to assess sensitivity to the modifiable areal unit problem. Coefficient stability across scales indicates robust relationships.
+
+  \item \textbf{Spatial regression:} Estimate spatial lag and spatial error models to assess and account for residual spatial autocorrelation not captured by the hierarchical structure.
+
+  \item \textbf{Stratified analysis:} Examine relationships separately by:
+    \begin{itemize}
+      \item Tenure type (owner-occupied, private rental, social rental)
+      \item Building age (pre-1919, interwar, post-war, modern)
+      \item Urban hierarchy (major urban, other urban, rural fringe)
+    \end{itemize}
+
+  \item \textbf{Non-linearity:} Test quadratic and restricted cubic spline specifications for density variables, as literature suggests diminishing or reversing returns at very high densities \citep{quan2021}.
+
+  \item \textbf{Edge effects:} Exclude segments within 400m of study area boundaries (conservative approach) and compare to full sample results.
+
+  \item \textbf{EPC coverage:} Assess whether results differ in areas with high vs.\ low EPC coverage rates, addressing potential selection bias.
+\end{enumerate}
+
+\subsection{Data Processing Pipeline}
+
+The analysis employs a reproducible pipeline implemented in Python:
+
+\begin{enumerate}
+  \item \textbf{Network preparation:} OS Open Roads filtered to pedestrian-accessible classifications; topology validated; converted to NetworkX graph via cityseer
+
+  \item \textbf{UPRN-segment assignment:} 41.4 million property locations assigned to nearest street segment using spatial indexing (R-tree) and parallel processing across 10km grid cells
+
+  \item \textbf{EPC linkage:} EPC records joined to UPRN via direct UPRN field (post-2021 records) or address matching (earlier records); most recent valid certificate per property retained
+
+  \item \textbf{Morphology computation:} Network catchments computed for each segment; density, network, and accessibility metrics aggregated within catchments
+
+  \item \textbf{Census integration:} LSOA-level Census 2021 variables linked to segments via spatial overlay; population-weighted where segments span multiple LSOAs
+
+  \item \textbf{Statistical modelling:} Multi-level models estimated using restricted maximum likelihood (REML) with crossed random effects for segments and LSOAs
+\end{enumerate}
+
+Computational processing of 41.4 million UPRNs requires approximately 6-8 hours on an 8-core workstation using parallel grid-based processing. All code and intermediate outputs are version-controlled and documented for reproducibility.
+
+\subsection{Limitations and Assumptions}
+
+Several limitations warrant explicit acknowledgement:
+
+\textbf{Correlation vs. causation.} This analysis identifies associations between morphology and energy consumption. Causal interpretation requires additional assumptions that may not hold: buildings in dense areas may differ systematically in unobserved ways (selection effects), and reverse causality is possible (energy-efficient buildings may attract residents who choose dense locations).
+
+\textbf{EPC data quality.} EPC estimates are modelled rather than metered, and coverage is non-random. We validate against aggregate metered data where available.
+
+\textbf{Temporal misalignment.} Data sources span different time periods: EPCs (2007-present), Census (2021), OSM (current). Building stock and occupancy change over time.
+
+\textbf{Confounding.} Despite controls, unmeasured confounders may bias estimates. Income, preferences, and behaviour are imperfectly captured.
+
+% ============================================================================
+% 5. RESULTS (Placeholder)
+% ============================================================================
+\section{Results}
+\label{sec:results}
+
+\textit{[Results to be completed following data analysis]}
+
+\subsection{Descriptive Statistics}
+
+\subsection{Bivariate Associations}
+
+\subsection{Multi-level Model Results}
+
+\subsection{Sensitivity Analyses}
+
+% ============================================================================
+% 6. DISCUSSION
+% ============================================================================
+\section{Discussion}
+\label{sec:discussion}
+
+\textit{[Discussion to be completed following results]}
+
+\subsection{Interpretation of Findings}
+
+\subsection{Comparison with Prior Research}
+
+\subsection{Policy Implications}
+
+\subsection{Limitations}
+
+\subsubsection{Embodied Carbon Considerations}
+
+While our analysis focuses on operational energy, policy recommendations must consider lifecycle implications. Densification strategies involving demolition and reconstruction carry substantial embodied carbon costs that may offset operational savings over relevant time horizons \citep{hertwich2019}. This analysis does not quantify these trade-offs but notes their importance for policy application.
+
+\subsubsection{Equity and Distributional Effects}
+
+Densification policies have distributional consequences. Higher-density development may increase land values, potentially displacing lower-income residents to peripheral locations where transport energy costs are higher \citep{gaigne2012}. Our analysis describes average associations but does not assess who benefits and who bears costs from different morphological configurations.
+
+\subsubsection{Rebound Effects}
+
+Per-capita energy savings in dense areas may not translate directly to emissions reductions if (a) savings are spent on other consumption with carbon implications, or (b) dense areas attract in-migration, increasing total rather than per-capita consumption. These system-wide effects are beyond the scope of this analysis.
+
+% ============================================================================
+% 7. CONCLUSION
+% ============================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+
+\textit{[Conclusion to be completed following analysis]}
+
+This research contributes UK-specific empirical evidence on the relationship between urban morphology and building energy consumption. By integrating EPC data with street-network-level morphological analysis and socio-demographic controls, we quantify associations at unprecedented spatial resolution.
+
+Our findings [will] inform policy discussions on spatial planning and climate targets, while explicitly acknowledging the limitations of observational analysis for causal inference, and the importance of considering embodied carbon, equity, and system-wide effects in policy application.
+
+The dataset and analytical code are released openly to facilitate replication, validation, and extension by other researchers.
+
+% ============================================================================
+% ACKNOWLEDGEMENTS
+% ============================================================================
+\section*{Acknowledgements}
+
+\textit{[To be added]}
+
+% ============================================================================
+% DATA AVAILABILITY
+% ============================================================================
+\section*{Data Availability}
+
+The integrated dataset and analysis code will be made available via [repository] upon publication. Source data are available from:
+\begin{itemize}
+  \item Energy Performance Certificates: \url{https://epc.opendatacommunities.org/}
+  \item Census 2021: \url{https://www.ons.gov.uk/}
+  \item OpenStreetMap: \url{https://www.openstreetmap.org/}
+\end{itemize}
+
+% ============================================================================
+% REFERENCES
+% ============================================================================
+\bibliographystyle{apalike}
+\bibliography{references}
+
+\end{document}
