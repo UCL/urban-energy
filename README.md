@@ -15,9 +15,9 @@ cd data && cat README.md             # See data setup instructions
 urban-energy/
 ├── src/urban_energy/    # Python package
 ├── data/                # Data download & initial processing scripts
-├── processing/          # Derivative processing (morphology, UPRN, network)
+├── processing/          # [Derivative processing](processing/README.md) (morphology, UPRN, network)
 ├── stats/               # Statistical analysis plan and scripts
-├── paper/               # Academic paper (LaTeX)
+├── paper/               # [Academic paper](paper/README.md) (LaTeX)
 ├── temp/                # Downloaded/processed data (not in git)
 └── tests/               # Test suite
 ```
@@ -44,12 +44,12 @@ See [data/README.md](data/README.md) for download and processing instructions.
 
 **Complementary methods:**
 
-| Method | Purpose |
-| ------ | ------- |
-| **Multi-level regression** | Hypothesis testing, variance decomposition, inference |
-| **SHAP values** | Feature importance, interaction detection, non-linear effects |
-| **Spatial regression** | Account for spatial autocorrelation |
-| **Propensity matching** | Causal inference approximation |
+| Method                     | Purpose                                                       |
+| -------------------------- | ------------------------------------------------------------- |
+| **Multi-level regression** | Hypothesis testing, variance decomposition, inference         |
+| **SHAP values**            | Feature importance, interaction detection, non-linear effects |
+| **Spatial regression**     | Account for spatial autocorrelation                           |
+| **Propensity matching**    | Causal inference approximation                                |
 
 **Key outputs:**
 
@@ -100,6 +100,8 @@ UPRN integrated dataset
     ↓ cityseer network assignment
 Street segment aggregations → Regression analysis
 ```
+
+See [processing/README.md](processing/README.md) for detailed pipeline documentation.
 
 ## License
 
