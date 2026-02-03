@@ -625,23 +625,30 @@ def main() -> None:
     # Check for cached results
     cached_files = list(CACHE_DIR.glob("*.gpkg"))
     cached_ids = {f.stem for f in cached_files}
-    print(f"  {len(cached_ids)} boundaries already cached")
+    n_to_process = len(boundaries) - len(cached_ids & set(boundaries["BUA22CD"]))
+    if cached_ids:
+        print(f"  Found {len(cached_ids)} cached files, {n_to_process} remaining to process")
+    else:
+        print(f"  No cache found, processing all {len(boundaries)} boundaries")
 
     # Process each boundary
     print("\n[2/3] Processing boundaries (async download -> process -> cleanup)...")
     print(f"  Max concurrent downloads: {MAX_CONCURRENT_DOWNLOADS}")
-    n_skipped = 0
     n_processed = 0
     n_empty = 0
 
-    for _, row in tqdm(boundaries.iterrows(), total=len(boundaries), desc="  Areas"):
+    # Filter to only boundaries that need processing
+    boundaries_to_process = boundaries[~boundaries["BUA22CD"].isin(cached_ids)]
+    n_cached = len(boundaries) - len(boundaries_to_process)
+
+    for _, row in tqdm(
+        boundaries_to_process.iterrows(),
+        total=len(boundaries),
+        initial=n_cached,
+        desc="  Areas",
+    ):
         bua_code = row.get("BUA22CD", "unknown")
         cache_path = CACHE_DIR / f"{bua_code}.gpkg"
-
-        # Skip if already cached
-        if bua_code in cached_ids:
-            n_skipped += 1
-            continue
 
         try:
             heights = process_boundary(row, BUILDINGS_PATH, TILE_DIR, verbose=True)
@@ -672,7 +679,7 @@ def main() -> None:
             tqdm.write(f"    {bua_name}: ERROR - {e}")
             continue
 
-    print(f"\n  Processed: {n_processed}, Empty: {n_empty}, Cached: {n_skipped}")
+    print(f"\n  Processed: {n_processed}, Empty: {n_empty}, Cached: {n_cached}")
 
     # Combine all cached results
     print("\n[3/3] Combining cached results...")

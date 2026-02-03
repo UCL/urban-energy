@@ -3,14 +3,14 @@ Process Energy Performance Certificate (EPC) data for spatial analysis.
 
 Joins EPC records to spatial locations via direct UPRN linkage.
 Only uses records with valid UPRN (available since November 2021).
+Filters to England only (excludes Welsh local authorities).
 
 Input:
     - EPC bulk download CSV(s) from https://epc.opendatacommunities.org/
     - OS Open UPRN GeoPackage
 
 Output:
-    - temp/epc/epc_domestic_cleaned.parquet (cleaned tabular data, no geometry)
-    - temp/epc/epc_domestic_spatial.gpkg (with geometry)
+    - temp/epc/epc_domestic.gpkg (with UPRN point geometry)
 """
 
 from pathlib import Path
@@ -78,11 +78,14 @@ def load_epc_certificates(input_dir: Path) -> pd.DataFrame:
         )
 
     # Find all certificates.csv files in subdirectories
-    csv_files = list(input_dir.glob("*/certificates.csv"))
-    if not csv_files:
+    all_csv_files = list(input_dir.glob("*/certificates.csv"))
+    if not all_csv_files:
         raise FileNotFoundError(f"No certificates.csv files found in {input_dir}")
 
-    print(f"  Found {len(csv_files)} local authority files")
+    # Filter to England only (exclude Welsh LAs with codes starting W0)
+    csv_files = [f for f in all_csv_files if "-W0" not in f.parent.name]
+    n_excluded = len(all_csv_files) - len(csv_files)
+    print(f"  Found {len(csv_files)} England LA files (excluded {n_excluded} Welsh)")
 
     # Load and concatenate
     dfs = []
@@ -127,8 +130,11 @@ def clean_epc_data(df: pd.DataFrame) -> pd.DataFrame:
 
     # Clean numeric columns
     numeric_cols = [
-        "CURRENT_ENERGY_EFFICIENCY", "ENERGY_CONSUMPTION_CURRENT",
-        "TOTAL_FLOOR_AREA", "HEATING_COST_CURRENT", "NUMBER_HABITABLE_ROOMS",
+        "CURRENT_ENERGY_EFFICIENCY",
+        "ENERGY_CONSUMPTION_CURRENT",
+        "TOTAL_FLOOR_AREA",
+        "HEATING_COST_CURRENT",
+        "NUMBER_HABITABLE_ROOMS",
     ]
     for col in numeric_cols:
         if col in df.columns:
@@ -207,9 +213,10 @@ def main() -> None:
     print(f"  Matched {len(epc_spatial):,} records")
 
     # Save
-    print("\n[4/4] Saving outputs...")
-    epc_dedup.to_parquet(OUTPUT_DIR / "epc_domestic_cleaned.parquet")
-    epc_spatial.to_file(OUTPUT_DIR / "epc_domestic_spatial.gpkg", driver="GPKG")
+    print("\n[4/4] Saving output...")
+    output_path = OUTPUT_DIR / "epc_domestic.gpkg"
+    epc_spatial.to_file(output_path, driver="GPKG")
+    print(f"  Saved {len(epc_spatial):,} records to {output_path}")
 
     print("\nDone.")
 

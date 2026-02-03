@@ -1,8 +1,8 @@
 """
-Download and preprocess Census 2021 Output Area data for England and Wales.
+Download and preprocess Census 2021 Output Area data for England.
 
 Downloads:
-- OA boundaries (GeoPackage)
+- OA boundaries (GeoPackage) - filtered to England only
 - OA to LSOA/MSOA/LAD lookup table
 - Census topic summary tables
 
@@ -21,7 +21,7 @@ from tqdm import tqdm
 # Configuration
 TEMP_DIR = Path(__file__).parent.parent / "temp"
 OUTPUT_DIR = TEMP_DIR / "statistics"
-CACHE_DIR = Path(__file__).parent / ".cache"
+CACHE_DIR = Path(__file__).parent / ".cache" / "census"
 
 # Input paths (manual downloads - filename varies by download)
 OA_BOUNDARIES_PATTERN = "Output_Areas_2021_EW_BFE_V9_*.gpkg"
@@ -183,6 +183,13 @@ def main():
         oa_col = [c for c in oa_gdf.columns if "OA21CD" in c.upper()]
         if oa_col:
             oa_gdf = oa_gdf.rename(columns={oa_col[0]: "OA21CD"})
+
+    # Filter to England only (OA codes starting with 'E')
+    england_mask = oa_gdf["OA21CD"].str.startswith("E")
+    n_before = len(oa_gdf)
+    oa_gdf = oa_gdf[england_mask].copy()
+    n_removed = n_before - len(oa_gdf)
+    print(f"  Filtered to England: {len(oa_gdf):,} OAs (removed {n_removed:,} Welsh)")
 
     # Save raw boundaries
     oa_boundaries_path = OUTPUT_DIR / "oa_boundaries.gpkg"

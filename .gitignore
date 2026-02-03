@@ -54,6 +54,10 @@ htmlcov/
 .dmypy.json
 dmypy.json
 
+# Cache directories (general)
+**/*cache*/
+**/.cache/
+
 # Geospatial data files
 *.gpkg
 *.shp

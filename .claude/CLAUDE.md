@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This project investigates the relationship between urban form (morphology, density, accessibility) and per-capita energy consumption in England and Wales. It combines geospatial data processing with academic research on sustainable urban development.
+This project investigates the relationship between urban form (morphology, density, accessibility) and per-capita energy consumption in England. It combines geospatial data processing with academic research on sustainable urban development.
 
 **Author:** Gareth Simons
 **License:** GPL-3.0-only

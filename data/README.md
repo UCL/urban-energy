@@ -1,4 +1,8 @@
-# Data Setup
+# Data Sources
+
+Download and initial processing scripts for raw data sources.
+
+## Setup
 
 1. **Download OA Boundaries:** Go to [ONS Geoportal](https://geoportal.statistics.gov.uk/datasets/ons::output-areas-december-2021-boundaries-ew-bfe-v9/about), click Download → GeoPackage, save to `temp/`
 2. **Download Census topics:** Run `uv run python data/download_census.py`
@@ -8,6 +12,7 @@
 6. **Download EPC data:** Register at [epc.opendatacommunities.org](https://epc.opendatacommunities.org/), download "All domestic certificates", extract to `temp/epc/`
 7. **Process EPC data:** Run `uv run python data/process_epc.py`
 8. **Process LiDAR building heights:** Run `uv run python data/process_lidar.py`
+9. **Download FSA establishments:** Run `uv run python data/download_fsa.py`
 
 ## Pipeline Outputs
 
@@ -19,77 +24,7 @@
 | `process_epc.py`        | `temp/epc_domestic_cleaned.parquet`          | Deduplicated EPC records (tabular, no geometry)        |
 |                         | `temp/epc_domestic_spatial.gpkg`             | EPC records with UPRN point geometry                   |
 | `process_lidar.py`      | `temp/lidar/building_heights.gpkg`           | Building polygons with LiDAR-derived height statistics |
-
-## Data Integration Workflow
-
-The analysis unit is the **UPRN** (Unique Property Reference Number). All data sources are linked to UPRNs, which are then aggregated to street network segments via cityseer.
-
-```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           DATA PREPARATION                                  │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  OS Open Map Local (buildings)                                              │
-│        │                                                                    │
-│        ├── heights attached via process_lidar.py                            │
-│        │                                                                    │
-│        ↓                                                                    │
-│  Buildings with heights                                                     │
-│        │                                                                    │
-│        ↓ compute morphology metrics (process_morphology.py)                 │
-│        │                                                                    │
-│  Buildings with heights + morphology                                        │
-│        │                                                                    │
-│        ↓ spatial join (UPRN point ∈ building polygon)                       │
-│        │                                                                    │
-│  UPRNs inherit building attributes ──────────────────────┐                  │
-│                                                          │                  │
-│  Census (OA-level)                                       │                  │
-│        │                                                 │                  │
-│        ↓ spatial interpolation (UPRN point ∈ OA)         │                  │
-│        │                                                 ↓                  │
-│  UPRNs with census attributes ─────────────────────► UPRN Dataset           │
-│                                                          ↑                  │
-│  EPCs                                                    │                  │
-│        │                                                 │                  │
-│        ↓ direct join on UPRN field                       │                  │
-│        │                                                 │                  │
-│  UPRNs with EPC attributes ──────────────────────────────┘                  │
-│                                                                             │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                           NETWORK AGGREGATION                               │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  UPRN Dataset (morphology + census + EPC)                                   │
-│        │                                                                    │
-│        ↓ cityseer network assignment                                        │
-│        │                                                                    │
-│  Street segments with aggregated metrics                                    │
-│        │                                                                    │
-│        ↓ 400m network catchment computation                                 │
-│        │                                                                    │
-│  Analysis-ready dataset for regression modelling                            │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-### Linkage Methods
-
-| Source → Target         | Method                          | Notes                                                |
-| ----------------------- | ------------------------------- | ---------------------------------------------------- |
-| Buildings → UPRNs       | Spatial join (point-in-polygon) | Multiple UPRNs per building (flats) share morphology |
-| Census → UPRNs          | Spatial interpolation           | UPRN inherits OA-level attributes                    |
-| EPCs → UPRNs            | Direct join on `UPRN` field     | Post-Nov 2021 records only                           |
-| UPRNs → Street segments | cityseer network assignment     | Automated via pedestrian network analysis            |
-
-### Processing Stages
-
-| Stage | Script (planned)        | Input                             | Output                            |
-| ----- | ----------------------- | --------------------------------- | --------------------------------- |
-| 1     | `process_lidar.py` ✓    | Buildings + LiDAR tiles           | Buildings with heights            |
-| 2     | `process_morphology.py` | Buildings with heights            | Buildings with morphology metrics |
-| 3     | `process_uprn.py`       | Buildings, Census, EPCs, OS UPRNs | UPRN-level integrated dataset     |
-| 4     | `process_network.py`    | UPRN dataset, OS Open Roads       | Street segment aggregations       |
+| `download_fsa.py`       | `temp/fsa/fsa_establishments.gpkg`           | Eating/drinking establishments as walkability proxy    |
 
 ---
 
@@ -132,7 +67,7 @@ All CRS is EPSG:27700 (British National Grid) unless noted.
 
 - **COVID-19 Impact**: Census 2021 conducted during lockdown; travel-to-work shows 31% WFH.
 - **Disclosure Control**: OA-level data is univariate only. Cross-tabulations at LSOA+.
-- **Coverage**: England & Wales only.
+- **Coverage**: England only.
 
 ---
 
@@ -240,4 +175,48 @@ For each built-up area boundary, the script:
 | `height_std`         | float   | Height standard deviation           |
 | `height_pixel_count` | int     | Number of LiDAR pixels in footprint |
 
-**Note:** Buildings outside LiDAR coverage have null height values. LiDAR-derived continuous heights provide finer resolution than EPC storey counts.
+**Note:** Buildings outside LiDAR coverage have null height values.
+
+---
+
+## Food Standards Agency (FSA) Establishments
+
+| Dataset                    | Source                                             | Records | Update |
+| -------------------------- | -------------------------------------------------- | ------- | ------ |
+| Food Hygiene Rating Scheme | [FSA Open Data](https://ratings.food.gov.uk/open-data) | ~500k   | Daily  |
+
+### Purpose
+
+Eating and drinking establishments serve as a proxy for **walkability** and **destination accessibility**. Higher densities indicate mixed-use, walkable neighbourhoods.
+
+### Key Fields
+
+| Field              | Description                                    |
+| ------------------ | ---------------------------------------------- |
+| `fhrs_id`          | Unique FSA establishment identifier            |
+| `business_name`    | Establishment name                             |
+| `business_type`    | Category (Restaurant, Pub, Takeaway, etc.)     |
+| `business_type_id` | Numeric type code                              |
+| `postcode`         | UK postcode                                    |
+| `latitude`         | WGS84 latitude (source)                        |
+| `longitude`        | WGS84 longitude (source)                       |
+| `geometry`         | Point geometry (EPSG:27700 in output)          |
+
+### Business Types Included
+
+- Restaurant/Cafe/Canteen
+- Pub/bar/nightclub
+- Takeaway/sandwich shop
+- Mobile caterer
+- Hotel/bed & breakfast/guest house
+
+### Processing
+
+```bash
+uv run python data/download_fsa.py
+```
+
+### References
+
+- [FSA Open Data Portal](https://ratings.food.gov.uk/open-data)
+- [FSA API Documentation](https://api.ratings.food.gov.uk/help)

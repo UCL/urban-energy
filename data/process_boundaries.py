@@ -313,6 +313,11 @@ def main() -> None:
     print("\n[1/6] Loading built-up areas...")
     bua = load_built_up_areas(INPUT_PATH)
 
+    # Filter to England only (project scope; LiDAR coverage is England only)
+    n_before = len(bua)
+    bua = bua[bua["BUA22CD"].str.startswith("E")]
+    print(f"  Filtered to England: {n_before:,} -> {len(bua):,}")
+
     # Validate geometries
     print("\n[2/6] Validating geometries...")
     bua = validate_geometries(bua)

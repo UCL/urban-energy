@@ -1,6 +1,6 @@
 # Urban Energy
 
-Investigating the relationship between urban morphology and building energy consumption across England and Wales.
+Investigating the relationship between urban morphology and building energy consumption across England.
 
 ## Quick Start
 
@@ -14,9 +14,11 @@ cd data && cat README.md             # See data setup instructions
 ```text
 urban-energy/
 ├── src/urban_energy/    # Python package
-├── data/                # Data download & processing scripts
+├── data/                # Data download & initial processing scripts
+├── processing/          # Derivative processing (morphology, UPRN, network)
+├── stats/               # Statistical analysis plan and scripts
 ├── paper/               # Academic paper (LaTeX)
-├── temp/                # Downloaded data (not in git)
+├── temp/                # Downloaded/processed data (not in git)
 └── tests/               # Test suite
 ```
 
@@ -32,8 +34,30 @@ urban-energy/
 - **Census 2021** - Population, households, tenure at Output Area level
 - **OS Open Data** - Built-up areas, street networks, building footprints
 - **Environment Agency LiDAR** - Building heights from DSM/DTM
+- **Food Standards Agency** - Eating/drinking establishments as walkability proxy
 
 See [data/README.md](data/README.md) for download and processing instructions.
+
+## Statistical Approach
+
+**Primary method:** Multi-level regression accounting for nested structure (UPRN → Building → Segment → LSOA)
+
+**Complementary methods:**
+
+| Method | Purpose |
+| ------ | ------- |
+| **Multi-level regression** | Hypothesis testing, variance decomposition, inference |
+| **SHAP values** | Feature importance, interaction detection, non-linear effects |
+| **Spatial regression** | Account for spatial autocorrelation |
+| **Propensity matching** | Causal inference approximation |
+
+**Key outputs:**
+
+- Variance decomposition (building vs neighbourhood vs area level)
+- Standardised effect sizes for morphology variables
+- SHAP dependence plots for non-linear relationships
+
+See [stats/README.md](stats/README.md) for full research design.
 
 ## Development Status
 
@@ -43,6 +67,7 @@ See [data/README.md](data/README.md) for download and processing instructions.
 - [x] Built-up area boundary processing (`process_boundaries.py`)
 - [x] EPC data processing with UPRN linkage (`process_epc.py`)
 - [x] LiDAR building height extraction (`process_lidar.py`)
+- [x] FSA establishments download (`download_fsa.py`)
 
 ### Next Steps
 

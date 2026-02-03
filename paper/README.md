@@ -4,13 +4,14 @@
 
 ## Project Overview
 
-This project investigates the relationship between urban morphology and building energy consumption across England and Wales. While transport-energy relationships with urban form are well-established, building energy remains under-quantified in the UK context. We address this gap by constructing a high-resolution spatial dataset integrating Energy Performance Certificates, street network analysis, and socio-demographic controls.
+This project investigates the relationship between urban morphology and building energy consumption across England. While transport-energy relationships with urban form are well-established, building energy remains under-quantified in the UK context. We address this gap by constructing a high-resolution spatial dataset integrating Energy Performance Certificates, street network analysis, and socio-demographic controls.
 
 ## Documents
 
 - **[main.tex](main.tex)** - Full academic paper (LaTeX)
 - **[references.bib](references.bib)** - BibTeX bibliography
-- **[literature_review.md](literature_review.md)** - Detailed literature review and methodology notes
+- **[literature_review.md](literature_review.md)** - Detailed literature review
+- **[methodology_notes.md](methodology_notes.md)** - Working notes on morphology metrics and data processing decisions
 
 ## Research Questions
 
