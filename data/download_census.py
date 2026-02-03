@@ -19,8 +19,12 @@ import requests
 from tqdm import tqdm
 
 # Configuration
-OUTPUT_DIR = Path(__file__).parent.parent / "temp" / "statistics"
+TEMP_DIR = Path(__file__).parent.parent / "temp"
+OUTPUT_DIR = TEMP_DIR / "statistics"
 CACHE_DIR = Path(__file__).parent / ".cache"
+
+# Input paths (manual downloads - filename varies by download)
+OA_BOUNDARIES_PATTERN = "Output_Areas_2021_EW_BFE_V9_*.gpkg"
 
 # Topic summary tables to download (those available at OA level)
 TOPIC_SUMMARIES = {
@@ -36,19 +40,23 @@ TOPIC_SUMMARIES = {
 
 # URLs
 OA_BOUNDARIES_URL = (
-    "https://open-geography-portalx-ons.hub.arcgis.com/api/download/v1/items/"
-    "6beafcfd9b9c4c9993a06b6b199d7e6d/geoPackage?layers=0"
+    "https://geoportal.statistics.gov.uk/datasets/ons::"
+    "output-areas-december-2021-boundaries-ew-bfe-v9/about"
 )
 OA_LOOKUP_URL = (
     "https://open-geography-portalx-ons.hub.arcgis.com/api/download/v1/items/"
-    "d2e894a81ae040a6a4cfb9d6c14d6285/csv?layers=0"
+    "b9ca90c10aaa4b8d9791e9859a38ca67/csv?layers=0"
 )
-NOMISWEB_TS_URL = "https://www.nomisweb.co.uk/output/census/2021/census2021-ts{:03d}.zip"
+NOMISWEB_TS_URL = (
+    "https://www.nomisweb.co.uk/output/census/2021/census2021-ts{:03d}.zip"
+)
 
 
 def download_file(url: str, desc: str, timeout: int = 300) -> bytes:
-    """Download a file with progress bar."""
-    response = requests.get(url, stream=True, timeout=timeout)
+    """Download a file with progress bar, following redirects."""
+    # Use curl-like User-Agent to get direct redirect instead of async response
+    headers = {"User-Agent": "curl/8.0"}
+    response = requests.get(url, stream=True, timeout=timeout, headers=headers)
     response.raise_for_status()
 
     total_size = int(response.headers.get("content-length", 0))
@@ -63,21 +71,20 @@ def download_file(url: str, desc: str, timeout: int = 300) -> bytes:
 
 
 def download_oa_boundaries() -> gpd.GeoDataFrame:
-    """Download OA boundaries from ONS Geoportal."""
-    cache_path = CACHE_DIR / "oa_boundaries.gpkg"
+    """Load OA boundaries from file (requires manual download)."""
+    matches = list(TEMP_DIR.glob(OA_BOUNDARIES_PATTERN))
+    if matches:
+        path = matches[0]
+        print(f"Loading OA boundaries from {path}")
+        return gpd.read_file(path)
 
-    if cache_path.exists():
-        print(f"Loading cached OA boundaries from {cache_path}")
-        return gpd.read_file(cache_path)
-
-    print("Downloading OA boundaries (~150 MB)...")
-    content = download_file(OA_BOUNDARIES_URL, "OA Boundaries")
-
-    # Save to cache
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    cache_path.write_bytes(content)
-
-    return gpd.read_file(cache_path)
+    raise FileNotFoundError(
+        f"OA boundaries not found matching {OA_BOUNDARIES_PATTERN} in {TEMP_DIR}\n\n"
+        f"Please download manually:\n"
+        f"1. Go to: {OA_BOUNDARIES_URL}\n"
+        f"2. Click 'Download' -> 'GeoPackage'\n"
+        f"3. Save to: {TEMP_DIR}/\n"
+    )
 
 
 def download_oa_lookup() -> pd.DataFrame:
@@ -219,7 +226,15 @@ def main():
     joined_gdf = oa_gdf[keep_cols].copy()
 
     # Join lookup
-    lookup_cols = ["OA21CD", "LSOA21CD", "LSOA21NM", "MSOA21CD", "MSOA21NM", "LAD22CD", "LAD22NM"]
+    lookup_cols = [
+        "OA21CD",
+        "LSOA21CD",
+        "LSOA21NM",
+        "MSOA21CD",
+        "MSOA21NM",
+        "LAD22CD",
+        "LAD22NM",
+    ]
     available_cols = [c for c in lookup_cols if c in lookup_df.columns]
     joined_gdf = joined_gdf.merge(lookup_df[available_cols], on="OA21CD", how="left")
     print(f"  Joined lookup: {len(joined_gdf):,} rows")
@@ -235,12 +250,6 @@ def main():
     print(f"\nSaving joined dataset to {output_path}")
     print(f"  {len(joined_gdf):,} rows x {len(joined_gdf.columns)} columns")
     joined_gdf.to_file(output_path, driver="GPKG")
-
-    # Also save as parquet (without geometry, for faster tabular analysis)
-    parquet_path = OUTPUT_DIR / "census_oa_joined.parquet"
-    joined_df = pd.DataFrame(joined_gdf.drop(columns=["geometry"]))
-    joined_df.to_parquet(parquet_path, index=False)
-    print(f"  Also saved tabular data to {parquet_path}")
 
     print("\n" + "=" * 60)
     print("Download complete!")

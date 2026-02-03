@@ -13,6 +13,7 @@ from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
+from shapely import MultiPolygon, Polygon
 from shapely.ops import unary_union
 from shapely.validation import make_valid
 
@@ -26,6 +27,9 @@ OUTPUT_DIR = TEMP_DIR / "boundaries"
 
 # Buffer distance (metres) for merging adjacent built-up areas
 MERGE_BUFFER_DISTANCE = 100
+
+# Simplification tolerance (metres) for reducing vertex count
+SIMPLIFY_TOLERANCE = 10
 
 
 def load_built_up_areas(path: Path) -> gpd.GeoDataFrame:
@@ -56,6 +60,7 @@ def load_built_up_areas(path: Path) -> gpd.GeoDataFrame:
     print(f"Loading built-up areas from {path}")
     gdf = gpd.read_file(path)
     print(f"  Loaded {len(gdf):,} polygons")
+    print(f"  Columns: {list(gdf.columns)}")
 
     # Standardise column names (OS uses various conventions)
     col_mapping = {}
@@ -65,9 +70,25 @@ def load_built_up_areas(path: Path) -> gpd.GeoDataFrame:
             col_mapping[col] = "BUA22CD"
         elif "bua" in col_lower and "nm" in col_lower:
             col_mapping[col] = "BUA22NM"
+        # Also check for gsscode/name patterns used in some OS releases
+        elif col_lower in ("gsscode", "code"):
+            col_mapping[col] = "BUA22CD"
+        elif col_lower in ("name", "name1_text"):
+            col_mapping[col] = "BUA22NM"
 
     if col_mapping:
+        print(f"  Renaming columns: {col_mapping}")
         gdf = gdf.rename(columns=col_mapping)
+
+    # Validate required columns exist
+    required = ["BUA22CD", "BUA22NM"]
+    missing = [c for c in required if c not in gdf.columns]
+    if missing:
+        raise KeyError(
+            f"Required columns not found: {missing}\n"
+            f"Available columns: {list(gdf.columns)}\n"
+            f"Please check the OS Open Built Up Areas data format."
+        )
 
     return gdf
 
@@ -92,6 +113,102 @@ def validate_geometries(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         gdf["geometry"] = gdf.geometry.apply(make_valid)
 
     return gdf
+
+
+def _count_vertices(geom: Polygon | MultiPolygon) -> int:
+    """Count vertices in a Polygon or MultiPolygon."""
+    if geom.geom_type == "Polygon":
+        return len(geom.exterior.coords)
+    elif geom.geom_type == "MultiPolygon":
+        return sum(len(p.exterior.coords) for p in geom.geoms)
+    return 0
+
+
+def _remove_holes(geom: Polygon | MultiPolygon) -> Polygon | MultiPolygon:
+    """Remove interior holes from a Polygon or MultiPolygon."""
+    if geom.geom_type == "Polygon":
+        return Polygon(geom.exterior)
+    elif geom.geom_type == "MultiPolygon":
+        return MultiPolygon([Polygon(p.exterior) for p in geom.geoms])
+    return geom
+
+
+def simplify_geometries(
+    gdf: gpd.GeoDataFrame, tolerance: float = SIMPLIFY_TOLERANCE
+) -> gpd.GeoDataFrame:
+    """
+    Simplify geometries by removing holes and reducing vertices.
+
+    Parameters
+    ----------
+    gdf : gpd.GeoDataFrame
+        Input GeoDataFrame with polygon geometries.
+    tolerance : float
+        Simplification tolerance in CRS units (metres for BNG).
+
+    Returns
+    -------
+    gpd.GeoDataFrame
+        GeoDataFrame with simplified geometries.
+    """
+    original_vertices = gdf.geometry.apply(_count_vertices).sum()
+
+    # Remove interior holes (keep only exterior ring)
+    gdf["geometry"] = gdf.geometry.apply(_remove_holes)
+
+    # Simplify using Douglas-Peucker algorithm
+    gdf["geometry"] = gdf.geometry.simplify(tolerance=tolerance)
+
+    simplified_vertices = gdf.geometry.apply(_count_vertices).sum()
+
+    print(f"  Removed holes, simplified (tolerance={tolerance}m)")
+    print(f"  Vertices: {original_vertices:,} -> {simplified_vertices:,}")
+
+    return gdf
+
+
+def remove_contained_polygons(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """
+    Remove polygons that are fully contained within larger polygons.
+
+    Parameters
+    ----------
+    gdf : gpd.GeoDataFrame
+        Input GeoDataFrame with polygon geometries.
+
+    Returns
+    -------
+    gpd.GeoDataFrame
+        GeoDataFrame with nested polygons removed.
+    """
+    # Sort by area descending so we check smaller against larger
+    gdf = gdf.copy()
+    gdf["_area"] = gdf.geometry.area
+    gdf = gdf.sort_values("_area", ascending=False).reset_index(drop=True)
+
+    # Build spatial index
+    sindex = gdf.sindex
+
+    to_remove = set()
+    for idx, row in gdf.iterrows():
+        if idx in to_remove:
+            continue
+
+        # Find candidates that might be contained (smaller polygons)
+        candidates = list(sindex.intersection(row.geometry.bounds))
+
+        for candidate_idx in candidates:
+            if candidate_idx <= idx or candidate_idx in to_remove:
+                continue
+
+            candidate_geom = gdf.loc[candidate_idx, "geometry"]
+            if row.geometry.contains(candidate_geom):
+                to_remove.add(candidate_idx)
+
+    gdf = gdf.drop(index=list(to_remove)).drop(columns=["_area"])
+    print(f"  Removed {len(to_remove):,} contained polygons")
+
+    return gdf.reset_index(drop=True)
 
 
 def merge_adjacent_areas(
@@ -193,26 +310,29 @@ def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # Load data
-    print("\n[1/4] Loading built-up areas...")
+    print("\n[1/6] Loading built-up areas...")
     bua = load_built_up_areas(INPUT_PATH)
 
     # Validate geometries
-    print("\n[2/4] Validating geometries...")
+    print("\n[2/6] Validating geometries...")
     bua = validate_geometries(bua)
 
+    # Simplify geometries
+    print("\n[3/6] Simplifying geometries...")
+    bua = simplify_geometries(bua)
+
+    # Remove nested polygons
+    print("\n[4/6] Removing contained polygons...")
+    bua = remove_contained_polygons(bua)
+
     # Save cleaned individual areas
-    print("\n[3/4] Saving individual built-up areas...")
+    print("\n[5/6] Saving individual built-up areas...")
     individual_path = OUTPUT_DIR / "built_up_areas.gpkg"
     bua.to_file(individual_path, driver="GPKG")
     print(f"  Saved to {individual_path}")
 
-    # Also save as parquet (faster for non-spatial analysis)
-    parquet_path = OUTPUT_DIR / "built_up_areas.parquet"
-    bua.to_parquet(parquet_path)
-    print(f"  Saved to {parquet_path}")
-
     # Merge adjacent areas
-    print("\n[4/4] Creating merged conurbations...")
+    print("\n[6/6] Creating merged conurbations...")
     merged = merge_adjacent_areas(bua)
 
     merged_path = OUTPUT_DIR / "built_up_areas_merged.gpkg"

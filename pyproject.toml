@@ -20,6 +20,9 @@ dependencies = [
     "scipy>=1.15.3",
     "shapely>=2.1.2",
     "tqdm>=4.67.0",
+    "rasterstats>=0.20.0",
+    "aiohttp>=3.13.3",
+    "aiofiles>=25.1.0",
 ]
 
 [project.optional-dependencies]

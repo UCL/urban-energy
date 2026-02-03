@@ -9,8 +9,8 @@ Input:
     - OS Open UPRN GeoPackage
 
 Output:
-    - temp/epc/epc_domestic_cleaned.parquet (cleaned tabular data)
-    - temp/epc/epc_domestic_spatial.parquet (with geometry)
+    - temp/epc/epc_domestic_cleaned.parquet (cleaned tabular data, no geometry)
+    - temp/epc/epc_domestic_spatial.gpkg (with geometry)
 """
 
 from pathlib import Path
@@ -24,7 +24,9 @@ TEMP_DIR = BASE_DIR / "temp"
 OUTPUT_DIR = TEMP_DIR / "epc"
 
 # Input paths
-EPC_INPUT_DIR = TEMP_DIR / "epc_raw"  # Directory containing EPC CSV files
+EPC_INPUT_DIR = (
+    TEMP_DIR / "all-domestic-certificates"
+)  # Directory containing EPC CSV files
 UPRN_PATH = TEMP_DIR / "osopenuprn_202601_gpkg" / "osopenuprn_202601.gpkg"
 
 # Key EPC columns to retain
@@ -62,18 +64,36 @@ def load_epc_certificates(input_dir: Path) -> pd.DataFrame:
     Parameters
     ----------
     input_dir : Path
-        Directory containing EPC CSV files.
+        Directory containing EPC CSV files (organized by local authority).
 
     Returns
     -------
     pd.DataFrame
         Combined EPC records.
     """
-    # TODO: Implement based on actual download structure
-    raise NotImplementedError(
-        "Implement based on your EPC download structure. "
-        "Expected location: temp/epc_raw/"
-    )
+    if not input_dir.exists():
+        raise FileNotFoundError(
+            f"EPC input directory not found: {input_dir}\n"
+            f"Download from: https://epc.opendatacommunities.org/"
+        )
+
+    # Find all certificates.csv files in subdirectories
+    csv_files = list(input_dir.glob("*/certificates.csv"))
+    if not csv_files:
+        raise FileNotFoundError(f"No certificates.csv files found in {input_dir}")
+
+    print(f"  Found {len(csv_files)} local authority files")
+
+    # Load and concatenate
+    dfs = []
+    for csv_path in csv_files:
+        df = pd.read_csv(csv_path, usecols=EPC_COLUMNS, low_memory=False)
+        dfs.append(df)
+
+    combined = pd.concat(dfs, ignore_index=True)
+    print(f"  Loaded {len(combined):,} total records")
+
+    return combined
 
 
 def clean_epc_data(df: pd.DataFrame) -> pd.DataFrame:
@@ -90,12 +110,31 @@ def clean_epc_data(df: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         Cleaned records with standardised types.
     """
-    # TODO: Implement cleaning
-    # - Select columns from EPC_COLUMNS
-    # - Parse LODGEMENT_DATE
-    # - Clean UPRN to int64
-    # - Filter to records with valid UPRN
-    raise NotImplementedError("Implement EPC cleaning logic")
+    df = df.copy()
+
+    # Ensure string columns are string type (avoid mixed type issues with parquet)
+    df["LMK_KEY"] = df["LMK_KEY"].astype(str)
+
+    # Parse lodgement date
+    df["LODGEMENT_DATE"] = pd.to_datetime(df["LODGEMENT_DATE"], errors="coerce")
+
+    # Clean UPRN to int64 (filter out invalid)
+    df["UPRN"] = pd.to_numeric(df["UPRN"], errors="coerce")
+    n_before = len(df)
+    df = df.dropna(subset=["UPRN"])
+    df["UPRN"] = df["UPRN"].astype("int64")
+    print(f"  Filtered to UPRN records: {n_before:,} -> {len(df):,}")
+
+    # Clean numeric columns
+    numeric_cols = [
+        "CURRENT_ENERGY_EFFICIENCY", "ENERGY_CONSUMPTION_CURRENT",
+        "TOTAL_FLOOR_AREA", "HEATING_COST_CURRENT", "NUMBER_HABITABLE_ROOMS",
+    ]
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    return df
 
 
 def deduplicate_by_uprn(df: pd.DataFrame) -> pd.DataFrame:
@@ -112,13 +151,14 @@ def deduplicate_by_uprn(df: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         One record per UPRN (most recent).
     """
-    # TODO: Sort by date descending, drop duplicates keeping first
-    raise NotImplementedError("Implement deduplication")
+    n_before = len(df)
+    df = df.sort_values("LODGEMENT_DATE", ascending=False)
+    df = df.drop_duplicates(subset=["UPRN"], keep="first")
+    print(f"  Deduplicated: {n_before:,} -> {len(df):,}")
+    return df
 
 
-def join_to_uprn(
-    epc_df: pd.DataFrame, uprn_gdf: gpd.GeoDataFrame
-) -> gpd.GeoDataFrame:
+def join_to_uprn(epc_df: pd.DataFrame, uprn_gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
     Join EPC records to UPRN coordinates.
 
@@ -134,8 +174,13 @@ def join_to_uprn(
     gpd.GeoDataFrame
         EPC records with point geometry.
     """
-    # TODO: Ensure matching dtypes, inner join on UPRN
-    raise NotImplementedError("Implement UPRN join")
+    # Ensure matching dtypes
+    uprn_gdf = uprn_gdf.copy()
+    uprn_gdf["UPRN"] = uprn_gdf["UPRN"].astype("int64")
+
+    # Inner join on UPRN
+    merged = uprn_gdf[["UPRN", "geometry"]].merge(epc_df, on="UPRN", how="inner")
+    return gpd.GeoDataFrame(merged, geometry="geometry", crs=uprn_gdf.crs)
 
 
 def main() -> None:
@@ -164,7 +209,7 @@ def main() -> None:
     # Save
     print("\n[4/4] Saving outputs...")
     epc_dedup.to_parquet(OUTPUT_DIR / "epc_domestic_cleaned.parquet")
-    epc_spatial.to_parquet(OUTPUT_DIR / "epc_domestic_spatial.parquet")
+    epc_spatial.to_file(OUTPUT_DIR / "epc_domestic_spatial.gpkg", driver="GPKG")
 
     print("\nDone.")
 
