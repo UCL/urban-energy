@@ -13,6 +13,7 @@ Download and initial processing scripts for raw data sources.
 7. **Process EPC data:** Run `uv run python data/process_epc.py`
 8. **Process LiDAR building heights:** Run `uv run python data/process_lidar.py`
 9. **Download FSA establishments:** Run `uv run python data/download_fsa.py`
+10. **Download NaPTAN transport stops:** Run `uv run python data/download_naptan.py`
 
 ## Pipeline Outputs
 
@@ -25,6 +26,7 @@ Download and initial processing scripts for raw data sources.
 |                         | `temp/epc_domestic_spatial.gpkg`             | EPC records with UPRN point geometry                   |
 | `process_lidar.py`      | `temp/lidar/building_heights.gpkg`           | Building polygons with LiDAR-derived height statistics |
 | `download_fsa.py`       | `temp/fsa/fsa_establishments.gpkg`           | Eating/drinking establishments as walkability proxy    |
+| `download_naptan.py`    | `temp/transport/naptan_england.gpkg`         | Public transport access points (bus, rail, metro, etc) |
 
 ---
 
@@ -220,3 +222,80 @@ uv run python data/download_fsa.py
 
 - [FSA Open Data Portal](https://ratings.food.gov.uk/open-data)
 - [FSA API Documentation](https://api.ratings.food.gov.uk/help)
+
+---
+
+## NaPTAN (National Public Transport Access Nodes)
+
+| Dataset | Source                                              | Records | Update |
+| ------- | --------------------------------------------------- | ------- | ------ |
+| NaPTAN  | [DfT NaPTAN Portal](https://beta-naptan.dft.gov.uk) | ~434k   | Daily  |
+
+### Purpose
+
+Public transport access points enable analysis of **transport accessibility** - a key factor in sustainable urban form. Proximity to transit reduces car dependency and associated energy consumption.
+
+### Coverage
+
+England only (filtered from GB dataset). Includes:
+
+| Stop Type         | Code        | Count |
+| ----------------- | ----------- | ----- |
+| Bus/Coach stops   | BCT/BCS     | ~308k |
+| Rail stations     | RLY/RSE/RPL | ~5.7k |
+| Underground/Metro | MET/PLT/TMU | ~4k   |
+| Tram              | TMU/BST     | ~1.5k |
+| Ferry terminals   | FER/FTD     | ~570  |
+| Airport entrances | GAT/AIR     | ~100  |
+
+### Key Fields
+
+| Field           | Description                              |
+| --------------- | ---------------------------------------- |
+| `atco_code`     | Unique stop identifier                   |
+| `atco_area`     | 3-digit area code (010-499 for England)  |
+| `name`          | Common name of stop                      |
+| `locality`      | Locality name                            |
+| `stop_type`     | Stop type code (BCT, RLY, MET, etc.)     |
+| `status`        | Active/inactive status                   |
+| `easting`       | OS National Grid easting                 |
+| `northing`      | OS National Grid northing                |
+| `geometry`      | Point geometry (EPSG:27700)              |
+
+### ATCO Area Codes
+
+| Range   | Country  |
+| ------- | -------- |
+| 010-499 | England  |
+| 511-582 | Wales    |
+| 601-690 | Scotland |
+| 910-940 | National services (rail, air, ferry) |
+
+### Processing
+
+```bash
+uv run python data/download_naptan.py
+```
+
+### Links
+
+- [NaPTAN Download Portal](https://beta-naptan.dft.gov.uk/download)
+- [NaPTAN User Guide](https://www.gov.uk/government/publications/national-public-transport-access-node-schema/html-version-of-schema)
+- [ATCO Codes Reference](https://beta-naptan.dft.gov.uk/article/atco-codes-in-use)
+- [data.gov.uk NaPTAN](https://www.data.gov.uk/dataset/ff93ffc1-6656-47d8-9155-85ea0b8f2251/naptan)
+
+---
+
+## Next Steps
+
+Once all data sources have been downloaded and processed:
+
+1. **Proceed to [processing/README.md](../processing/README.md)** - Compute derived metrics:
+   - Building morphology (shape, compactness, shared walls)
+   - Network analysis (centrality, accessibility)
+   - UPRN integration (link all attributes)
+
+2. **Then to [stats/README.md](../stats/README.md)** - Statistical analysis:
+   - Multi-level regression modelling
+   - SHAP feature importance
+   - Spatial autocorrelation checks

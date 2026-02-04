@@ -2,6 +2,31 @@
 
 Research design and analysis plan for quantifying morphology-energy relationships.
 
+## Prerequisites
+
+Before running statistical analysis, complete the data pipeline:
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│  1. DATA ACQUISITION        → data/README.md                │
+│     Download Census, EPC, LiDAR, OS data, FSA, NaPTAN       │
+├─────────────────────────────────────────────────────────────┤
+│  2. PROCESSING              → processing/README.md          │
+│     Stage 1: Building morphology                            │
+│     Stage 2: Network analysis                               │
+│     Stage 3: UPRN integration                               │
+├─────────────────────────────────────────────────────────────┤
+│  3. STATISTICAL ANALYSIS    → (this document)               │
+│     Multi-level regression, SHAP, spatial analysis          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Required input:** `temp/uprn/uprn_integrated.gpkg` (from Stage 3)
+
+See [data/README.md](../data/README.md) for data setup instructions and [processing/README.md](../processing/README.md) for the processing pipeline.
+
+---
+
 ## Research Questions
 
 1. **Primary:** Do urban morphological characteristics (density, compactness, connectivity) correlate with building energy consumption after controlling for building fabric and socio-economics?

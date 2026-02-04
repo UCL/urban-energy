@@ -14,9 +14,9 @@ cd data && cat README.md             # See data setup instructions
 ```text
 urban-energy/
 ├── src/urban_energy/    # Python package
-├── data/                # Data download & initial processing scripts
-├── processing/          # [Derivative processing](processing/README.md) (morphology, UPRN, network)
-├── stats/               # Statistical analysis plan and scripts
+├── data/                # [Data acquisition](data/README.md) (download & initial processing)
+├── processing/          # [Processing pipeline](processing/README.md) (morphology, network, UPRN)
+├── stats/               # [Statistical analysis](stats/README.md) (regression, SHAP, spatial)
 ├── paper/               # [Academic paper](paper/README.md) (LaTeX)
 ├── temp/                # Downloaded/processed data (not in git)
 └── tests/               # Test suite
