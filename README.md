@@ -2,22 +2,20 @@
 
 Investigating the structural energy penalties of urban sprawl in England.
 
-**Scope:** Domestic (residential) buildings only. Non-domestic EPCs are a separate dataset.
+**Dataset:** 173,907 domestic EPC certificates with UPRN coordinates (Greater Manchester). SAP-modelled potential energy demand, not metered consumption.
 
-**Data:** EPC certificates with UPRN coordinates (available since November 2021). Earlier certificates lack spatial linkage and are excluded.
+## Thesis
 
-## Key Finding
+Sprawling development locks in energy penalties that persist regardless of technology:
 
-Sprawling development locks in energy penalties that technology cannot eliminate:
+| Lock-In        | Mechanism                       | Evidence                                   | Magnitude      |
+| -------------- | ------------------------------- | ------------------------------------------ | -------------- |
+| **Floor area** | Detached houses are larger      | All types compared                         | +59%           |
+| **Envelope**   | More exposed walls per m2       | Matched by construction era and floor area | +53% kWh/m2   |
+| **Transport**  | Low density = car dependence    | Census density quartiles                   | +22% cars/hh   |
+| **Combined**   | Floor area + transport together | High-density flats vs low-density houses   | **+50% total** |
 
-| Lock-In Type   | Mechanism                              | Magnitude              |
-| -------------- | -------------------------------------- | ---------------------- |
-| **Floor area** | Detached houses are larger             | +59% floor area        |
-| **Envelope**   | More exposed walls = more heat loss/m² | +53% kWh/m² (matched)  |
-| **Transport**  | Car dependence = more vehicle-km       | +22% car ownership     |
-| **Combined**   | All factors together                   | **+50% total penalty** |
-
-**Policy message:** You cannot insulate and electrify your way out of sprawl.
+Each shared wall eliminates ~17% of heat loss — a geometric relationship that no amount of insulation can change. Technology reduces absolute demand but the proportional penalty persists.
 
 See [analysis report](stats/analysis_report_v3.md) for detailed findings.
 

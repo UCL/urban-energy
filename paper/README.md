@@ -1,8 +1,6 @@
 # Paper: The Structural Energy Penalties of Urban Sprawl
 
-Academic paper quantifying lock-in effects in building and transport energy.
-
-**Scope:** Domestic (residential) buildings only.
+Sprawling development locks in higher energy demand through three structural mechanisms — floor area, building envelope, and transport distance — that technology cannot eliminate. This paper quantifies each mechanism using EPC and Census data from England, showing that the proportional penalty persists across technology scenarios.
 
 ## Documents
 

@@ -62,29 +62,29 @@ uv run python stats/06_generate_report.py  # Generate report from results
 
 > Sprawling development (detached houses) is associated with larger floor area, resulting in higher total energy demand regardless of efficiency.
 
-- **Metric:** Total floor area (m²)
-- **Expected:** Detached ~60% larger than terraces
+- **Metric:** Total floor area (m²) by built form
+- **Expected:** Detached ~60% larger than mid-terraces
 
 ### H2: Envelope Lock-In
 
-> Detached houses have higher energy intensity per square metre than attached dwellings due to greater exposed wall area. This proportional penalty cannot be eliminated through insulation improvements.
+> Detached houses have higher energy intensity per square metre than attached dwellings due to greater exposed wall area (~17% reduction per shared wall).
 
-- **Metric:** Energy intensity (kWh/m²) in matched samples
-- **Expected:** Detached higher intensity than mid-terrace (controlling for age, size)
+- **Metric:** Energy intensity (kWh/m²) in matched samples (same era, same size)
+- **Expected:** Detached ~50% higher intensity than mid-terrace
 
 ### H3: Transport Lock-In
 
-> Low-density development is associated with higher car ownership, resulting in more vehicle-km and higher transport energy regardless of vehicle technology.
+> Low-density development is associated with higher car ownership, resulting in more vehicle-km and higher transport energy.
 
-- **Metric:** Cars per household (Census)
+- **Metric:** Cars per household (Census TS045) by density quartile
 - **Expected:** Low-density ~20% more cars per household
 
-### H4: Technology Persistence
+### Implication: Technology Persistence
 
-> The proportional penalty of sprawl persists with technology improvements because the structural disadvantage (more surface area, more km) cannot be eliminated.
+H1-H3 describe penalties that are structural — rooted in geometry (surface-area-to-volume ratio) and geography (distance to services). Because these penalties are proportional, technology improvements (better insulation, EVs) reduce absolute demand for all forms but cannot close the gap between compact and sprawling development.
 
-- **Test:** Compare penalties across insulation and vehicle scenarios
-- **Expected:** Percentage penalty approximately constant
+- **Test:** Scenario modelling across insulation and vehicle technology levels
+- **Expected:** Proportional penalty approximately constant
 
 ---
 

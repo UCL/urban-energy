@@ -46,17 +46,18 @@ All CRS is EPSG:27700 (British National Grid) unless noted.
 
 ### Topic Summary Tables
 
-| Code  | Description               | Key Variables                      |
-| ----- | ------------------------- | ---------------------------------- |
-| TS001 | Usual resident population | Total population                   |
-| TS006 | Population density        | Persons per hectare                |
-| TS007 | Age by single year        | Age distribution (LSOA+ only)      |
-| TS011 | Households by deprivation | Deprivation dimensions             |
-| TS017 | Household size            | Number of persons                  |
-| TS044 | Accommodation type        | Detached, semi, flat, etc.         |
-| TS054 | Tenure                    | Owned, rented, social              |
-| TS061 | Method of travel to work  | Car, public transport, walk, cycle |
-| TS062 | NS-SeC                    | Socio-economic classification      |
+| Code  | Description                | Key Variables                      |
+| ----- | -------------------------- | ---------------------------------- |
+| TS001 | Usual resident population  | Total population                   |
+| TS006 | Population density         | Persons per hectare                |
+| TS011 | Households by deprivation  | Deprivation dimensions             |
+| TS017 | Household size             | Number of persons                  |
+| TS044 | Accommodation type         | Detached, semi, flat, etc.         |
+| TS045 | Number of cars or vans     | Car/van availability per household |
+| TS054 | Tenure                     | Owned, rented, social              |
+| TS058 | Distance travelled to work | Commute distance bands             |
+| TS061 | Method of travel to work   | Car, public transport, walk, cycle |
+| TS062 | NS-SeC                     | Socio-economic classification      |
 
 ### Geographic Identifiers
 

@@ -308,29 +308,21 @@ How might neighbourhood morphology affect building energy consumption?
 
 ---
 
-## Open Questions
+## Resolved Decisions
 
-1. **Height estimation refinement:**
-   - Should we adjust floor height by building age?
-   - Can we detect roof type from height_std within building?
+1. **Height estimation:** Uses 2.8m floor-to-floor divisor for all residential. Accepts error from pitched roofs and varying ceiling heights.
 
-2. **Mixed-use buildings:**
-   - OS Open Map Local includes commercial buildings
-   - Should we filter to residential only, or include commercial as "context"?
+2. **Mixed-use buildings:** Scope restricted to domestic EPCs. Commercial buildings excluded from analysis; included only as neighbourhood context where relevant.
 
-3. **Building-UPRN mismatch:**
-   - Some UPRNs may not fall within any building footprint
-   - How to handle? Nearest building? Exclude?
+3. **Building-UPRN mismatch:** Handled via spatial join in the integration pipeline. UPRNs not falling within any building footprint are excluded.
 
-4. **Temporal alignment:**
-   - LiDAR: 2000-2022 composite
-   - EPCs: 2007-present (using most recent)
-   - Census: 2021
-   - Buildings may have changed
+## Known Limitations
 
-5. **Scale sensitivity:**
-   - 400m catchment is one choice
-   - Should test 200m, 800m, LSOA for robustness
+1. **Temporal alignment:** LiDAR (2000-2022 composite), EPCs (most recent per property), Census (2021). Buildings may have changed between surveys.
+
+2. **Scale sensitivity:** 400m network catchment is a single scale choice. Robustness testing at 200m, 800m, and LSOA scales would strengthen the findings.
+
+3. **Single city:** Current dataset covers Greater Manchester only. Multi-city validation needed.
 
 ---
 

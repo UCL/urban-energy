@@ -77,6 +77,15 @@ def generate_report(data: dict) -> str:
     low_n = transport.get("low_density", {}).get("n", "N/A")
     car_penalty = key.get("car_ownership_penalty_pct", "N/A")
 
+    # Envelope penalty from compact baseline (consistent with other lock-in penalties)
+    # +53%: detached uses 53% MORE than mid-terrace (283 vs 185 kWh/m2)
+    # vs the detail table which shows -35%: terrace is 35% BELOW detached
+    envelope_penalty_pct = (
+        ((matched_det_int - matched_ter_int) / matched_ter_int * 100)
+        if matched_ter_int
+        else abs(matched_ter_pct)
+    )
+
     # Combined values
     compact = combined.get("compact", {})
     sprawl = combined.get("sprawl", {})
@@ -98,7 +107,7 @@ Sprawling development locks in energy penalties that technology cannot eliminate
 | Lock-In        | Mechanism              | Magnitude              | Persists with Best Tech? |
 | -------------- | ---------------------- | ---------------------- | ------------------------ |
 | **Floor area** | Larger homes           | +{area_vs_terrace:.0f}%                  | Yes                      |
-| **Envelope**   | More exposed walls     | +{abs(matched_ter_pct):.0f}% kWh/m²/yr       | Yes (proportionally)     |
+| **Envelope**   | More exposed walls     | +{envelope_penalty_pct:.0f}% kWh/m2/yr       | Yes (proportionally)     |
 | **Transport**  | Car dependence         | +{car_penalty:.0f}%                  | Yes (proportionally)     |
 | **Combined**   | Building + transport   | **+{total_ice_penalty:.0f}%**              | **Yes**                  |
 
