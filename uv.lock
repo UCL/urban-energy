@@ -587,6 +587,57 @@ wheels = [
 ]
 
 [[package]]
+name = "esda"
+version = "2.7.0"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.11'",
+]
+dependencies = [
+    { name = "geopandas", marker = "python_full_version < '3.11'" },
+    { name = "libpysal", version = "4.13.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", marker = "python_full_version < '3.11'" },
+    { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scikit-learn", version = "1.7.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "shapely", marker = "python_full_version < '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/52/dd/a5e84c054a9efac548ec69894b758f634cb6454e811b739e7a70d146f134/esda-2.7.0.tar.gz", hash = "sha256:e3167aa1f010a377c5b4b457ea6f91d126816a1070fa48a4e048e9f8633082f5", size = 44185102, upload-time = "2025-02-06T17:30:30.677Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5b/de/729ecc562edbd412ca2158cda78105c0208656cbbf2e6e70000c59d3ab9e/esda-2.7.0-py3-none-any.whl", hash = "sha256:74cb6bce4e9e9ef7d3826d808d987588bbf3aa9ec787c38a0a341485365d73cd", size = 142795, upload-time = "2025-02-06T17:30:26.856Z" },
+]
+
+[[package]]
+name = "esda"
+version = "2.8.1"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.14' and sys_platform == 'win32'",
+    "python_full_version >= '3.14' and sys_platform == 'emscripten'",
+    "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
+    "python_full_version == '3.11.*' and sys_platform == 'win32'",
+    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
+    "python_full_version == '3.11.*' and sys_platform == 'emscripten'",
+    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.11.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+]
+dependencies = [
+    { name = "geopandas", marker = "python_full_version >= '3.11'" },
+    { name = "libpysal", version = "4.14.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "numpy", marker = "python_full_version >= '3.11'" },
+    { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.14'" },
+    { name = "pandas", version = "3.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' and python_full_version < '3.14'" },
+    { name = "scikit-learn", version = "1.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "scipy", version = "1.17.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "shapely", marker = "python_full_version >= '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e4/bb/c6449cdc16bbc3b3f8e6ba65d50bfd9623b1f39e55c69819080aaff85d1e/esda-2.8.1.tar.gz", hash = "sha256:26ae1bff2697a0ded41d9bb590664cb24047467457820b44f52a1ddec353292f", size = 27055726, upload-time = "2026-01-05T16:52:26.347Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ac/84/090339a8affc27705dab6b0b8537e50ba96879790cd3bb61fe314b603f82/esda-2.8.1-py3-none-any.whl", hash = "sha256:2b6793dcda99c88bc8fa9de0c4a71030001da947cd22247ee1012e74245d439d", size = 157151, upload-time = "2026-01-05T16:52:24.137Z" },
+]
+
+[[package]]
 name = "fiona"
 version = "1.10.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2955,7 +3006,11 @@ dependencies = [
     { name = "aiofiles" },
     { name = "aiohttp" },
     { name = "cityseer" },
+    { name = "esda", version = "2.7.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "esda", version = "2.8.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "geopandas" },
+    { name = "libpysal", version = "4.13.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "libpysal", version = "4.14.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "momepy", version = "0.9.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "momepy", version = "0.11.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "numpy" },
@@ -2988,7 +3043,9 @@ requires-dist = [
     { name = "aiofiles", specifier = ">=25.1.0" },
     { name = "aiohttp", specifier = ">=3.13.3" },
     { name = "cityseer", specifier = ">=4.23.0b1" },
+    { name = "esda", specifier = ">=2.7.0" },
     { name = "geopandas", specifier = ">=1.1.2" },
+    { name = "libpysal", specifier = ">=4.13.0" },
     { name = "momepy", specifier = ">=0.9.1" },
     { name = "numpy", specifier = ">=2.2.6" },
     { name = "pandas", specifier = ">=2.3.3" },

@@ -33,7 +33,9 @@ TOPIC_SUMMARIES = {
     11: "Households by deprivation dimensions",
     17: "Household size",
     44: "Accommodation type",
+    45: "Number of cars or vans",  # Car/van availability per household
     54: "Tenure",
+    58: "Distance travelled to work",  # Commute distance bands
     61: "Method of travel to work",
     62: "NS-SeC (socio-economic classification)",
 }

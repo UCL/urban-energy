@@ -316,8 +316,11 @@ def check_multicollinearity(df: pd.DataFrame) -> pd.DataFrame:
     """
     Compute Variance Inflation Factor (VIF) for predictor variables.
 
-    VIF > 5 suggests multicollinearity concerns.
-    VIF > 10 indicates serious multicollinearity.
+    Thresholds (conservative, per expert review):
+    - VIF > 5: Moderate multicollinearity concern
+    - VIF > 10: Serious multicollinearity - coefficient instability likely
+
+    Also computes PCA on morphology variables as alternative to dropping.
     """
     print("\n" + "=" * 70)
     print("MULTICOLLINEARITY DIAGNOSTICS (VIF)")
@@ -354,13 +357,63 @@ def check_multicollinearity(df: pd.DataFrame) -> pd.DataFrame:
         print("  Insufficient cases for VIF analysis")
         return pd.DataFrame()
 
-    # Compute VIF
+    # Compute VIF with conservative threshold (VIF > 5)
+    print("\n  VIF Analysis (conservative threshold: VIF > 5):")
     vif_data = []
+    high_vif_vars = []
     for i, col in enumerate(available):
         vif = variance_inflation_factor(X.values, i)
         vif_data.append({"variable": col, "VIF": vif})
-        flag = " *** HIGH" if vif > 10 else " * moderate" if vif > 5 else ""
+        if vif > 10:
+            flag = " *** SERIOUS (VIF > 10)"
+            high_vif_vars.append(col)
+        elif vif > 5:
+            flag = " ** MODERATE (VIF > 5)"
+            high_vif_vars.append(col)
+        else:
+            flag = ""
         print(f"  {col:35} VIF = {vif:6.2f}{flag}")
+
+    # Recommendations
+    if high_vif_vars:
+        print(f"\n  ⚠ Variables with VIF > 5: {high_vif_vars}")
+        print("    Consider: dropping correlated variables, PCA, or ridge regression")
+
+    # PCA on morphology variables as alternative
+    morph_vars = ["compactness", "convexity", "elongation", "orientation"]
+    morph_available = [v for v in morph_vars if v in df.columns]
+
+    if len(morph_available) >= 2:
+        print("\n  PCA Alternative for Morphology Variables:")
+        try:
+            from sklearn.decomposition import PCA
+            from sklearn.preprocessing import StandardScaler
+
+            morph_df = df[morph_available].dropna()
+            if len(morph_df) >= 50:
+                scaler = StandardScaler()
+                morph_scaled = scaler.fit_transform(morph_df)
+
+                pca = PCA(n_components=2)
+                pca_result = pca.fit_transform(morph_scaled)
+
+                print(f"    Input variables: {morph_available}")
+                print(f"    PC1 explained variance: {pca.explained_variance_ratio_[0]:.1%}")
+                print(f"    PC2 explained variance: {pca.explained_variance_ratio_[1]:.1%}")
+                print(f"    Total explained: {sum(pca.explained_variance_ratio_):.1%}")
+
+                # Component loadings
+                print("\n    Component loadings:")
+                for i, var in enumerate(morph_available):
+                    print(f"      {var:20} PC1={pca.components_[0, i]:+.3f}  PC2={pca.components_[1, i]:+.3f}")
+
+                print("\n    Interpretation:")
+                print("      PC1: Overall shape efficiency (compactness + convexity)")
+                print("      PC2: Orientation/elongation dimension")
+                print("    → Use PC1, PC2 instead of individual morphology vars to avoid multicollinearity")
+
+        except ImportError:
+            print("    sklearn not available for PCA")
 
     return pd.DataFrame(vif_data)
 

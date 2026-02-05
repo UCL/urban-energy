@@ -15,6 +15,7 @@ Test boundaries:
 from pathlib import Path
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 from scipy.spatial import cKDTree
 
@@ -134,6 +135,94 @@ def run_stage1_morphology(boundaries: gpd.GeoDataFrame) -> gpd.GeoDataFrame | No
         print(f"  WARNING: Missing columns: {missing_cols}")
     else:
         print("  ✓ All morphology columns present")
+
+    # Derive surface-to-volume ratio (energy-relevant metric)
+    # This captures thermal envelope efficiency better than raw height
+    height_col = None
+    for col in ["height_median", "height_mean", "height"]:
+        if col in buildings.columns:
+            height_col = col
+            break
+
+    if (
+        height_col
+        and "footprint_area_m2" in buildings.columns
+        and "perimeter_m" in buildings.columns
+    ):
+        print("\n  Computing surface-to-volume ratio...")
+        # Convert height to numeric if needed
+        buildings[height_col] = pd.to_numeric(buildings[height_col], errors="coerce")
+
+        # Compute external wall area (accounting for shared walls)
+        if "shared_wall_ratio" in buildings.columns:
+            buildings["external_wall_area_m2"] = (
+                buildings["perimeter_m"]
+                * buildings[height_col]
+                * (1 - buildings["shared_wall_ratio"])
+            )
+        else:
+            buildings["external_wall_area_m2"] = (
+                buildings["perimeter_m"] * buildings[height_col]
+            )
+
+        # Envelope area = roof + floor + external walls (simplified flat roof assumption)
+        buildings["envelope_area_m2"] = (
+            buildings["footprint_area_m2"]  # roof
+            + buildings["footprint_area_m2"]  # floor
+            + buildings["external_wall_area_m2"]  # walls
+        )
+
+        # Volume
+        buildings["volume_m3"] = buildings["footprint_area_m2"] * buildings[height_col]
+
+        # Surface-to-volume ratio (lower = more thermally efficient)
+        # Use minimum volume threshold to avoid extreme values from tiny structures
+        MIN_VOLUME_M3 = 10.0  # ~2m x 2m x 2.5m minimum reasonable building
+        MAX_S2V = 5.0  # Cap at reasonable maximum (95th percentile ~0.8)
+        MAX_FF = 30.0  # Cap at reasonable maximum (95th percentile ~11)
+
+        valid_volume = buildings["volume_m3"] >= MIN_VOLUME_M3
+
+        buildings["surface_to_volume"] = np.where(
+            valid_volume,
+            np.clip(
+                buildings["envelope_area_m2"] / buildings["volume_m3"],
+                0,
+                MAX_S2V,
+            ),
+            np.nan,
+        )
+
+        valid_stv = buildings["surface_to_volume"].notna().sum()
+        mean_stv = buildings["surface_to_volume"].mean()
+        excluded_vol = (~valid_volume & buildings["volume_m3"].notna()).sum()
+        print(f"    ✓ surface_to_volume: {valid_stv:,} valid (mean={mean_stv:.3f})")
+        print(f"      (excluded {excluded_vol:,} with volume < {MIN_VOLUME_M3} m³)")
+
+        # Form factor: envelope_area / volume^(2/3)
+        # This is dimensionless and comparable across building sizes
+        # A perfect cube has form_factor ≈ 6.0; higher values = less thermally efficient
+        # More useful than S/V ratio for comparing buildings of different sizes
+        buildings["form_factor"] = np.where(
+            valid_volume,
+            np.clip(
+                buildings["envelope_area_m2"] / np.power(buildings["volume_m3"], 2 / 3),
+                0,
+                MAX_FF,
+            ),
+            np.nan,
+        )
+
+        valid_ff = buildings["form_factor"].notna().sum()
+        mean_ff = buildings["form_factor"].mean()
+        print(f"    ✓ form_factor: {valid_ff:,} valid (mean={mean_ff:.3f})")
+
+        # Note: estimated_floors, gross_floor_area, and heat_loss_parameter
+        # can be computed during analysis from height and footprint_area
+    else:
+        print(
+            "\n  WARNING: Cannot compute surface-to-volume (missing height/area/perimeter)"
+        )
 
     print(f"\n  Total buildings: {len(buildings)}")
 
@@ -469,6 +558,12 @@ def run_stage3_uprn_integration(
             "elongation",
             "shared_wall_length_m",
             "shared_wall_ratio",
+            # Thermal efficiency metrics
+            "surface_to_volume",
+            "form_factor",
+            "external_wall_area_m2",
+            "envelope_area_m2",
+            "volume_m3",
         ]
         # Include height columns if present
         height_cols = [c for c in buildings.columns if c.startswith("height_")]
