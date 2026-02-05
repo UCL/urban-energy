@@ -2,6 +2,8 @@
 
 Download and initial processing scripts for raw data sources.
 
+**Scope:** Domestic (residential) buildings only. EPC data uses the "All domestic certificates" download; non-domestic EPCs are a separate dataset not included.
+
 ## Setup
 
 1. **Download OA Boundaries:** Go to [ONS Geoportal](https://geoportal.statistics.gov.uk/datasets/ons::output-areas-december-2021-boundaries-ew-bfe-v9/about), click Download → GeoPackage, save to `temp/`
@@ -97,21 +99,25 @@ All products from [OS Data Hub](https://osdatahub.os.uk/downloads/open).
 
 ### Key Fields
 
-| Field                        | Description                      |
-| ---------------------------- | -------------------------------- |
-| `UPRN`                       | Unique Property Reference Number |
-| `CURRENT_ENERGY_EFFICIENCY`  | SAP rating (1-100)               |
-| `CURRENT_ENERGY_RATING`      | EPC band (A-G)                   |
-| `ENERGY_CONSUMPTION_CURRENT` | Estimated annual kWh             |
-| `TOTAL_FLOOR_AREA`           | Floor area in m²                 |
-| `PROPERTY_TYPE`              | Detached, Semi, Terraced, Flat   |
-| `CONSTRUCTION_AGE_BAND`      | Age of construction              |
-| `TENURE`                     | Owner-occupied, Rental, Social   |
-| `MAIN_FUEL`                  | Primary heating fuel             |
+| Field                        | Description                                  |
+| ---------------------------- | -------------------------------------------- |
+| `UPRN`                       | Unique Property Reference Number             |
+| `CURRENT_ENERGY_EFFICIENCY`  | SAP rating (1-100)                           |
+| `CURRENT_ENERGY_RATING`      | EPC band (A-G)                               |
+| `ENERGY_CONSUMPTION_CURRENT` | Estimated annual kWh                         |
+| `TOTAL_FLOOR_AREA`           | Total internal floor area in m² (all storeys)|
+| `PROPERTY_TYPE`              | Detached, Semi, Terraced, Flat               |
+| `BUILT_FORM`                 | More granular form (e.g., Mid-Terrace)       |
+| `CONSTRUCTION_AGE_BAND`      | Age of construction                          |
+| `TENURE`                     | Owner-occupied, Rental, Social               |
+| `MAIN_FUEL`                  | Primary heating fuel                         |
+| `FLOOR_LEVEL`                | Floor level for flats (0=ground, 1=first...) |
+| `FLAT_TOP_STOREY`            | Whether flat is on top floor (Y/N)           |
+| `FLOOR_HEIGHT`               | Average storey height (metres)               |
 
 ### Data Quality Notes
 
-- **UPRN linkage**: Available since November 2021; earlier certificates excluded from spatial analysis.
+- **UPRN linkage**: UPRN coordinates included in EPC downloads since November 2021. Earlier certificates lack coordinates and cannot be spatially joined, so the analysis uses certificates from November 2021 onwards.
 - **SAP vs Metered**: Estimates are modelled (SAP), not actual consumption.
 - **Coverage Bias**: Only properties sold/rented; long-term owner-occupied under-represented.
 - **Multiple Certificates**: Filter by `LODGEMENT_DATE` for most recent.
@@ -133,8 +139,8 @@ All products from [OS Data Hub](https://osdatahub.os.uk/downloads/open).
 
 | Dataset       | Source                                                                                     | Resolution | Coverage |
 | ------------- | ------------------------------------------------------------------------------------------ | ---------- | -------- |
-| Composite DSM | [DEFRA Data](https://environment.data.gov.uk/dataset/9ba4d5ac-d596-445a-9056-dae3ddec0178) | 1m         | ~99% Eng |
-| Composite DTM | [DEFRA Data](https://environment.data.gov.uk/dataset/13787b9a-26a4-4775-8523-806d13af58fc) | 1m         | ~99% Eng |
+| Composite DSM | [DEFRA Data](https://environment.data.gov.uk/dataset/9ba4d5ac-d596-445a-9056-dae3ddec0178) | 2m         | ~99% Eng |
+| Composite DTM | [DEFRA Data](https://environment.data.gov.uk/dataset/13787b9a-26a4-4775-8523-806d13af58fc) | 2m         | ~99% Eng |
 
 ### Key Details
 
@@ -145,46 +151,20 @@ All products from [OS Data Hub](https://osdatahub.os.uk/downloads/open).
 
 ### Processing
 
-Use `process_lidar.py` which streams tiles via the DEFRA WCS API:
-
 ```bash
 uv run python data/process_lidar.py
 ```
 
-**Prerequisites:** Requires OS Open Map Local building footprints (step 5 in setup).
+**Output:** `temp/lidar/building_heights.gpkg` — Building footprints with height statistics (min, max, mean, median, std) derived from nDSM.
 
-For each built-up area boundary, the script:
-
-1. Loads building footprints from OS Open Map Local
-2. Downloads required DSM/DTM tiles via WCS (async, max 8 concurrent)
-3. Computes nDSM (DSM - DTM) in memory
-4. Extracts building heights via zonal statistics
-5. Caches per-boundary results for resumability
-6. Deletes tiles and moves to next boundary
-
-### Output Schema
-
-`temp/lidar/building_heights.gpkg`:
-
-| Column               | Type    | Description                         |
-| -------------------- | ------- | ----------------------------------- |
-| `id`                 | string  | OS building identifier              |
-| `geometry`           | polygon | Building footprint (EPSG:27700)     |
-| `height_min`         | float   | Minimum nDSM value within footprint |
-| `height_max`         | float   | Maximum nDSM value (approx. ridge)  |
-| `height_mean`        | float   | Mean height across footprint        |
-| `height_median`      | float   | Median height across footprint      |
-| `height_std`         | float   | Height standard deviation           |
-| `height_pixel_count` | int     | Number of LiDAR pixels in footprint |
-
-**Note:** Buildings outside LiDAR coverage have null height values.
+See [processing/README.md](../processing/README.md) for derived morphology metrics.
 
 ---
 
 ## Food Standards Agency (FSA) Establishments
 
-| Dataset                    | Source                                             | Records | Update |
-| -------------------------- | -------------------------------------------------- | ------- | ------ |
+| Dataset                    | Source                                                 | Records | Update |
+| -------------------------- | ------------------------------------------------------ | ------- | ------ |
 | Food Hygiene Rating Scheme | [FSA Open Data](https://ratings.food.gov.uk/open-data) | ~500k   | Daily  |
 
 ### Purpose
@@ -193,16 +173,16 @@ Eating and drinking establishments serve as a proxy for **walkability** and **de
 
 ### Key Fields
 
-| Field              | Description                                    |
-| ------------------ | ---------------------------------------------- |
-| `fhrs_id`          | Unique FSA establishment identifier            |
-| `business_name`    | Establishment name                             |
-| `business_type`    | Category (Restaurant, Pub, Takeaway, etc.)     |
-| `business_type_id` | Numeric type code                              |
-| `postcode`         | UK postcode                                    |
-| `latitude`         | WGS84 latitude (source)                        |
-| `longitude`        | WGS84 longitude (source)                       |
-| `geometry`         | Point geometry (EPSG:27700 in output)          |
+| Field              | Description                                |
+| ------------------ | ------------------------------------------ |
+| `fhrs_id`          | Unique FSA establishment identifier        |
+| `business_name`    | Establishment name                         |
+| `business_type`    | Category (Restaurant, Pub, Takeaway, etc.) |
+| `business_type_id` | Numeric type code                          |
+| `postcode`         | UK postcode                                |
+| `latitude`         | WGS84 latitude (source)                    |
+| `longitude`        | WGS84 longitude (source)                   |
+| `geometry`         | Point geometry (EPSG:27700 in output)      |
 
 ### Business Types Included
 
@@ -250,25 +230,25 @@ England only (filtered from GB dataset). Includes:
 
 ### Key Fields
 
-| Field           | Description                              |
-| --------------- | ---------------------------------------- |
-| `atco_code`     | Unique stop identifier                   |
-| `atco_area`     | 3-digit area code (010-499 for England)  |
-| `name`          | Common name of stop                      |
-| `locality`      | Locality name                            |
-| `stop_type`     | Stop type code (BCT, RLY, MET, etc.)     |
-| `status`        | Active/inactive status                   |
-| `easting`       | OS National Grid easting                 |
-| `northing`      | OS National Grid northing                |
-| `geometry`      | Point geometry (EPSG:27700)              |
+| Field       | Description                             |
+| ----------- | --------------------------------------- |
+| `atco_code` | Unique stop identifier                  |
+| `atco_area` | 3-digit area code (010-499 for England) |
+| `name`      | Common name of stop                     |
+| `locality`  | Locality name                           |
+| `stop_type` | Stop type code (BCT, RLY, MET, etc.)    |
+| `status`    | Active/inactive status                  |
+| `easting`   | OS National Grid easting                |
+| `northing`  | OS National Grid northing               |
+| `geometry`  | Point geometry (EPSG:27700)             |
 
 ### ATCO Area Codes
 
-| Range   | Country  |
-| ------- | -------- |
-| 010-499 | England  |
-| 511-582 | Wales    |
-| 601-690 | Scotland |
+| Range   | Country                              |
+| ------- | ------------------------------------ |
+| 010-499 | England                              |
+| 511-582 | Wales                                |
+| 601-690 | Scotland                             |
 | 910-940 | National services (rail, air, ferry) |
 
 ### Processing
@@ -292,10 +272,8 @@ Once all data sources have been downloaded and processed:
 
 1. **Proceed to [processing/README.md](../processing/README.md)** - Compute derived metrics:
    - Building morphology (shape, compactness, shared walls)
-   - Network analysis (centrality, accessibility)
-   - UPRN integration (link all attributes)
 
-2. **Then to [stats/README.md](../stats/README.md)** - Statistical analysis:
-   - Multi-level regression modelling
-   - SHAP feature importance
-   - Spatial autocorrelation checks
+2. **Then to [stats/README.md](../stats/README.md)** - Lock-in analysis:
+   - Matched comparison of built forms
+   - Transport energy estimation
+   - Combined penalty quantification

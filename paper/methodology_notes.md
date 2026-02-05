@@ -2,6 +2,59 @@
 
 Working notes on data processing decisions and morphology metric computation.
 
+## Theoretical Framework
+
+### The Causal Chain (Hypothesised)
+
+```text
+COMPACT URBAN FORM
+        │
+        ├──────────────────────────────────────────────────────────┐
+        │                                                          │
+        ▼                                                          ▼
+[Stock Composition]                                    [Area-Level Effects]
+Dense areas have more                                  Urban heat island
+flats, terraces, smaller                              Wind sheltering
+dwellings                                             Solar access patterns
+        │                                                          │
+        ▼                                                          ▼
+[Building Thermal Physics]                             [Behavioural Changes]
+Shared walls reduce heat loss                          Smaller spaces
+Compact shapes = lower S/V ratio                       Different lifestyles
+Multi-story = less roof loss/unit                      (NOT captured by SAP)
+        │                                                          │
+        └──────────────────────┬───────────────────────────────────┘
+                               │
+                               ▼
+                    BUILDING ENERGY DEMAND
+                    (per capita or per m²)
+```
+
+### The Confounding Problem
+
+Raw data shows detached houses with _lower_ energy intensity than terraces. This counterintuitive result arises from age confounding:
+
+```text
+                    HISTORICAL DEVELOPMENT
+                            │
+            ┌───────────────┴───────────────┐
+            │                               │
+            ▼                               ▼
+    Central Location              Older Building Stock
+    (high density)                (poor fabric efficiency)
+            │                               │
+            └───────────────┬───────────────┘
+                            │
+                            ▼
+                    OBSERVED CORRELATION
+            (density appears unrelated to energy
+             because age effect cancels location effect)
+```
+
+**Solution:** The matched comparison design controls for construction era and floor area, isolating the true shared-wall effect. This reveals the +53% intensity penalty for detached houses.
+
+---
+
 ## Analysis Framework
 
 ### Units of Analysis
@@ -62,14 +115,14 @@ Street segment (400m catchment)
 
 ### Variable Categories
 
-| Category | Source | Level | Role in Model |
-|----------|--------|-------|---------------|
-| Energy consumption | EPC | UPRN | Dependent variable |
-| Building characteristics | EPC | UPRN | Controls |
-| Building morphology | OS + LiDAR | Building → UPRN | Contextual |
-| Neighbourhood morphology | Aggregated | Segment | **Independent variables** |
-| Socio-demographics | Census | OA → UPRN | Controls |
-| Network metrics | cityseer | Segment | Independent variables |
+| Category                 | Source     | Level           | Role in Model             |
+| ------------------------ | ---------- | --------------- | ------------------------- |
+| Energy consumption       | EPC        | UPRN            | Dependent variable        |
+| Building characteristics | EPC        | UPRN            | Controls                  |
+| Building morphology      | OS + LiDAR | Building → UPRN | Contextual                |
+| Neighbourhood morphology | Aggregated | Segment         | **Independent variables** |
+| Socio-demographics       | Census     | OA → UPRN       | Controls                  |
+| Network metrics          | cityseer   | Segment         | Independent variables     |
 
 ---
 
@@ -79,26 +132,27 @@ These are computed on building footprints and inherited by UPRNs via spatial joi
 
 ### Geometry Metrics
 
-| Metric | Formula | Notes |
-|--------|---------|-------|
-| `footprint_area_m2` | `geometry.area` | Direct from polygon |
-| `perimeter_m` | `geometry.length` | For compactness/shared wall |
-| `height_m` | `height_median` from LiDAR | Less affected by roof peaks than max |
-| `estimated_floors` | `max(1, round(height_median / 2.8))` | 2.8m typical UK floor-to-floor |
-| `gross_floor_area_m2` | `footprint_area × estimated_floors` | For FAR calculation |
+| Metric                | Formula                              | Notes                                |
+| --------------------- | ------------------------------------ | ------------------------------------ |
+| `footprint_area_m2`   | `geometry.area`                      | Direct from polygon                  |
+| `perimeter_m`         | `geometry.length`                    | For compactness/shared wall          |
+| `height_m`            | `height_median` from LiDAR           | Less affected by roof peaks than max |
+| `estimated_floors`    | `max(1, round(height_median / 2.8))` | 2.8m typical UK floor-to-floor       |
+| `gross_floor_area_m2` | `footprint_area × estimated_floors`  | For FAR calculation                  |
 
 ### Building Typology (Adjacency Analysis)
 
 **Method:**
+
 1. Buffer building polygons by 0.3m
 2. Find intersections with neighbouring buildings
 3. Measure shared boundary length
 
-| Metric | Formula | Interpretation |
-|--------|---------|----------------|
-| `n_adjacent_buildings` | Count of touching neighbours | 0=detached, 1=semi, 2+=terrace |
-| `shared_wall_length_m` | Sum of intersection lengths | Party wall exposure |
-| `shared_wall_ratio` | `shared_wall_length / perimeter` | 0=detached, ~0.5=terrace |
+| Metric                 | Formula                          | Interpretation                 |
+| ---------------------- | -------------------------------- | ------------------------------ |
+| `n_adjacent_buildings` | Count of touching neighbours     | 0=detached, 1=semi, 2+=terrace |
+| `shared_wall_length_m` | Sum of intersection lengths      | Party wall exposure            |
+| `shared_wall_ratio`    | `shared_wall_length / perimeter` | 0=detached, ~0.5=terrace       |
 
 **Classification Logic:**
 
@@ -119,6 +173,7 @@ def classify_building(n_adjacent, shared_wall_ratio, n_uprns, has_flats):
 **EPC Cross-Validation:**
 
 Where EPCs exist for a building, compare:
+
 - `BUILT_FORM`: Detached, Semi-Detached, Mid-Terrace, End-Terrace
 - `PROPERTY_TYPE`: House, Flat, Bungalow, Maisonette
 
@@ -133,6 +188,7 @@ Modal EPC classification can validate geometry-based inference.
 FAR (Floor Area Ratio) = Total Floor Area / Land Area
 
 We need total floor area per building, but:
+
 - EPC `TOTAL_FLOOR_AREA` is internal usable area per dwelling
 - `footprint × floors` is gross floor area for the building
 - These differ systematically (walls, stairs, common areas)
@@ -140,26 +196,29 @@ We need total floor area per building, but:
 ### Approach
 
 **For buildings WITH EPCs:**
+
 - Sum `TOTAL_FLOOR_AREA` across all EPCs in building
 - This gives actual internal floor area (more accurate for energy)
 
 **For buildings WITHOUT EPCs:**
+
 - Use `gross_floor_area = footprint × estimated_floors`
 - Accept systematic overestimate vs internal area
 
 **At segment level:**
+
 ```
 FAR = Σ(building_floor_area) / catchment_area
 ```
 
 ### Floor Estimation Considerations
 
-| Factor | Issue | Approach |
-|--------|-------|----------|
-| Pitched roofs | Add height without floors | Use `height_median` not `height_max` |
+| Factor              | Issue                       | Approach                                |
+| ------------------- | --------------------------- | --------------------------------------- |
+| Pitched roofs       | Add height without floors   | Use `height_median` not `height_max`    |
 | Victorian buildings | Higher ceilings (~3.0-3.2m) | Could adjust by `CONSTRUCTION_AGE_BAND` |
-| Ground floor retail | ~4-5m floor height | Not applicable (domestic EPCs only) |
-| Loft conversions | Partial floor | Captured in height but overestimates |
+| Ground floor retail | ~4-5m floor height          | Not applicable (domestic EPCs only)     |
+| Loft conversions    | Partial floor               | Captured in height but overestimates    |
 
 **Pragmatic choice:** Use 2.8m divisor for all residential. Accept error.
 
@@ -171,30 +230,30 @@ These are the actual independent variables for regression, computed by aggregati
 
 ### Density Metrics
 
-| Metric | Formula | Hypothesis |
-|--------|---------|------------|
-| `building_coverage_ratio` | `Σ footprint_area / catchment_area` | Higher → urban heat island → less heating |
-| `far` | `Σ floor_area / catchment_area` | Development intensity |
-| `building_density_per_ha` | `n_buildings / (catchment_area / 10000)` | General density |
-| `uprn_density_per_ha` | `n_uprns / (catchment_area / 10000)` | Address density |
+| Metric                    | Formula                                  | Hypothesis                                |
+| ------------------------- | ---------------------------------------- | ----------------------------------------- |
+| `building_coverage_ratio` | `Σ footprint_area / catchment_area`      | Higher → urban heat island → less heating |
+| `far`                     | `Σ floor_area / catchment_area`          | Development intensity                     |
+| `building_density_per_ha` | `n_buildings / (catchment_area / 10000)` | General density                           |
+| `uprn_density_per_ha`     | `n_uprns / (catchment_area / 10000)`     | Address density                           |
 
 ### Form Metrics
 
-| Metric | Formula | Hypothesis |
-|--------|---------|------------|
-| `mean_building_height_m` | `mean(height_median)` | Taller context → more shelter |
-| `height_std_m` | `std(height_median)` | Height variation |
-| `mean_footprint_m2` | `mean(footprint_area)` | Building grain |
-| `mean_shared_wall_ratio` | `mean(shared_wall_ratio)` | Party wall prevalence |
+| Metric                   | Formula                   | Hypothesis                    |
+| ------------------------ | ------------------------- | ----------------------------- |
+| `mean_building_height_m` | `mean(height_median)`     | Taller context → more shelter |
+| `height_std_m`           | `std(height_median)`      | Height variation              |
+| `mean_footprint_m2`      | `mean(footprint_area)`    | Building grain                |
+| `mean_shared_wall_ratio` | `mean(shared_wall_ratio)` | Party wall prevalence         |
 
 ### Stock Composition
 
-| Metric | Formula | Interpretation |
-|--------|---------|----------------|
-| `pct_terraced` | `count(terraced) / total` | Traditional dense housing |
-| `pct_detached` | `count(detached) / total` | Suburban character |
-| `pct_flats` | `count(flat_block) / total` | Apartment buildings |
-| `pct_semi_detached` | `count(semi) / total` | Interwar suburbs |
+| Metric              | Formula                     | Interpretation            |
+| ------------------- | --------------------------- | ------------------------- |
+| `pct_terraced`      | `count(terraced) / total`   | Traditional dense housing |
+| `pct_detached`      | `count(detached) / total`   | Suburban character        |
+| `pct_flats`         | `count(flat_block) / total` | Apartment buildings       |
+| `pct_semi_detached` | `count(semi) / total`       | Interwar suburbs          |
 
 ---
 
@@ -202,17 +261,18 @@ These are the actual independent variables for regression, computed by aggregati
 
 These are building-level controls from EPC, not morphology variables.
 
-| Variable | Role | Notes |
-|----------|------|-------|
-| `TOTAL_FLOOR_AREA` | Size control | Energy scales with floor area |
-| `PROPERTY_TYPE` | Form control | Detached/Semi/Terrace/Flat |
-| `BUILT_FORM` | Detailed form | Mid vs End terrace matters |
-| `CONSTRUCTION_AGE_BAND` | Age/efficiency | Proxy for insulation standards |
-| `MAIN_FUEL` | Heating system | Gas vs electric vs oil |
-| `WALLS_DESCRIPTION` | Construction | Solid vs cavity walls |
+| Variable                    | Role               | Notes                           |
+| --------------------------- | ------------------ | ------------------------------- |
+| `TOTAL_FLOOR_AREA`          | Size control       | Energy scales with floor area   |
+| `PROPERTY_TYPE`             | Form control       | Detached/Semi/Terrace/Flat      |
+| `BUILT_FORM`                | Detailed form      | Mid vs End terrace matters      |
+| `CONSTRUCTION_AGE_BAND`     | Age/efficiency     | Proxy for insulation standards  |
+| `MAIN_FUEL`                 | Heating system     | Gas vs electric vs oil          |
+| `WALLS_DESCRIPTION`         | Construction       | Solid vs cavity walls           |
 | `CURRENT_ENERGY_EFFICIENCY` | Overall efficiency | SAP score (alternative outcome) |
 
 **Dependent Variable:**
+
 - `ENERGY_CONSUMPTION_CURRENT`: Estimated annual kWh (SAP modelled)
 
 ---
@@ -223,28 +283,28 @@ How might neighbourhood morphology affect building energy consumption?
 
 ### Direct Thermal Effects
 
-| Pathway | Mechanism | Captured by |
-|---------|-----------|-------------|
-| Urban heat island | Dense areas warmer | `building_coverage_ratio`, `far` |
-| Wind shelter | Buildings block wind | `mean_building_height`, density |
-| Solar shading | Shadows reduce gain | Height, density (complex) |
+| Pathway           | Mechanism            | Captured by                      |
+| ----------------- | -------------------- | -------------------------------- |
+| Urban heat island | Dense areas warmer   | `building_coverage_ratio`, `far` |
+| Wind shelter      | Buildings block wind | `mean_building_height`, density  |
+| Solar shading     | Shadows reduce gain  | Height, density (complex)        |
 
 ### Stock Composition Effects
 
-| Pathway | Mechanism | Captured by |
-|---------|-----------|-------------|
-| Building type mix | Terraces more efficient | `pct_terraced`, `mean_shared_wall_ratio` |
-| Age distribution | Areas have consistent age | Correlated with morphology |
-| Size distribution | Dense areas have smaller units | `mean_footprint`, UPRN density |
+| Pathway           | Mechanism                      | Captured by                              |
+| ----------------- | ------------------------------ | ---------------------------------------- |
+| Building type mix | Terraces more efficient        | `pct_terraced`, `mean_shared_wall_ratio` |
+| Age distribution  | Areas have consistent age      | Correlated with morphology               |
+| Size distribution | Dense areas have smaller units | `mean_footprint`, UPRN density           |
 
 ### Confounders to Control
 
-| Factor | Why it matters | How to address |
-|--------|----------------|----------------|
-| Building characteristics | Direct efficiency | EPC controls |
-| Socio-economics | Behaviour, investment | Census controls |
-| Tenure | Maintenance, split incentives | EPC + Census |
-| Climate zone | Heating degree days | Regional controls or national focus |
+| Factor                   | Why it matters                | How to address                      |
+| ------------------------ | ----------------------------- | ----------------------------------- |
+| Building characteristics | Direct efficiency             | EPC controls                        |
+| Socio-economics          | Behaviour, investment         | Census controls                     |
+| Tenure                   | Maintenance, split incentives | EPC + Census                        |
+| Climate zone             | Heating degree days           | Regional controls or national focus |
 
 ---
 

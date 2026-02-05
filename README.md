@@ -1,107 +1,43 @@
 # Urban Energy
 
-Investigating the relationship between urban morphology and building energy consumption across England.
+Investigating the structural energy penalties of urban sprawl in England.
+
+**Scope:** Domestic (residential) buildings only. Non-domestic EPCs are a separate dataset.
+
+**Data:** EPC certificates with UPRN coordinates (available since November 2021). Earlier certificates lack spatial linkage and are excluded.
+
+## Key Finding
+
+Sprawling development locks in energy penalties that technology cannot eliminate:
+
+| Lock-In Type   | Mechanism                              | Magnitude              |
+| -------------- | -------------------------------------- | ---------------------- |
+| **Floor area** | Detached houses are larger             | +59% floor area        |
+| **Envelope**   | More exposed walls = more heat loss/m² | +53% kWh/m² (matched)  |
+| **Transport**  | Car dependence = more vehicle-km       | +22% car ownership     |
+| **Combined**   | All factors together                   | **+50% total penalty** |
+
+**Policy message:** You cannot insulate and electrify your way out of sprawl.
+
+See [analysis report](stats/analysis_report_v3.md) for detailed findings.
+
+## Project Structure
+
+| Folder                              | Purpose                                  |
+| ----------------------------------- | ---------------------------------------- |
+| [data/](data/README.md)             | Data acquisition (Census, EPC, LiDAR)    |
+| [processing/](processing/README.md) | Building morphology extraction           |
+| [stats/](stats/README.md)           | Statistical analysis and methodology     |
+| [paper/](paper/README.md)           | Academic paper and literature review     |
 
 ## Quick Start
 
 ```bash
-uv sync                              # Install dependencies
-cd data && cat README.md             # See data setup instructions
+# Run complete analysis pipeline
+uv run python stats/run_all.py
 ```
 
-## Project Structure
-
-```text
-urban-energy/
-├── src/urban_energy/    # Python package
-├── data/                # [Data acquisition](data/README.md) (download & initial processing)
-├── processing/          # [Processing pipeline](processing/README.md) (morphology, network, UPRN)
-├── stats/               # [Statistical analysis](stats/README.md) (regression, SHAP, spatial)
-├── paper/               # [Academic paper](paper/README.md) (LaTeX)
-├── temp/                # Downloaded/processed data (not in git)
-└── tests/               # Test suite
-```
-
-## Research Questions
-
-1. How strongly do urban morphological characteristics correlate with per-capita building energy consumption?
-2. Which morphological features (density, compactness, connectivity) have the largest effect sizes?
-3. Do these relationships persist after controlling for building fabric, tenure, and socio-economic factors?
-
-## Data Sources
-
-- **Energy Performance Certificates** - 30M+ domestic properties with energy ratings
-- **Census 2021** - Population, households, tenure at Output Area level
-- **OS Open Data** - Built-up areas, street networks, building footprints
-- **Environment Agency LiDAR** - Building heights from DSM/DTM
-- **Food Standards Agency** - Eating/drinking establishments as walkability proxy
-
-See [data/README.md](data/README.md) for download and processing instructions.
-
-## Statistical Approach
-
-**Primary method:** Multi-level regression accounting for nested structure (UPRN → Building → Segment → LSOA)
-
-**Complementary methods:**
-
-| Method                     | Purpose                                                       |
-| -------------------------- | ------------------------------------------------------------- |
-| **Multi-level regression** | Hypothesis testing, variance decomposition, inference         |
-| **SHAP values**            | Feature importance, interaction detection, non-linear effects |
-| **Spatial regression**     | Account for spatial autocorrelation                           |
-| **Propensity matching**    | Causal inference approximation                                |
-
-**Key outputs:**
-
-- Variance decomposition (building vs neighbourhood vs area level)
-- Standardised effect sizes for morphology variables
-- SHAP dependence plots for non-linear relationships
-
-See [stats/README.md](stats/README.md) for full research design.
-
-## Development Status
-
-### Completed
-
-- [x] Census data pipeline (`download_census.py`)
-- [x] Built-up area boundary processing (`process_boundaries.py`)
-- [x] EPC data processing with UPRN linkage (`process_epc.py`)
-- [x] LiDAR building height extraction (`process_lidar.py`)
-- [x] FSA establishments download (`download_fsa.py`)
-
-### Next Steps
-
-| Priority | Task                      | Description                                                     |
-| -------- | ------------------------- | --------------------------------------------------------------- |
-| 1        | **Morphology metrics**    | Compute building-level metrics (area, compactness, FAR, height) |
-| 2        | **UPRN integration**      | Spatial join buildings → UPRNs; interpolate Census; join EPCs   |
-| 3        | **Street network**        | Load OS Open Roads, build pedestrian network via cityseer       |
-| 4        | **Network aggregation**   | Assign UPRNs to segments, compute 400m catchment metrics        |
-| 5        | **Statistical modelling** | Multi-level regression with building, segment, LSOA effects     |
-| 6        | **Paper completion**      | Results, discussion, and conclusion sections                    |
-
-### Workflow Overview
-
-```text
-Buildings (OS Open Map Local)
-    │
-    ├── heights from LiDAR ✓
-    ↓
-Buildings + morphology metrics
-    │
-    ↓ spatial join
-UPRNs with building attributes
-    │
-    ├── + Census (spatial interpolation)
-    ├── + EPCs (join on UPRN)
-    ↓
-UPRN integrated dataset
-    │
-    ↓ cityseer network assignment
-Street segment aggregations → Regression analysis
-```
-
-See [processing/README.md](processing/README.md) for detailed pipeline documentation.
+Output: [stats/analysis_report_v3.md](stats/analysis_report_v3.md)
 
 ## License
 

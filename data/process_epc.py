@@ -1,12 +1,16 @@
 """
 Process Energy Performance Certificate (EPC) data for spatial analysis.
 
+Scope: DOMESTIC (residential) buildings only. Non-domestic EPCs are a separate
+dataset not included in this analysis.
+
 Joins EPC records to spatial locations via direct UPRN linkage.
 Only uses records with valid UPRN (available since November 2021).
 Filters to England only (excludes Welsh local authorities).
 
 Input:
     - EPC bulk download CSV(s) from https://epc.opendatacommunities.org/
+      (domestic certificates only - the "all-domestic-certificates" download)
     - OS Open UPRN GeoPackage
 
 Output:
@@ -45,6 +49,10 @@ EPC_COLUMNS = [
     "TOTAL_FLOOR_AREA",
     "NUMBER_HABITABLE_ROOMS",
     "CONSTRUCTION_AGE_BAND",
+    # Floor position (for flat stratification)
+    "FLOOR_LEVEL",  # Floor level for flats (0=ground, 1=first, etc.)
+    "FLAT_TOP_STOREY",  # Whether flat is on top floor (Y/N)
+    "FLOOR_HEIGHT",  # Average storey height (metres)
     # Heating
     "MAIN_FUEL",
     "HEATING_COST_CURRENT",
@@ -135,10 +143,17 @@ def clean_epc_data(df: pd.DataFrame) -> pd.DataFrame:
         "TOTAL_FLOOR_AREA",
         "HEATING_COST_CURRENT",
         "NUMBER_HABITABLE_ROOMS",
+        "FLOOR_LEVEL",
+        "FLOOR_HEIGHT",
     ]
     for col in numeric_cols:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    # Clean categorical floor position fields
+    if "FLAT_TOP_STOREY" in df.columns:
+        # Standardise Y/N to boolean-like
+        df["FLAT_TOP_STOREY"] = df["FLAT_TOP_STOREY"].fillna("").str.upper().str.strip()
 
     return df
 

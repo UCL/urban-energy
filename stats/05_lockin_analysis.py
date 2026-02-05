@@ -323,6 +323,100 @@ def analyze_matched_comparison(df: pd.DataFrame) -> pd.DataFrame:
     return results_df
 
 
+def analyze_flat_floor_position(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Analyze energy intensity of flats by floor position.
+
+    Floor position affects thermal efficiency:
+    - Ground floor: exposed floor (heat loss to ground)
+    - Mid floor: no exposed floor or roof (most efficient)
+    - Top floor: exposed roof (heat loss to outside)
+    """
+    print("\n" + "=" * 70)
+    print("FLAT ANALYSIS BY FLOOR POSITION")
+    print("=" * 70)
+
+    flats = df[df["is_flat"]].copy()
+
+    if "FLOOR_LEVEL" not in flats.columns or flats["FLOOR_LEVEL"].isna().all():
+        print("  WARNING: FLOOR_LEVEL data not available")
+        print("  Run data/process_epc.py to include floor position fields")
+        return pd.DataFrame()
+
+    # Classify floor position
+    def classify_floor(row):
+        floor = row.get("FLOOR_LEVEL")
+        top_storey = str(row.get("FLAT_TOP_STOREY", "")).upper()
+
+        if pd.isna(floor):
+            return "Unknown"
+        if floor == 0:
+            return "Ground floor"
+        elif top_storey == "Y":
+            return "Top floor"
+        else:
+            return "Mid floor"
+
+    flats["floor_position"] = flats.apply(classify_floor, axis=1)
+
+    # Filter to known positions
+    known = flats[flats["floor_position"] != "Unknown"]
+
+    if len(known) < 100:
+        print(f"  Insufficient data with floor position ({len(known)} records)")
+        return pd.DataFrame()
+
+    print(f"\n  Flats with floor position data: {len(known):,} of {len(flats):,}")
+
+    results = []
+    for position in ["Ground floor", "Mid floor", "Top floor"]:
+        subset = known[known["floor_position"] == position]
+        if len(subset) > 50:
+            mean_int = subset["energy_intensity"].mean()
+            ci = stats.t.interval(
+                0.95,
+                len(subset) - 1,
+                loc=mean_int,
+                scale=stats.sem(subset["energy_intensity"]),
+            )
+            results.append({
+                "floor_position": position,
+                "n": len(subset),
+                "mean_floor_area": subset["TOTAL_FLOOR_AREA"].mean(),
+                "mean_intensity": mean_int,
+                "ci_lower": ci[0],
+                "ci_upper": ci[1],
+            })
+
+    results_df = pd.DataFrame(results)
+
+    if len(results_df) > 0:
+        # Calculate vs mid-floor (the most efficient reference)
+        mid_floor_int = results_df[results_df["floor_position"] == "Mid floor"]
+        if len(mid_floor_int) > 0:
+            mid_int = mid_floor_int["mean_intensity"].values[0]
+            results_df["vs_mid_floor_pct"] = 100 * (results_df["mean_intensity"] - mid_int) / mid_int
+
+            print("\n### Energy Intensity by Flat Floor Position")
+            print(f"{'Position':<15} {'N':>10} {'Area (m²)':>10} {'Intensity':>12} {'95% CI':>18} {'vs Mid':>10}")
+            print("-" * 80)
+            for _, row in results_df.iterrows():
+                ci_str = f"[{row['ci_lower']:.0f}, {row['ci_upper']:.0f}]"
+                vs_mid = row.get("vs_mid_floor_pct", 0)
+                print(
+                    f"{row['floor_position']:<15} {row['n']:>10,} {row['mean_floor_area']:>10.0f} "
+                    f"{row['mean_intensity']:>12.0f} {ci_str:>18} {vs_mid:>+9.0f}%"
+                )
+
+            print("\n  INTERPRETATION:")
+            print("    - Mid-floor flats share both floor AND ceiling with neighbors")
+            print("    - Ground-floor flats lose heat to the ground")
+            print("    - Top-floor flats lose heat through the roof")
+            print("    - The 'flat' category in main analysis is heterogeneous")
+
+    return results_df
+
+
 def analyze_transport_penalty(df: pd.DataFrame) -> pd.DataFrame:
     """Analyze transport energy by density."""
     print("\n" + "=" * 70)
@@ -505,6 +599,7 @@ def save_summary_json(
     floor_area_df: pd.DataFrame,
     intensity_df: pd.DataFrame,
     matched_df: pd.DataFrame,
+    flat_floor_df: pd.DataFrame,
     transport_df: pd.DataFrame,
     combined_df: pd.DataFrame,
 ) -> dict:
@@ -516,11 +611,12 @@ def save_summary_json(
         "metadata": {
             "generated": datetime.now().isoformat(),
             "n_records": len(df),
-            "scope": "Greater Manchester test dataset",
+            "scope": "Greater Manchester test dataset (domestic buildings only)",
         },
         "floor_area": {},
         "intensity": {},
         "matched_comparison": {},
+        "flat_by_floor_position": {},
         "transport": {},
         "combined": {},
         "key_numbers": {},
@@ -551,6 +647,16 @@ def save_summary_json(
                 "n": int(row["n"]),
                 "mean_intensity": round(row["mean_intensity"], 0),
                 "vs_detached_pct": round(row["vs_detached_pct"], 0),
+            }
+
+    # Flat by floor position
+    if len(flat_floor_df) > 0:
+        for _, row in flat_floor_df.iterrows():
+            summary["flat_by_floor_position"][row["floor_position"]] = {
+                "n": int(row["n"]),
+                "mean_floor_area_m2": round(row["mean_floor_area"], 0),
+                "mean_intensity_kwh_m2": round(row["mean_intensity"], 0),
+                "vs_mid_floor_pct": round(row.get("vs_mid_floor_pct", 0), 0),
             }
 
     # Transport
@@ -644,6 +750,9 @@ def main() -> None:
     intensity_df = analyze_intensity_effect(df)
     matched_df = analyze_matched_comparison(df)
 
+    # Part 1b: Flat stratification by floor position
+    flat_floor_df = analyze_flat_floor_position(df)
+
     # Part 2: Transport penalty
     transport_df = analyze_transport_penalty(df)
 
@@ -658,13 +767,15 @@ def main() -> None:
     intensity_df.to_csv(OUTPUT_DIR / "lockin_intensity.csv", index=False)
     if len(matched_df) > 0:
         matched_df.to_csv(OUTPUT_DIR / "lockin_matched.csv", index=False)
+    if len(flat_floor_df) > 0:
+        flat_floor_df.to_csv(OUTPUT_DIR / "lockin_flat_floor.csv", index=False)
     if len(transport_df) > 0:
         transport_df.to_csv(OUTPUT_DIR / "lockin_transport.csv", index=False)
     if len(combined_df) > 0:
         combined_df.to_csv(OUTPUT_DIR / "lockin_combined.csv", index=False)
 
     # Save comprehensive summary JSON
-    save_summary_json(df, floor_area_df, intensity_df, matched_df, transport_df, combined_df)
+    save_summary_json(df, floor_area_df, intensity_df, matched_df, flat_floor_df, transport_df, combined_df)
 
     print(f"\n  Results saved to: {OUTPUT_DIR}")
 
