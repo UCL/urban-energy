@@ -11,7 +11,7 @@ Sprawling development locks in energy penalties that persist regardless of techn
 | Lock-In        | Mechanism                       | Evidence                                   | Magnitude      |
 | -------------- | ------------------------------- | ------------------------------------------ | -------------- |
 | **Floor area** | Detached houses are larger      | All types compared                         | +59%           |
-| **Envelope**   | More exposed walls per m2       | Matched by construction era and floor area | +53% kWh/m2   |
+| **Envelope**   | More exposed walls per m2       | Matched by construction era and floor area | +53% kWh/m2    |
 | **Transport**  | Low density = car dependence    | Census density quartiles                   | +22% cars/hh   |
 | **Combined**   | Floor area + transport together | High-density flats vs low-density houses   | **+50% total** |
 
@@ -21,12 +21,12 @@ See [analysis report](stats/analysis_report_v3.md) for detailed findings.
 
 ## Project Structure
 
-| Folder                              | Purpose                                  |
-| ----------------------------------- | ---------------------------------------- |
-| [data/](data/README.md)             | Data acquisition (Census, EPC, LiDAR)    |
-| [processing/](processing/README.md) | Building morphology extraction           |
-| [stats/](stats/README.md)           | Statistical analysis and methodology     |
-| [paper/](paper/README.md)           | Academic paper and literature review     |
+| Folder                              | Purpose                               |
+| ----------------------------------- | ------------------------------------- |
+| [data/](data/README.md)             | Data acquisition (Census, EPC, LiDAR) |
+| [processing/](processing/README.md) | Building morphology extraction        |
+| [stats/](stats/README.md)           | Statistical analysis and methodology  |
+| [paper/](paper/README.md)           | Academic paper and literature review  |
 
 ## Quick Start
 
