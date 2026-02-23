@@ -16,7 +16,6 @@ Transport energy estimation:
 """
 
 import warnings
-from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -25,9 +24,11 @@ import pandas as pd
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 # Paths
-DATA_PATH = Path(__file__).parent.parent / "temp/processing/test/uprn_integrated.gpkg"
-CENSUS_PATH = Path(__file__).parent.parent / "temp/statistics"
-OUTPUT_DIR = Path(__file__).parent.parent / "temp/stats/results"
+from urban_energy.paths import TEMP_DIR
+
+DATA_PATH = TEMP_DIR / "processing" / "test" / "uprn_integrated.gpkg"
+CENSUS_PATH = TEMP_DIR / "statistics"
+OUTPUT_DIR = TEMP_DIR / "stats" / "results"
 
 # Transport energy parameters
 KM_PER_VEHICLE_YEAR = 12000  # UK average annual mileage

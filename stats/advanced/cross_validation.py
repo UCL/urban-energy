@@ -12,19 +12,18 @@ Usage:
     uv run python stats/02e_cross_validation.py
 """
 
-from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
 from sklearn.model_selection import KFold
-from scipy import stats
 
 # Configuration
-BASE_DIR = Path(__file__).parent.parent
-DATA_PATH = BASE_DIR / "temp" / "processing" / "test" / "uprn_integrated.gpkg"
-OUTPUT_DIR = BASE_DIR / "temp" / "stats"
+from urban_energy.paths import TEMP_DIR
+
+DATA_PATH = TEMP_DIR / "processing" / "test" / "uprn_integrated.gpkg"
+OUTPUT_DIR = TEMP_DIR / "stats"
 
 
 def load_and_prepare_data() -> pd.DataFrame:
@@ -56,7 +55,9 @@ def load_and_prepare_data() -> pd.DataFrame:
         "ts017_Household size: Total: All household spaces; measures: Value"
     ] - df["ts017_Household size: 0 people in household; measures: Value"]
     df["avg_household_size"] = total_people / total_households
-    df["energy_per_capita"] = df["ENERGY_CONSUMPTION_CURRENT"] / df["avg_household_size"]
+    # ECC is already kWh/m²/year; per-capita needs total kWh
+    df["total_energy_kwh"] = df["ENERGY_CONSUMPTION_CURRENT"] * df["TOTAL_FLOOR_AREA"]
+    df["energy_per_capita"] = df["total_energy_kwh"] / df["avg_household_size"]
 
     # Filter valid energy values
     valid_energy = (

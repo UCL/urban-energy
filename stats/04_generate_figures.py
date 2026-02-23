@@ -15,7 +15,6 @@ Usage:
     uv run python stats/04_generate_figures.py
 """
 
-from pathlib import Path
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
@@ -24,9 +23,10 @@ import pandas as pd
 from scipy import stats
 
 # Configuration
-BASE_DIR = Path(__file__).parent.parent
-DATA_PATH = BASE_DIR / "temp" / "processing" / "test" / "uprn_integrated.gpkg"
-FIGURE_DIR = BASE_DIR / "stats" / "figures"
+from urban_energy.paths import PROJECT_DIR, TEMP_DIR
+
+DATA_PATH = TEMP_DIR / "processing" / "test" / "uprn_integrated.gpkg"
+FIGURE_DIR = PROJECT_DIR / "stats" / "figures"
 
 # Style settings
 plt.style.use("seaborn-v0_8-whitegrid")
@@ -70,9 +70,10 @@ def load_data() -> pd.DataFrame:
                df["ts017_Household size: 0 people in household; measures: Value"]
     df["avg_household_size"] = total_people / total_hh
 
-    # Energy metrics
-    df["energy_intensity"] = df["ENERGY_CONSUMPTION_CURRENT"] / df["TOTAL_FLOOR_AREA"]
-    df["energy_per_capita"] = df["ENERGY_CONSUMPTION_CURRENT"] / df["avg_household_size"]
+    # Energy metrics — ECC is already kWh/m²/year
+    df["energy_intensity"] = df["ENERGY_CONSUMPTION_CURRENT"]
+    df["total_energy_kwh"] = df["ENERGY_CONSUMPTION_CURRENT"] * df["TOTAL_FLOOR_AREA"]
+    df["energy_per_capita"] = df["total_energy_kwh"] / df["avg_household_size"]
 
     # Filter invalid
     valid = (

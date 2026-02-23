@@ -35,8 +35,8 @@ from shapely import box
 from tqdm import tqdm
 
 # Configuration
-BASE_DIR = Path(__file__).parent.parent
-TEMP_DIR = BASE_DIR / "temp"
+from urban_energy.paths import TEMP_DIR
+
 BUILDINGS_PATH = TEMP_DIR / "os_open_local" / "opmplc_gb.gpkg"
 BOUNDARIES_PATH = TEMP_DIR / "boundaries" / "built_up_areas.gpkg"
 OUTPUT_DIR = TEMP_DIR / "lidar"

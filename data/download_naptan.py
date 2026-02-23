@@ -11,7 +11,6 @@ Outputs GeoPackage to temp/transport/
 """
 
 from io import BytesIO
-from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
@@ -20,9 +19,11 @@ from shapely.geometry import Point
 from tqdm import tqdm
 
 # Configuration
-TEMP_DIR = Path(__file__).parent.parent / "temp"
+from urban_energy.paths import CACHE_DIR as _CACHE_ROOT
+from urban_energy.paths import TEMP_DIR
+
 OUTPUT_DIR = TEMP_DIR / "transport"
-CACHE_DIR = Path(__file__).parent / ".cache" / "naptan"
+CACHE_DIR = _CACHE_ROOT / "naptan"
 
 # NaPTAN download URL (direct CSV download)
 NAPTAN_URL = "https://beta-naptan.dft.gov.uk/download/national/csv"

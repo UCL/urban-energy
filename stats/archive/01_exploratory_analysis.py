@@ -11,7 +11,6 @@ Usage:
     uv run python stats/01_exploratory_analysis.py
 """
 
-from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -19,9 +18,10 @@ import pandas as pd
 from scipy import stats
 
 # Configuration
-BASE_DIR = Path(__file__).parent.parent
-DATA_PATH = BASE_DIR / "temp" / "processing" / "test" / "uprn_integrated.gpkg"
-OUTPUT_DIR = BASE_DIR / "temp" / "stats"
+from urban_energy.paths import TEMP_DIR
+
+DATA_PATH = TEMP_DIR / "processing" / "test" / "uprn_integrated.gpkg"
+OUTPUT_DIR = TEMP_DIR / "stats"
 
 
 def load_data() -> gpd.GeoDataFrame:

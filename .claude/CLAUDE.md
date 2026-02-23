@@ -150,6 +150,80 @@ Before committing, verify:
 - [ ] No sensitive data included
 - [ ] Commit message is descriptive and follows conventional format
 
+## Core Thesis: The Trophic Layers Framework
+
+### The Argument
+
+Cities are conduits that capture energy and recycle it through layers of human interaction
+(Jacobs, 2000, "The Nature of Economies"). The measure of urban efficiency is not how much
+energy a neighbourhood consumes, but how many transactions, connections, and transformations
+that energy enables before it dissipates. This connects to Bettencourt et al.'s (2007)
+urban scaling laws: cities scale superlinearly in socioeconomic output (~N^1.15) and
+sublinearly in infrastructure (~N^0.85). Proximity is the mechanism.
+
+### The Rainforest Analogy
+
+A rainforest and a desert receive the same solar radiation per m². The difference is
+**trophic depth** — how many times energy is captured and re-used before it dissipates.
+
+- **Rainforest** (dense urban neighbourhood): Energy passes through dozens of layers —
+  canopy, understorey, epiphytes, soil biome, mycorrhizal networks. Each layer captures
+  energy from the one above. Thousands of species, millions of interactions.
+- **Desert** (suburban sprawl): Energy hits the ground and radiates straight back out.
+  One trophic level. Minimal recycling.
+
+The urban equivalent: a 1km × 1km inner-city neighbourhood has thousands of land uses,
+shops, schools, transit stops, green spaces — each a layer in the conduit. A 1km × 1km
+suburban plot has a handful of destinations. Same energy input (building + transport),
+radically different interaction depth.
+
+### The Trophic Layers (mapped to our data)
+
+Each layer captures a different dimension of how energy is recycled through the urban system:
+
+| Layer | Ecological equivalent | Urban function | Our metric |
+|-------|----------------------|----------------|------------|
+| **Physical substrate** | Soil/root network | Street network connectivity | `cc_harmonic_800`, `cc_density_800` |
+| **Commercial exchange** | Canopy photosynthesis | Places where economic transactions happen | `cc_fsa_restaurant_800_wt`, `cc_fsa_pub_800_wt`, `cc_fsa_takeaway_800_wt` |
+| **Mobility** | Seed dispersal/pollinators | Connections to wider city network | `cc_bus_800_wt`, `cc_rail_800_wt` |
+| **Recreation/restoration** | Water cycle/shade | Green space — regenerative capacity | `cc_greenspace_800_wt` |
+
+All metrics at 800m (~10 min walk), the pedestrian catchment. The `_wt` suffix means
+gravity-weighted count (more establishments closer = higher score).
+
+### The Compounding Effect
+
+The proof of concept demonstrates that each successive normalisation widens the efficiency
+gap between compact and sprawling morphologies:
+
+1. **kWh/m²** — Building physics alone. Modest difference (~1.04x detached vs flat).
+2. **kWh/capita** — Add transport, normalise per person. Gap widens (~1.76x).
+3. **kWh/capita/accessibility** — Ask what you GET for the energy. Gap widens further (~2.79x).
+
+This is the compounding: sprawl is not just energy-costly, it delivers less city per unit
+of energy consumed. The energy pours through the conduit and is not recoverable.
+
+### The PoC Structure (stats/proof_of_concept.py)
+
+| Step | Test | Role |
+|------|------|------|
+| 1. Physics signatures | Types have distinct thermal envelopes | Foundation |
+| 2. Physics → energy | Physics predicts SAP + metered energy | Foundation |
+| 3. Accessibility signatures | Types differ across ALL trophic layers | Sets up compounding |
+| 4. The compounding | Three normalisations, gap widens at each level | **Centerpiece** |
+| 5. Deprivation control | Compounding holds within deprivation quintiles | Rules out wealth |
+| 6. Lock-in | Stock composition locks inefficiency in for decades | Policy implication |
+
+### Key References
+
+- Jacobs, J. (2000). *The Nature of Economies*. Random House. — Cities as ecosystems
+- Bettencourt, L.M.A. et al. (2007). "Growth, innovation, scaling, and the pace of life in cities." *PNAS*, 104(17). — Superlinear/sublinear scaling
+- Norman, J. et al. (2006). "Comparing high and low residential density." *J. Urban Planning*. — Functional unit matters (per m² vs per capita)
+- Newman, P. & Kenworthy, J. (1989). *Cities and Automobile Dependence*. — Density-transport energy
+- Rode, P. et al. (2014). "Cities and energy: urban morphology and residential heat-energy demand." *Env. & Planning B*. — S/V ratio and building physics
+- Few, J. et al. (2023). "The over-prediction of energy use by EPCs." *Energy & Buildings*. — SAP performance gap
+- Ewing, R. & Cervero, R. (2010). "Travel and the built environment: A meta-analysis." *JAPA*. — Destination accessibility > density
+
 ## Dependencies
 
 Core geospatial stack:

@@ -14,7 +14,6 @@ Usage:
     uv run python stats/03_shap_analysis.py
 """
 
-from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -24,9 +23,10 @@ from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.model_selection import cross_val_score, train_test_split
 
 # Configuration
-BASE_DIR = Path(__file__).parent.parent
-DATA_PATH = BASE_DIR / "temp" / "processing" / "test" / "uprn_integrated.gpkg"
-OUTPUT_DIR = BASE_DIR / "temp" / "stats"
+from urban_energy.paths import TEMP_DIR
+
+DATA_PATH = TEMP_DIR / "processing" / "test" / "uprn_integrated.gpkg"
+OUTPUT_DIR = TEMP_DIR / "stats"
 
 
 def load_and_prepare_data() -> tuple[pd.DataFrame, list[str]]:

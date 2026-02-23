@@ -13,7 +13,6 @@ Output:
 
 import xml.etree.ElementTree as ET
 from io import BytesIO
-from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
@@ -22,10 +21,11 @@ from shapely.geometry import Point
 from tqdm import tqdm
 
 # Configuration
-BASE_DIR = Path(__file__).parent.parent
-TEMP_DIR = BASE_DIR / "temp"
+from urban_energy.paths import CACHE_DIR as _CACHE_ROOT
+from urban_energy.paths import TEMP_DIR
+
 OUTPUT_DIR = TEMP_DIR / "fsa"
-CACHE_DIR = Path(__file__).parent / ".cache" / "fsa"
+CACHE_DIR = _CACHE_ROOT / "fsa"
 
 # FSA API configuration
 FSA_BASE_URL = "https://ratings.food.gov.uk"

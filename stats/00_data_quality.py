@@ -8,7 +8,6 @@ Run after test_pipeline.py to validate processed data before analysis.
 """
 
 import warnings
-from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -17,8 +16,10 @@ import pandas as pd
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 # Paths
-DATA_PATH = Path(__file__).parent.parent / "temp/processing/test/uprn_integrated.gpkg"
-OUTPUT_DIR = Path(__file__).parent.parent / "temp/stats/data_quality"
+from urban_energy.paths import TEMP_DIR
+
+DATA_PATH = TEMP_DIR / "processing" / "test" / "uprn_integrated.gpkg"
+OUTPUT_DIR = TEMP_DIR / "stats" / "data_quality"
 
 
 def load_data() -> gpd.GeoDataFrame:

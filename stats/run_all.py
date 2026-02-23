@@ -29,10 +29,10 @@ Archived scripts (in stats/archive/):
 import subprocess
 import sys
 from datetime import datetime
-from pathlib import Path
 
-BASE_DIR = Path(__file__).parent.parent
-STATS_DIR = BASE_DIR / "stats"
+from urban_energy.paths import PROJECT_DIR
+
+STATS_DIR = PROJECT_DIR / "stats"
 ADVANCED_DIR = STATS_DIR / "advanced"
 
 # Core pipeline scripts (run in order)
@@ -44,6 +44,7 @@ CORE_PIPELINE = [
     "04_generate_figures.py",
     "05_lockin_analysis.py",
     "06_generate_report.py",
+    "07_replication_analysis.py",
 ]
 
 # Advanced analyses (optional)
@@ -70,7 +71,7 @@ def run_script(script_name: str) -> bool:
     try:
         result = subprocess.run(
             [sys.executable, str(script_path)],
-            cwd=str(BASE_DIR),
+            cwd=str(PROJECT_DIR),
             capture_output=False,
             text=True,
         )
@@ -86,7 +87,7 @@ def main():
     print("URBAN ENERGY ANALYSIS PIPELINE")
     print("=" * 60)
     print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"Base directory: {BASE_DIR}")
+    print(f"Base directory: {PROJECT_DIR}")
 
     # Check for --full flag
     run_full = "--full" in sys.argv

@@ -11,7 +11,6 @@ Usage:
     uv run python stats/05_lockin_analysis.py
 """
 
-from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -19,10 +18,11 @@ import pandas as pd
 from scipy import stats
 
 # Paths
-BASE_DIR = Path(__file__).parent.parent
-DATA_PATH = BASE_DIR / "temp" / "processing" / "test" / "uprn_integrated.gpkg"
-CENSUS_PATH = BASE_DIR / "temp" / "statistics"
-OUTPUT_DIR = BASE_DIR / "temp" / "stats" / "results"
+from urban_energy.paths import TEMP_DIR
+
+DATA_PATH = TEMP_DIR / "processing" / "test" / "uprn_integrated.gpkg"
+CENSUS_PATH = TEMP_DIR / "statistics"
+OUTPUT_DIR = TEMP_DIR / "stats" / "results"
 
 # Energy parameters
 KM_PER_VEHICLE_YEAR = 12000

@@ -25,10 +25,17 @@ Metrics computed:
 
     Adjacency (via momepy):
         - shared_wall_length_m: Total length of walls shared with other buildings
-        - shared_wall_ratio: shared_wall_length / perimeter (0 = detached, ~0.5 = terraced)
+        - shared_wall_ratio: shared_wall_length / perimeter
+          (0 = detached, ~0.5 = terraced)
+
+    Thermal envelope (from geometry + LiDAR height + shared walls):
+        - volume_m3: footprint_area × height
+        - external_wall_area_m2: perimeter × height × (1 - shared_wall_ratio)
+        - envelope_area_m2: roof + floor + external walls (flat roof)
+        - surface_to_volume: envelope_area / volume (lower = efficient)
+        - form_factor: envelope_area / volume^(2/3) (dimensionless)
 """
 
-from pathlib import Path
 
 import geopandas as gpd
 import momepy
@@ -37,8 +44,8 @@ import pandas as pd
 from tqdm import tqdm
 
 # Configuration
-BASE_DIR = Path(__file__).parent.parent
-TEMP_DIR = BASE_DIR / "temp"
+from urban_energy.paths import TEMP_DIR
+
 BUILDINGS_PATH = TEMP_DIR / "lidar" / "building_heights.gpkg"
 BOUNDARIES_PATH = TEMP_DIR / "boundaries" / "built_up_areas.gpkg"
 OUTPUT_DIR = TEMP_DIR / "morphology"
@@ -185,6 +192,97 @@ def compute_shared_walls(
     return buildings
 
 
+def compute_thermal_metrics(
+    buildings: gpd.GeoDataFrame,
+    height_col: str = "height_median",
+) -> gpd.GeoDataFrame:
+    """
+    Compute thermal envelope metrics from geometry, height, and shared walls.
+
+    Derives surface-to-volume ratio and form factor, which capture thermal
+    envelope efficiency (Rode et al., 2014). Requires height data from LiDAR
+    and shared wall ratio from momepy.
+
+    Parameters
+    ----------
+    buildings : gpd.GeoDataFrame
+        Buildings with footprint_area_m2, perimeter_m, shared_wall_ratio,
+        and a height column.
+    height_col : str
+        Name of the height column to use. Default ``"height_median"``.
+
+    Returns
+    -------
+    gpd.GeoDataFrame
+        Buildings with thermal metrics added:
+        - volume_m3: footprint × height
+        - external_wall_area_m2: perimeter × height × (1 - shared_wall_ratio)
+        - envelope_area_m2: roof + floor + external walls (flat roof assumption)
+        - surface_to_volume: envelope_area / volume (lower = more efficient)
+        - form_factor: envelope_area / volume^(2/3) (dimensionless)
+    """
+    buildings = buildings.copy()
+
+    if len(buildings) == 0 or height_col not in buildings.columns:
+        for col in [
+            "volume_m3",
+            "external_wall_area_m2",
+            "envelope_area_m2",
+            "surface_to_volume",
+            "form_factor",
+        ]:
+            buildings[col] = np.nan if len(buildings) > 0 else []
+        return buildings
+
+    height = pd.to_numeric(buildings[height_col], errors="coerce")
+
+    # Volume
+    buildings["volume_m3"] = buildings["footprint_area_m2"] * height
+
+    # External wall area (accounting for shared walls)
+    buildings["external_wall_area_m2"] = (
+        buildings["perimeter_m"] * height * (1 - buildings["shared_wall_ratio"])
+    )
+
+    # Envelope area = roof + floor + external walls (flat roof assumption)
+    buildings["envelope_area_m2"] = (
+        buildings["footprint_area_m2"]  # roof
+        + buildings["footprint_area_m2"]  # floor
+        + buildings["external_wall_area_m2"]  # walls
+    )
+
+    # Surface-to-volume ratio (lower = more thermally efficient)
+    MIN_VOLUME_M3 = 10.0  # ~2m × 2m × 2.5m minimum reasonable building
+    MAX_S2V = 5.0  # cap at physically plausible maximum
+    MAX_FF = 30.0  # cap form factor (95th percentile ~11)
+
+    valid_volume = buildings["volume_m3"] >= MIN_VOLUME_M3
+
+    buildings["surface_to_volume"] = np.where(
+        valid_volume,
+        np.clip(
+            buildings["envelope_area_m2"] / buildings["volume_m3"],
+            0,
+            MAX_S2V,
+        ),
+        np.nan,
+    )
+
+    # Form factor: envelope_area / volume^(2/3) — dimensionless, comparable across sizes
+    # A perfect cube ≈ 6.0; higher values = less thermally efficient
+    buildings["form_factor"] = np.where(
+        valid_volume,
+        np.clip(
+            buildings["envelope_area_m2"] / np.power(buildings["volume_m3"], 2 / 3),
+            0,
+            MAX_FF,
+        ),
+        np.nan,
+    )
+
+    return buildings
+
+
 def process_boundary(
     boundary_row: pd.Series,
     all_buildings: gpd.GeoDataFrame,
@@ -237,6 +335,19 @@ def process_boundary(
     buildings = compute_geometry_metrics(buildings)
     buildings = compute_shape_metrics(buildings)
     buildings = compute_shared_walls(buildings)
+
+    # Compute thermal envelope metrics (requires height + shared walls)
+    height_col = None
+    for col in ["height_median", "height_mean", "height"]:
+        if col in buildings.columns:
+            height_col = col
+            break
+
+    if height_col is not None:
+        buildings = compute_thermal_metrics(buildings, height_col=height_col)
+    else:
+        if verbose:
+            tqdm.write(f"    {bua_name}: no height column — skipping thermal metrics")
 
     if verbose:
         # Summary stats
@@ -338,6 +449,11 @@ def main() -> None:
                         "elongation",
                         "shared_wall_length_m",
                         "shared_wall_ratio",
+                        "volume_m3",
+                        "external_wall_area_m2",
+                        "envelope_area_m2",
+                        "surface_to_volume",
+                        "form_factor",
                     ],
                     crs="EPSG:27700",
                 ).to_file(cache_path, driver="GPKG")
@@ -424,12 +540,28 @@ def main() -> None:
 
     # Distribution of shared wall ratio
     detached = (combined["shared_wall_ratio"] == 0).sum()
-    semi = ((combined["shared_wall_ratio"] > 0) & (combined["shared_wall_ratio"] < 0.3)).sum()
+    semi = (
+        (combined["shared_wall_ratio"] > 0)
+        & (combined["shared_wall_ratio"] < 0.3)
+    ).sum()
     terraced = (combined["shared_wall_ratio"] >= 0.3).sum()
 
-    print(f"\n  Approx. detached (ratio=0): {detached:,} ({100*detached/len(combined):.1f}%)")
-    print(f"  Approx. semi (0<ratio<0.3): {semi:,} ({100*semi/len(combined):.1f}%)")
-    print(f"  Approx. terraced (ratio≥0.3): {terraced:,} ({100*terraced/len(combined):.1f}%)")
+    n = len(combined)
+    print(f"\n  Approx. detached (ratio=0): {detached:,} ({100*detached/n:.1f}%)")
+    print(f"  Approx. semi (0<ratio<0.3): {semi:,} ({100*semi/n:.1f}%)")
+    print(f"  Approx. terraced (ratio≥0.3): {terraced:,} ({100*terraced/n:.1f}%)")
+
+    if "surface_to_volume" in combined.columns:
+        valid_stv = combined["surface_to_volume"].notna().sum()
+        print(f"\nThermal envelope statistics ({valid_stv:,} with valid volume):")
+        print(
+            f"  S/V ratio: median={combined['surface_to_volume'].median():.3f}, "
+            f"mean={combined['surface_to_volume'].mean():.3f}"
+        )
+        print(
+            f"  Form factor: median={combined['form_factor'].median():.2f}, "
+            f"mean={combined['form_factor'].mean():.2f}"
+        )
 
 
 if __name__ == "__main__":

@@ -12,7 +12,6 @@ Test boundaries:
     - E63007158 (Woolsington): 265 buildings, 11 FSA, 19 transport stops
 """
 
-from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -20,8 +19,8 @@ import pandas as pd
 from scipy.spatial import cKDTree
 
 # Configuration
-BASE_DIR = Path(__file__).parent.parent
-TEMP_DIR = BASE_DIR / "temp"
+from urban_energy.paths import TEMP_DIR
+
 TEST_OUTPUT_DIR = TEMP_DIR / "processing" / "test"
 
 # Test boundaries - small BUAs with good data coverage
@@ -41,6 +40,7 @@ PATHS = {
     "fsa": TEMP_DIR / "fsa" / "fsa_establishments.gpkg",
     "greenspace": TEMP_DIR / "opgrsp_gpkg_gb" / "Data" / "opgrsp_gb.gpkg",
     "transport": TEMP_DIR / "transport" / "naptan_england.gpkg",
+    "energy_stats": TEMP_DIR / "statistics" / "lsoa_energy_consumption.parquet",
 }
 
 
@@ -118,7 +118,7 @@ def run_stage1_morphology(boundaries: gpd.GeoDataFrame) -> gpd.GeoDataFrame | No
     buildings = pd.concat(results, ignore_index=True)
     buildings = gpd.GeoDataFrame(buildings, crs=results[0].crs)
 
-    # Validate required columns
+    # Validate required columns (including thermal metrics from process_morphology.py)
     required_cols = [
         "footprint_area_m2",
         "perimeter_m",
@@ -129,99 +129,30 @@ def run_stage1_morphology(boundaries: gpd.GeoDataFrame) -> gpd.GeoDataFrame | No
         "shared_wall_length_m",
         "shared_wall_ratio",
     ]
+    thermal_cols = [
+        "volume_m3",
+        "external_wall_area_m2",
+        "envelope_area_m2",
+        "surface_to_volume",
+        "form_factor",
+    ]
 
     missing_cols = [c for c in required_cols if c not in buildings.columns]
     if missing_cols:
-        print(f"  WARNING: Missing columns: {missing_cols}")
+        print(f"  WARNING: Missing morphology columns: {missing_cols}")
     else:
         print("  ✓ All morphology columns present")
 
-    # Derive surface-to-volume ratio (energy-relevant metric)
-    # This captures thermal envelope efficiency better than raw height
-    height_col = None
-    for col in ["height_median", "height_mean", "height"]:
-        if col in buildings.columns:
-            height_col = col
-            break
-
-    if (
-        height_col
-        and "footprint_area_m2" in buildings.columns
-        and "perimeter_m" in buildings.columns
-    ):
-        print("\n  Computing surface-to-volume ratio...")
-        # Convert height to numeric if needed
-        buildings[height_col] = pd.to_numeric(buildings[height_col], errors="coerce")
-
-        # Compute external wall area (accounting for shared walls)
-        if "shared_wall_ratio" in buildings.columns:
-            buildings["external_wall_area_m2"] = (
-                buildings["perimeter_m"]
-                * buildings[height_col]
-                * (1 - buildings["shared_wall_ratio"])
-            )
-        else:
-            buildings["external_wall_area_m2"] = (
-                buildings["perimeter_m"] * buildings[height_col]
-            )
-
-        # Envelope area = roof + floor + external walls (simplified flat roof assumption)
-        buildings["envelope_area_m2"] = (
-            buildings["footprint_area_m2"]  # roof
-            + buildings["footprint_area_m2"]  # floor
-            + buildings["external_wall_area_m2"]  # walls
-        )
-
-        # Volume
-        buildings["volume_m3"] = buildings["footprint_area_m2"] * buildings[height_col]
-
-        # Surface-to-volume ratio (lower = more thermally efficient)
-        # Use minimum volume threshold to avoid extreme values from tiny structures
-        MIN_VOLUME_M3 = 10.0  # ~2m x 2m x 2.5m minimum reasonable building
-        MAX_S2V = 5.0  # Cap at reasonable maximum (95th percentile ~0.8)
-        MAX_FF = 30.0  # Cap at reasonable maximum (95th percentile ~11)
-
-        valid_volume = buildings["volume_m3"] >= MIN_VOLUME_M3
-
-        buildings["surface_to_volume"] = np.where(
-            valid_volume,
-            np.clip(
-                buildings["envelope_area_m2"] / buildings["volume_m3"],
-                0,
-                MAX_S2V,
-            ),
-            np.nan,
-        )
-
+    missing_thermal = [c for c in thermal_cols if c not in buildings.columns]
+    if missing_thermal:
+        print(f"  WARNING: Missing thermal columns: {missing_thermal}")
+        print("    (Re-run process_morphology.py to compute these)")
+    else:
         valid_stv = buildings["surface_to_volume"].notna().sum()
         mean_stv = buildings["surface_to_volume"].mean()
-        excluded_vol = (~valid_volume & buildings["volume_m3"].notna()).sum()
-        print(f"    ✓ surface_to_volume: {valid_stv:,} valid (mean={mean_stv:.3f})")
-        print(f"      (excluded {excluded_vol:,} with volume < {MIN_VOLUME_M3} m³)")
-
-        # Form factor: envelope_area / volume^(2/3)
-        # This is dimensionless and comparable across building sizes
-        # A perfect cube has form_factor ≈ 6.0; higher values = less thermally efficient
-        # More useful than S/V ratio for comparing buildings of different sizes
-        buildings["form_factor"] = np.where(
-            valid_volume,
-            np.clip(
-                buildings["envelope_area_m2"] / np.power(buildings["volume_m3"], 2 / 3),
-                0,
-                MAX_FF,
-            ),
-            np.nan,
-        )
-
-        valid_ff = buildings["form_factor"].notna().sum()
-        mean_ff = buildings["form_factor"].mean()
-        print(f"    ✓ form_factor: {valid_ff:,} valid (mean={mean_ff:.3f})")
-
-        # Note: estimated_floors, gross_floor_area, and heat_loss_parameter
-        # can be computed during analysis from height and footprint_area
-    else:
         print(
-            "\n  WARNING: Cannot compute surface-to-volume (missing height/area/perimeter)"
+            f"  ✓ Thermal metrics present: "
+            f"{valid_stv:,} with valid S/V (mean={mean_stv:.3f})"
         )
 
     print(f"\n  Total buildings: {len(buildings)}")
@@ -332,8 +263,9 @@ def run_stage2_network(
     except Exception as e:
         print(f"    ERROR computing centrality: {e}")
 
-    # Compute building statistics over the network (400m only for local context)
-    STATS_DISTANCES = [400]
+    # Compute building statistics over the network at accessibility distances
+    STATS_DISTANCES = ACCESSIBILITY_DISTANCES
+    ASSUMED_STOREY_HEIGHT_M = 3.0
     if buildings is not None and len(buildings) > 0:
         print(f"\n  Computing building stats (distances={STATS_DISTANCES})...")
         try:
@@ -351,16 +283,17 @@ def run_stage2_network(
             ]
 
             # Convert all numeric columns (may be Arrow-backed strings)
-            numeric_cols = ["footprint_area_m2"] + height_cols
+            numeric_cols = ["footprint_area_m2", "shared_wall_ratio"] + height_cols
             for col in numeric_cols:
                 if col in buildings_in_buffer.columns:
                     buildings_in_buffer[col] = pd.to_numeric(
                         buildings_in_buffer[col], errors="coerce"
                     )
 
-            # Compute building volume (footprint × height)
+            # Ensure volume is present (from process_morphology.py or compute here)
             if (
-                "footprint_area_m2" in buildings_in_buffer.columns
+                "volume_m3" not in buildings_in_buffer.columns
+                and "footprint_area_m2" in buildings_in_buffer.columns
                 and "height_median" in buildings_in_buffer.columns
             ):
                 buildings_in_buffer["volume_m3"] = (
@@ -368,12 +301,53 @@ def run_stage2_network(
                     * buildings_in_buffer["height_median"]
                 )
 
+            # --- 9.8: Building type classification from shared_wall_ratio ---
+            # Classify all OS buildings by morphology (independent of EPC coverage)
+            if "shared_wall_ratio" in buildings_in_buffer.columns:
+                swr = buildings_in_buffer["shared_wall_ratio"]
+                buildings_in_buffer["is_detached"] = (swr == 0).astype(float)
+                buildings_in_buffer["is_semi"] = (
+                    (swr > 0) & (swr < 0.3)
+                ).astype(float)
+                buildings_in_buffer["is_terraced"] = (swr >= 0.3).astype(float)
+                n_det = int(buildings_in_buffer["is_detached"].sum())
+                n_semi = int(buildings_in_buffer["is_semi"].sum())
+                n_ter = int(buildings_in_buffer["is_terraced"].sum())
+                print(
+                    f"    Building types (morphology): "
+                    f"detached={n_det:,}, semi={n_semi:,}, terraced={n_ter:,}"
+                )
+
+            # --- 9.16: Estimated gross floor area for FAR ---
+            if (
+                "footprint_area_m2" in buildings_in_buffer.columns
+                and "height_median" in buildings_in_buffer.columns
+            ):
+                height_m = pd.to_numeric(
+                    buildings_in_buffer["height_median"], errors="coerce"
+                )
+                buildings_in_buffer["estimated_floors"] = np.clip(
+                    np.floor(height_m / ASSUMED_STOREY_HEIGHT_M), 1, None
+                )
+                buildings_in_buffer["gross_floor_area_m2"] = (
+                    buildings_in_buffer["footprint_area_m2"]
+                    * buildings_in_buffer["estimated_floors"]
+                )
+                mean_floors = buildings_in_buffer["estimated_floors"].mean()
+                print(f"    Estimated floors: mean={mean_floors:.1f}")
+
             # Select numeric columns to aggregate
             stats_columns = []
             if "footprint_area_m2" in buildings_in_buffer.columns:
                 stats_columns.append("footprint_area_m2")
             if "volume_m3" in buildings_in_buffer.columns:
                 stats_columns.append("volume_m3")
+            if "gross_floor_area_m2" in buildings_in_buffer.columns:
+                stats_columns.append("gross_floor_area_m2")
+            # Building type indicators (mean within catchment = proportion)
+            for type_col in ["is_detached", "is_semi", "is_terraced"]:
+                if type_col in buildings_in_buffer.columns:
+                    stats_columns.append(type_col)
             stats_columns.extend(height_cols)
 
             if stats_columns:
@@ -391,6 +365,25 @@ def run_stage2_network(
                 print(f"    ✓ Building stats: {len(stats_result_cols)} columns")
             else:
                 print("    No numeric columns found for aggregation")
+
+            # --- 9.16 + 9.17: Derive FAR and BCR from aggregated stats ---
+            # Use π×d² as catchment area approximation
+            print("\n  Deriving FAR and BCR from catchment stats...")
+            for dist in STATS_DISTANCES:
+                catchment_area = np.pi * dist**2
+                # FAR = sum(gross_floor_area) / catchment_area
+                gfa_col = f"cc_gross_floor_area_m2_{dist}_sum"
+                if gfa_col in nodes_gdf.columns:
+                    nodes_gdf[f"far_{dist}"] = nodes_gdf[gfa_col] / catchment_area
+                    mean_far = nodes_gdf[f"far_{dist}"].mean()
+                    print(f"    ✓ far_{dist}: mean={mean_far:.3f}")
+                # BCR = sum(footprint_area) / catchment_area
+                fp_col = f"cc_footprint_area_m2_{dist}_sum"
+                if fp_col in nodes_gdf.columns:
+                    nodes_gdf[f"bcr_{dist}"] = nodes_gdf[fp_col] / catchment_area
+                    mean_bcr = nodes_gdf[f"bcr_{dist}"].mean()
+                    print(f"    ✓ bcr_{dist}: mean={mean_bcr:.3f}")
+
         except Exception as e:
             print(f"    ERROR computing building stats: {e}")
             import traceback
@@ -612,6 +605,24 @@ def run_stage3_uprn_integration(
         print(f"    ✓ {matched}/{len(uprn_gdf)} UPRNs matched to Census OAs")
         print(f"    Census columns added: {len(census_cols)}")
 
+    # 2b. Tabular join: UPRN → LSOA metered energy consumption (DESNZ)
+    energy_stats_path = PATHS.get("energy_stats")
+    if (
+        energy_stats_path
+        and energy_stats_path.exists()
+        and "LSOA21CD" in uprn_gdf.columns
+    ):
+        print("\n  2b. Joining LSOA metered energy consumption (DESNZ)...")
+        energy_df = pd.read_parquet(energy_stats_path)
+        energy_cols = [c for c in energy_df.columns if c != "LSOA21CD"]
+        uprn_gdf = uprn_gdf.merge(energy_df, on="LSOA21CD", how="left")
+        if energy_cols:
+            matched = uprn_gdf[energy_cols[0]].notna().sum()
+            print(f"    ✓ {matched}/{len(uprn_gdf)} UPRNs matched to LSOA energy")
+            print(f"    Energy columns added: {len(energy_cols)}")
+    else:
+        print("\n  2b. LSOA energy data not available - skipping")
+
     # 3. Direct join: UPRN → EPC (energy performance)
     print("\n  3. Joining UPRNs to EPC records...")
     epc = pd.read_parquet(PATHS["epc"])
@@ -684,9 +695,8 @@ def run_stage3_uprn_integration(
         print("    ✗ Network segments not available - skipping")
 
     # Summary
-    print(
-        f"\n  Final UPRN dataset: {len(uprn_gdf)} records, {len(uprn_gdf.columns)} columns"
-    )
+    n_cols = len(uprn_gdf.columns)
+    print(f"\n  Final UPRN dataset: {len(uprn_gdf)} records, {n_cols} columns")
 
     return uprn_gdf
 
@@ -775,7 +785,7 @@ def main() -> None:
     TEST_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # Check inputs
-    input_status = check_inputs()
+    check_inputs()
 
     # Load test boundaries
     boundaries = load_test_boundaries()

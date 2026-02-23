@@ -18,8 +18,8 @@ from shapely.ops import unary_union
 from shapely.validation import make_valid
 
 # Configuration
-BASE_DIR = Path(__file__).parent.parent
-TEMP_DIR = BASE_DIR / "temp"
+from urban_energy.paths import TEMP_DIR
+
 INPUT_PATH = (
     TEMP_DIR / "OS_Open_Built_Up_Areas_GeoPackage" / "os_open_built_up_areas.gpkg"
 )

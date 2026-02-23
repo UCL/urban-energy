@@ -13,7 +13,6 @@ Usage:
     uv run python stats/02g_intensity_analysis.py
 """
 
-from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -22,9 +21,10 @@ import statsmodels.formula.api as smf
 from scipy import stats
 
 # Configuration
-BASE_DIR = Path(__file__).parent.parent
-DATA_PATH = BASE_DIR / "temp" / "processing" / "test" / "uprn_integrated.gpkg"
-OUTPUT_DIR = BASE_DIR / "temp" / "stats"
+from urban_energy.paths import TEMP_DIR
+
+DATA_PATH = TEMP_DIR / "processing" / "test" / "uprn_integrated.gpkg"
+OUTPUT_DIR = TEMP_DIR / "stats"
 
 
 def load_data() -> pd.DataFrame:

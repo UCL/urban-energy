@@ -13,7 +13,6 @@ Usage:
     uv run python stats/02_regression_suite.py
 """
 
-from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -22,9 +21,10 @@ import statsmodels.formula.api as smf
 from scipy import stats
 
 # Configuration
-BASE_DIR = Path(__file__).parent.parent
-DATA_PATH = BASE_DIR / "temp" / "processing" / "test" / "uprn_integrated.gpkg"
-OUTPUT_DIR = BASE_DIR / "temp" / "stats" / "results"
+from urban_energy.paths import TEMP_DIR
+
+DATA_PATH = TEMP_DIR / "processing" / "test" / "uprn_integrated.gpkg"
+OUTPUT_DIR = TEMP_DIR / "stats" / "results"
 
 
 def load_and_prepare_data() -> pd.DataFrame:
@@ -61,11 +61,13 @@ def load_and_prepare_data() -> pd.DataFrame:
 
     df["avg_household_size"] = total_people / total_households
 
-    # PRIMARY DV: Energy intensity (kWh/m²)
-    df["energy_intensity"] = df["ENERGY_CONSUMPTION_CURRENT"] / df["TOTAL_FLOOR_AREA"]
+    # PRIMARY DV: Energy intensity (kWh/m²/year) — ECC is already per m²
+    df["energy_intensity"] = df["ENERGY_CONSUMPTION_CURRENT"]
+    # Total energy for aggregate / per-capita calculations
+    df["total_energy_kwh"] = df["ENERGY_CONSUMPTION_CURRENT"] * df["TOTAL_FLOOR_AREA"]
 
-    # SECONDARY DV: Energy per capita (for comparison)
-    df["energy_per_capita"] = df["ENERGY_CONSUMPTION_CURRENT"] / df["avg_household_size"]
+    # SECONDARY DV: Energy per capita (total kWh / persons)
+    df["energy_per_capita"] = df["total_energy_kwh"] / df["avg_household_size"]
 
     # Filter invalid values
     valid = (

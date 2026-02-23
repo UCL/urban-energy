@@ -11,7 +11,6 @@ Usage:
     uv run python stats/00_selection_bias_analysis.py
 """
 
-from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -21,9 +20,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 
 # Configuration
-BASE_DIR = Path(__file__).parent.parent
-UPRN_PATH = BASE_DIR / "temp" / "processing" / "test" / "uprn_integrated.gpkg"
-OUTPUT_DIR = BASE_DIR / "temp" / "stats"
+from urban_energy.paths import TEMP_DIR
+
+UPRN_PATH = TEMP_DIR / "processing" / "test" / "uprn_integrated.gpkg"
+OUTPUT_DIR = TEMP_DIR / "stats"
 
 
 def load_data() -> gpd.GeoDataFrame:

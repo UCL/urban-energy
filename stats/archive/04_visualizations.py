@@ -8,7 +8,6 @@ Usage:
     uv run python stats/04_visualizations.py
 """
 
-from pathlib import Path
 from datetime import datetime
 
 import geopandas as gpd
@@ -21,10 +20,11 @@ from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.model_selection import train_test_split
 
 # Configuration
-BASE_DIR = Path(__file__).parent.parent
-DATA_PATH = BASE_DIR / "temp" / "processing" / "test" / "uprn_integrated.gpkg"
-FIGURES_DIR = BASE_DIR / "stats" / "figures"
-REPORT_PATH = BASE_DIR / "stats" / "analysis_report.md"
+from urban_energy.paths import PROJECT_DIR, TEMP_DIR
+
+DATA_PATH = TEMP_DIR / "processing" / "test" / "uprn_integrated.gpkg"
+FIGURES_DIR = PROJECT_DIR / "stats" / "figures"
+REPORT_PATH = PROJECT_DIR / "stats" / "analysis_report.md"
 
 # Set style - professional academic quality
 sns.set_theme(style="whitegrid", palette="deep", font_scale=1.1)
@@ -207,7 +207,7 @@ def fig_energy_distribution(df: pd.DataFrame) -> str:
     path = FIGURES_DIR / "01_energy_distribution.png"
     plt.savefig(path, bbox_inches="tight")
     plt.close()
-    return str(path.relative_to(BASE_DIR))
+    return str(path.relative_to(PROJECT_DIR))
 
 
 def fig_energy_by_built_form(df: pd.DataFrame) -> str:
@@ -257,7 +257,7 @@ def fig_energy_by_built_form(df: pd.DataFrame) -> str:
     path = FIGURES_DIR / "02_energy_by_built_form.png"
     plt.savefig(path, bbox_inches="tight")
     plt.close()
-    return str(path.relative_to(BASE_DIR))
+    return str(path.relative_to(PROJECT_DIR))
 
 
 def fig_building_age_effect(df: pd.DataFrame) -> str:
@@ -310,7 +310,7 @@ def fig_building_age_effect(df: pd.DataFrame) -> str:
     path = FIGURES_DIR / "04_building_age_effect.png"
     plt.savefig(path, bbox_inches="tight")
     plt.close()
-    return str(path.relative_to(BASE_DIR))
+    return str(path.relative_to(PROJECT_DIR))
 
 
 def fig_density_effect(df: pd.DataFrame) -> str:
@@ -366,7 +366,7 @@ def fig_density_effect(df: pd.DataFrame) -> str:
     path = FIGURES_DIR / "05_density_effect.png"
     plt.savefig(path, bbox_inches="tight")
     plt.close()
-    return str(path.relative_to(BASE_DIR))
+    return str(path.relative_to(PROJECT_DIR))
 
 
 def fig_correlation_heatmap(df: pd.DataFrame) -> str:
@@ -414,7 +414,7 @@ def fig_correlation_heatmap(df: pd.DataFrame) -> str:
     path = FIGURES_DIR / "06_correlation_heatmap.png"
     plt.savefig(path, bbox_inches="tight")
     plt.close()
-    return str(path.relative_to(BASE_DIR))
+    return str(path.relative_to(PROJECT_DIR))
 
 
 def fig_centrality_vs_age(df: pd.DataFrame) -> str:
@@ -462,7 +462,7 @@ def fig_centrality_vs_age(df: pd.DataFrame) -> str:
     path = FIGURES_DIR / "07_centrality_age_confounding.png"
     plt.savefig(path, bbox_inches="tight")
     plt.close()
-    return str(path.relative_to(BASE_DIR))
+    return str(path.relative_to(PROJECT_DIR))
 
 
 def fig_controlled_effects(df: pd.DataFrame) -> str:
@@ -559,12 +559,11 @@ def fig_controlled_effects(df: pd.DataFrame) -> str:
     path = FIGURES_DIR / "08_controlled_effects.png"
     plt.savefig(path, bbox_inches="tight")
     plt.close()
-    return str(path.relative_to(BASE_DIR))
+    return str(path.relative_to(PROJECT_DIR))
 
 
 def fig_other_confounders(df: pd.DataFrame) -> str:
     """Explore other potential confounders: property type, tenure, fuel type."""
-    from scipy import stats as scipy_stats
 
     fig, axes = plt.subplots(2, 2, figsize=(14, 12))
 
@@ -635,7 +634,7 @@ def fig_other_confounders(df: pd.DataFrame) -> str:
     path = FIGURES_DIR / "09_other_confounders.png"
     plt.savefig(path, bbox_inches="tight")
     plt.close()
-    return str(path.relative_to(BASE_DIR))
+    return str(path.relative_to(PROJECT_DIR))
 
 
 def fig_built_form_controlled(df: pd.DataFrame) -> str:
@@ -699,7 +698,7 @@ def fig_built_form_controlled(df: pd.DataFrame) -> str:
     path = FIGURES_DIR / "03_built_form_controlled.png"
     plt.savefig(path, bbox_inches="tight")
     plt.close()
-    return str(path.relative_to(BASE_DIR))
+    return str(path.relative_to(PROJECT_DIR))
 
 
 def fig_shap_analysis(df: pd.DataFrame) -> tuple[str, str, str]:
@@ -795,9 +794,9 @@ def fig_shap_analysis(df: pd.DataFrame) -> tuple[str, str, str]:
     plt.close()
 
     return (
-        str(path1.relative_to(BASE_DIR)),
-        str(path2.relative_to(BASE_DIR)),
-        str(path3.relative_to(BASE_DIR)),
+        str(path1.relative_to(PROJECT_DIR)),
+        str(path2.relative_to(PROJECT_DIR)),
+        str(path3.relative_to(PROJECT_DIR)),
     )
 
 

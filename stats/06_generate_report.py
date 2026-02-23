@@ -10,12 +10,12 @@ Usage:
 
 import json
 from datetime import datetime
-from pathlib import Path
 
 # Paths
-BASE_DIR = Path(__file__).parent.parent
-RESULTS_DIR = BASE_DIR / "temp" / "stats" / "results"
-OUTPUT_PATH = BASE_DIR / "stats" / "analysis_report_v3.md"
+from urban_energy.paths import PROJECT_DIR, TEMP_DIR
+
+RESULTS_DIR = TEMP_DIR / "stats" / "results"
+OUTPUT_PATH = PROJECT_DIR / "stats" / "analysis_report_v3.md"
 
 
 def load_results() -> dict:

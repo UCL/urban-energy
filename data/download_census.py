@@ -11,7 +11,6 @@ Outputs joined data to temp/statistics/
 
 import zipfile
 from io import BytesIO
-from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
@@ -19,9 +18,11 @@ import requests
 from tqdm import tqdm
 
 # Configuration
-TEMP_DIR = Path(__file__).parent.parent / "temp"
+from urban_energy.paths import CACHE_DIR as _CACHE_ROOT
+from urban_energy.paths import TEMP_DIR
+
 OUTPUT_DIR = TEMP_DIR / "statistics"
-CACHE_DIR = Path(__file__).parent / ".cache" / "census"
+CACHE_DIR = _CACHE_ROOT / "census"
 
 # Input paths (manual downloads - filename varies by download)
 OA_BOUNDARIES_PATTERN = "Output_Areas_2021_EW_BFE_V9_*.gpkg"

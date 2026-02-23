@@ -19,7 +19,6 @@ Note: spreg (spatial regression) may require additional setup.
 As a fallback, this script uses statsmodels with cluster-robust SEs.
 """
 
-from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -28,9 +27,10 @@ import statsmodels.formula.api as smf
 from scipy import stats
 
 # Configuration
-BASE_DIR = Path(__file__).parent.parent
-DATA_PATH = BASE_DIR / "temp" / "processing" / "test" / "uprn_integrated.gpkg"
-OUTPUT_DIR = BASE_DIR / "temp" / "stats"
+from urban_energy.paths import TEMP_DIR
+
+DATA_PATH = TEMP_DIR / "processing" / "test" / "uprn_integrated.gpkg"
+OUTPUT_DIR = TEMP_DIR / "stats"
 
 
 def load_and_prepare_data() -> gpd.GeoDataFrame:
@@ -63,7 +63,9 @@ def load_and_prepare_data() -> gpd.GeoDataFrame:
         "ts017_Household size: Total: All household spaces; measures: Value"
     ] - gdf["ts017_Household size: 0 people in household; measures: Value"]
     gdf["avg_household_size"] = total_people / total_households
-    gdf["energy_per_capita"] = gdf["ENERGY_CONSUMPTION_CURRENT"] / gdf["avg_household_size"]
+    # ECC is already kWh/m²/year; per-capita needs total kWh
+    gdf["total_energy_kwh"] = gdf["ENERGY_CONSUMPTION_CURRENT"] * gdf["TOTAL_FLOOR_AREA"]
+    gdf["energy_per_capita"] = gdf["total_energy_kwh"] / gdf["avg_household_size"]
 
     # Filter valid energy values
     valid_energy = (
@@ -136,7 +138,7 @@ def test_spatial_autocorrelation(gdf: gpd.GeoDataFrame, residuals: np.ndarray) -
 
     try:
         from esda.moran import Moran
-        from libpysal.weights import DistanceBand, KNN
+        from libpysal.weights import KNN, DistanceBand
     except ImportError:
         print("\n  esda/libpysal not installed. Install with:")
         print("    uv add esda libpysal")
