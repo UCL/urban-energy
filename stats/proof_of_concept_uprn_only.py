@@ -229,10 +229,11 @@ def load_data(city: str | None = None) -> pd.DataFrame:
         "ts045_Number of cars or vans: 2 cars or vans in household; measures: Value",
         "ts045_Number of cars or vans: 3 or more cars or vans in household; measures: Value",
     ]
-    # Check available columns (read one row — fiona truncates at ~200 cols)
-    _probe = gpd.read_file(DATA_PATH, rows=1)
-    available = set(_probe.columns)
-    del _probe
+    # Filter to columns that exist in the file, then use SQL for fast load
+    import fiona
+
+    with fiona.open(DATA_PATH) as f:
+        available = set(f.schema["properties"].keys())
     load_cols = [c for c in _LOAD_COLS if c in available]
     skipped = set(_LOAD_COLS) - set(load_cols)
     if skipped:
@@ -431,9 +432,6 @@ def load_data(city: str | None = None) -> pd.DataFrame:
     )
     df["avg_household_size"] = total_people / total_hh
     df["energy_per_capita"] = df["total_energy_kwh"] / df["avg_household_size"]
-    # Store OA-level Census intermediates for aggregate_to_oa()
-    df["oa_total_people"] = total_people
-    df["oa_total_occupied_hh"] = total_hh
 
     # Population density
     df["pop_density"] = df[
@@ -514,161 +512,6 @@ def load_data(city: str | None = None) -> pd.DataFrame:
     print(f"  Valid records with known type: {len(df):,}")
 
     return df
-
-
-# ---------------------------------------------------------------------------
-# OA-level aggregation
-# ---------------------------------------------------------------------------
-
-
-def aggregate_to_oa(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Aggregate UPRN-level data to Output Area level.
-
-    Census variables (household size, car ownership, deprivation) are
-    inherently at OA level. Aggregating eliminates pseudo-replication
-    and produces genuine per-capita energy (OA total energy / OA population).
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        UPRN-level analysis data from ``load_data()``.
-
-    Returns
-    -------
-    pd.DataFrame
-        OA-level dataset with one row per Output Area.
-    """
-    if "OA21CD" not in df.columns:
-        raise ValueError("OA21CD column required for OA aggregation")
-
-    print("\n  Aggregating to Output Area level...")
-
-    # --- Build morph type indicators ---
-    for t in TYPE_ORDER:
-        df[f"n_{t}"] = (df["morph_type"] == t).astype(int)
-
-    # --- Aggregation rules ---
-    oa_agg: dict[str, str] = {
-        # Energy totals (SUM)
-        "total_energy_kwh": "sum",
-        "TOTAL_FLOOR_AREA": "sum",
-        # Identifiers (FIRST — same for all UPRNs in OA)
-        "LSOA21CD": "first",
-        # OA-level Census intermediates (FIRST)
-        "oa_total_people": "first",
-        "oa_total_occupied_hh": "first",
-        "avg_household_size": "first",
-        "avg_cars_per_hh": "first",
-        "transport_kwh_per_hh": "first",
-        "pop_density": "first",
-        # Controls (MEAN across dwellings)
-        "log_floor_area": "mean",
-        "building_age": "mean",
-    }
-
-    # City column if present
-    if "city" in df.columns:
-        oa_agg["city"] = "first"
-
-    # Physics columns (MEAN)
-    for col in PHYSICS_COLS:
-        if col in df.columns:
-            oa_agg[col] = "mean"
-
-    # Cityseer columns (MEAN)
-    for col in df.columns:
-        if col.startswith("cc_"):
-            oa_agg[col] = "mean"
-
-    # Morph type counts (SUM)
-    for t in TYPE_ORDER:
-        oa_agg[f"n_{t}"] = "sum"
-
-    # Census ts* columns (FIRST — already OA-level)
-    for col in df.columns:
-        if col.startswith("ts0") and col not in oa_agg:
-            oa_agg[col] = "first"
-
-    # Deprivation intermediate
-    if "pct_not_deprived" in df.columns:
-        oa_agg["pct_not_deprived"] = "first"
-
-    # Scaling data (FIRST — LSOA-level)
-    for col in ["lsoa_gva_millions", "lsoa_employment"]:
-        if col in df.columns:
-            oa_agg[col] = "first"
-
-    # DESNZ metered energy (FIRST — LSOA-level)
-    for col in df.columns:
-        if col.startswith("lsoa_") and col not in oa_agg:
-            oa_agg[col] = "first"
-
-    # --- Perform aggregation ---
-    # Only include columns that exist
-    oa_agg = {k: v for k, v in oa_agg.items() if k in df.columns}
-    oa_df = df.groupby("OA21CD").agg(oa_agg).reset_index()
-
-    # --- Derived columns ---
-    # Genuine per-capita energy
-    oa_pop = pd.to_numeric(oa_df["oa_total_people"], errors="coerce")
-    oa_df = oa_df[oa_pop > 0].copy()
-    oa_pop = pd.to_numeric(oa_df["oa_total_people"], errors="coerce")
-
-    oa_df["energy_intensity"] = (
-        oa_df["total_energy_kwh"]
-        / oa_df["TOTAL_FLOOR_AREA"].replace(0, np.nan)
-    )
-    oa_df["log_energy_intensity"] = np.log(
-        oa_df["energy_intensity"].clip(lower=0.1)
-    )
-    oa_df["energy_per_capita"] = oa_df["total_energy_kwh"] / oa_pop
-
-    # Transport + building per capita
-    if "transport_kwh_per_hh" in oa_df.columns:
-        total_transport = (
-            oa_df["transport_kwh_per_hh"] * oa_df["oa_total_occupied_hh"]
-        )
-        oa_df["total_energy_per_capita"] = (
-            oa_df["total_energy_kwh"] + total_transport
-        ) / oa_pop
-    else:
-        oa_df["total_energy_per_capita"] = oa_df["energy_per_capita"]
-
-    # Dwelling counts and dominant type
-    oa_df["n_dwellings"] = sum(oa_df[f"n_{t}"] for t in TYPE_ORDER)
-    type_counts = oa_df[[f"n_{t}" for t in TYPE_ORDER]]
-    oa_df["dominant_type"] = type_counts.idxmax(axis=1).str.replace(
-        "n_", "", regex=False
-    )
-    oa_df["morph_type"] = oa_df["dominant_type"]
-
-    # Compact share
-    compact_types = ["mid_terrace", "end_terrace", "flat"]
-    oa_df["compact_share"] = (
-        sum(oa_df[f"n_{t}"] for t in compact_types)
-        / oa_df["n_dwellings"].replace(0, np.nan)
-    )
-
-    # Re-derive deprivation quintiles at OA level
-    if "pct_not_deprived" in oa_df.columns:
-        valid_dep = oa_df["pct_not_deprived"].notna()
-        if valid_dep.sum() > 10:
-            dep_labels = ["Q1 most", "Q2", "Q3", "Q4", "Q5 least"]
-            oa_df.loc[valid_dep, "deprivation_quintile"] = pd.qcut(
-                oa_df.loc[valid_dep, "pct_not_deprived"],
-                q=5,
-                labels=dep_labels,
-            )
-
-    n_types = oa_df["morph_type"].value_counts()
-    print(f"    {len(oa_df):,} Output Areas")
-    print(f"    Dominant type distribution:")
-    for t in TYPE_ORDER:
-        if t in n_types.index:
-            print(f"      {t}: {n_types[t]:,}")
-
-    return oa_df
 
 
 # ---------------------------------------------------------------------------
@@ -1320,18 +1163,29 @@ def step6_lockin(df: pd.DataFrame) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _find_oa_population_col(df: pd.DataFrame) -> str | None:
+    """Find the TS001 population column by prefix pattern."""
+    for col in df.columns:
+        if col.startswith("ts001_") and "total" in col.lower():
+            return col
+    # Fallback: any ts001 column
+    ts001_cols = [c for c in df.columns if c.startswith("ts001_")]
+    return ts001_cols[0] if ts001_cols else None
+
+
 def step7_scaling(df: pd.DataFrame) -> None:
     """
     Show that compact morphology predicts higher economic output per capita.
 
-    Uses Output Area level (~125 households) where Census population is
-    exact. If *df* is already aggregated (has ``n_dwellings`` column from
-    :func:`aggregate_to_oa`), uses it directly; otherwise aggregates here.
+    Aggregates to Output Area level (~125 households) where Census
+    population is exact, then joins LSOA-level GVA and BRES. This gives
+    genuine per-capita energy (total OA energy / OA population) rather
+    than the dwelling-level approximation using OA-average household size.
 
     Parameters
     ----------
     df : pd.DataFrame
-        Analysis data — UPRN-level or pre-aggregated OA-level.
+        Prepared analysis data with lsoa_gva_millions and lsoa_employment.
     """
     print("\n" + "=" * 70)
     print("STEP 7: Does the urban conduit also amplify economic output?")
@@ -1352,32 +1206,77 @@ def step7_scaling(df: pd.DataFrame) -> None:
         print("  Run: uv run python data/download_scaling.py")
         return
 
-    # --- Get OA-level data ---
-    if "n_dwellings" in df.columns:
-        # Already aggregated by aggregate_to_oa()
-        oa_df = df.copy()
-        print("  (using pre-aggregated OA data)")
-    else:
-        # UPRN-level: aggregate now
-        if "OA21CD" not in df.columns:
-            print("\n  SKIP: OA21CD not in dataset.")
-            return
-        oa_df = aggregate_to_oa(df)
-
-    # Verify we have population and energy per capita
-    if "energy_per_capita" not in oa_df.columns:
-        print("\n  SKIP: energy_per_capita not available after aggregation.")
+    # --- Find OA code and population columns ---
+    if "OA21CD" not in df.columns:
+        print("\n  SKIP: OA21CD not in dataset.")
         return
+
+    pop_col = _find_oa_population_col(df)
+    if pop_col is None:
+        print("\n  SKIP: Census TS001 population column not found.")
+        return
+
+    print(f"  Population column: {pop_col[:50]}...")
+
+    # --- Aggregate to OA level ---
+    # OA is the natural unit: population is exact, morphology coherent
+    oa_agg: dict[str, str] = {
+        "total_energy_kwh": "sum",  # true total energy for this OA
+        pop_col: "first",  # same for all UPRNs in OA (OA-level Census)
+        "LSOA21CD": "first",
+        "surface_to_volume": "mean",
+        "party_ratio": "mean",
+        "pop_density": "first",
+    }
+    # Building type composition: count each type per OA
+    for t in TYPE_ORDER:
+        key = f"n_{t}"
+        df[key] = (df["morph_type"] == t).astype(int)
+        oa_agg[key] = "sum"
+
+    # Trophic layer columns
+    for layer in TROPHIC_LAYERS.values():
+        for col in layer["cols"]:
+            if col in df.columns:
+                oa_agg[col] = "mean"
+
+    # Scaling data (LSOA-level, same for all UPRNs in LSOA)
+    if has_gva:
+        oa_agg[gva_col] = "first"
+    if has_bres:
+        oa_agg[emp_col] = "first"
+
+    # Only include OAs with valid data
+    oa_mask = df["OA21CD"].notna() & df[pop_col].notna()
+    if has_gva:
+        oa_mask = oa_mask & df[gva_col].notna()
+
+    oa_df = df.loc[oa_mask].groupby("OA21CD").agg(oa_agg).reset_index()
+
+    # Filter to OAs with positive population
+    oa_pop = pd.to_numeric(oa_df[pop_col], errors="coerce")
+    oa_df = oa_df[oa_pop > 0].copy()
+    oa_pop = pd.to_numeric(oa_df[pop_col], errors="coerce")
+
+    # --- Genuine per-capita energy ---
+    oa_df["oa_energy_per_capita"] = oa_df["total_energy_kwh"] / oa_pop
+    oa_df["oa_n_dwellings"] = sum(oa_df[f"n_{t}"] for t in TYPE_ORDER)
+
+    # Dominant type per OA (plurality)
+    type_counts = oa_df[[f"n_{t}" for t in TYPE_ORDER]]
+    oa_df["dominant_type"] = type_counts.idxmax(axis=1).str.replace(
+        "n_", "", regex=False
+    )
+    # Compactness: share of flats + terraces
+    compact_types = ["mid_terrace", "end_terrace", "flat"]
+    oa_df["compact_share"] = sum(oa_df[f"n_{t}"] for t in compact_types) / oa_df[
+        "oa_n_dwellings"
+    ].replace(0, np.nan)
 
     n_oa = len(oa_df)
     print(f"\n  OAs with complete data: {n_oa:,}")
-    if "oa_total_people" in oa_df.columns:
-        oa_pop = pd.to_numeric(oa_df["oa_total_people"], errors="coerce")
-        print(
-            f"  Mean OA population: {oa_pop.mean():.0f}"
-            f" (median {oa_pop.median():.0f})"
-        )
-    print(f"  Mean OA dwellings: {oa_df['n_dwellings'].mean():.0f}")
+    print(f"  Mean OA population: {oa_pop.mean():.0f} (median {oa_pop.median():.0f})")
+    print(f"  Mean OA dwellings: {oa_df['oa_n_dwellings'].mean():.0f}")
 
     if n_oa < 10:
         print("  Too few OAs for meaningful analysis.")
@@ -1407,7 +1306,7 @@ def step7_scaling(df: pd.DataFrame) -> None:
         sd: dict[str, float] = {
             "n": len(q_sub),
             "pop_density": q_sub["pop_density"].mean(),
-            "kwh_cap": q_sub["energy_per_capita"].mean(),
+            "kwh_cap": q_sub["oa_energy_per_capita"].mean(),
             "compact": q_sub["compact_share"].mean() * 100,
         }
         row = (
@@ -1493,130 +1392,53 @@ def step7_scaling(df: pd.DataFrame) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _run_steps(
-    df: pd.DataFrame,
-    label: str = "",
-) -> dict[str, bool]:
-    """
-    Run Steps 1–7 on the given dataframe.
-
-    Steps 1–2 test building physics (meaningful at UPRN level).
-    Steps 3–6 test the compounding normalisations.
-    Step 7 tests economic scaling.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Analysis-ready dataframe (UPRN or OA level).
-    label : str
-        Label for printout (e.g. "UPRN" or "OA").
-
-    Returns
-    -------
-    dict[str, bool]
-        Gate results keyed by step name.
-    """
-    if label:
-        print(f"\n{'#' * 70}")
-        print(f"# Scale: {label} (N={len(df):,})")
-        print(f"{'#' * 70}")
-
-    gate1 = step1_physics_signatures(df)
-    gate2 = step2_physics_energy(df)
-    type_layer_means = step3_trophic_layers(df)
-    gate4 = step4_compounding(df, type_layer_means)
-    step5_deprivation_control(df)
-    step6_lockin(df)
-    step7_scaling(df)
-
-    return {
-        "Step 1 (types bundle physics)": gate1,
-        "Step 2 (physics predicts energy)": gate2,
-        "Step 4 (compounding effect)": gate4,
-    }
-
-
-def main(scale: str = "uprn") -> None:
-    """
-    Run the proof of concept argument chain.
-
-    Parameters
-    ----------
-    scale : str
-        Analysis unit: ``"uprn"`` for dwelling-level (original),
-        ``"oa"`` for Output Area level (eliminates pseudo-replication),
-        ``"both"`` to run UPRN for Steps 1–2, then OA for Steps 3–7.
-    """
+def main() -> None:
+    """Run the proof of concept argument chain."""
     print("=" * 70)
     print("PROOF OF CONCEPT: The Trophic Layers of Urban Energy")
     print("=" * 70)
     print("  Cities are conduits. The question is not how much energy,")
     print("  but how much *city* each unit of energy enables.")
-    print(f"\n  Data: {DATA_PATH}")
-    print(f"  Scale: {scale}\n")
+    print(f"\n  Data: {DATA_PATH}\n")
 
     df = load_data()
 
-    if scale == "uprn":
-        gates = _run_steps(df, label="UPRN")
-
-    elif scale == "oa":
-        # Steps 1–2 at UPRN (building physics is genuine per-dwelling)
-        print(f"\n{'#' * 70}")
-        print(f"# Steps 1-2: UPRN level (N={len(df):,})")
-        print(f"{'#' * 70}")
-        gate1 = step1_physics_signatures(df)
-        if not gate1:
-            print("\n  STOPPING: Step 1 failed. No morphological signal.")
-            sys.exit(1)
-        gate2 = step2_physics_energy(df)
-        if not gate2:
-            print("\n  STOPPING: Step 2 failed. Physics is decorative.")
-            sys.exit(1)
-
-        # Steps 3–7 at OA (Census data is native here)
-        oa_df = aggregate_to_oa(df)
-        print(f"\n{'#' * 70}")
-        print(f"# Steps 3-7: Output Area level (N={len(oa_df):,})")
-        print(f"{'#' * 70}")
-        type_layer_means = step3_trophic_layers(oa_df)
-        gate4 = step4_compounding(oa_df, type_layer_means)
-        step5_deprivation_control(oa_df)
-        step6_lockin(oa_df)
-        step7_scaling(oa_df)
-
-        gates = {
-            "Step 1 (types bundle physics)": gate1,
-            "Step 2 (physics predicts energy)": gate2,
-            "Step 4 (compounding effect)": gate4,
-        }
-
-    elif scale == "both":
-        # Full UPRN run
-        uprn_gates = _run_steps(df, label="UPRN")
-
-        # OA run (Steps 3–7 only, physics already validated)
-        oa_df = aggregate_to_oa(df)
-        print(f"\n{'#' * 70}")
-        print(f"# Steps 3-7: Output Area level (N={len(oa_df):,})")
-        print(f"{'#' * 70}")
-        type_layer_means = step3_trophic_layers(oa_df)
-        gate4_oa = step4_compounding(oa_df, type_layer_means)
-        step5_deprivation_control(oa_df)
-        step6_lockin(oa_df)
-        step7_scaling(oa_df)
-
-        gates = uprn_gates
-        gates["Step 4 OA (compounding effect)"] = gate4_oa
-
-    else:
-        print(f"  Unknown scale: {scale!r}. Use 'uprn', 'oa', or 'both'.")
+    # Step 1: Foundation — types bundle physics
+    gate1 = step1_physics_signatures(df)
+    if not gate1:
+        print("\n  STOPPING: Step 1 failed. No morphological signal.")
         sys.exit(1)
+
+    # Step 2: Foundation — physics predicts energy (SAP + metered)
+    gate2 = step2_physics_energy(df)
+    if not gate2:
+        print("\n  STOPPING: Step 2 failed. Physics is decorative.")
+        sys.exit(1)
+
+    # Step 3: The other side — types differ across trophic layers
+    type_layer_means = step3_trophic_layers(df)
+
+    # Step 4: THE CENTERPIECE — the compounding effect
+    gate4 = step4_compounding(df, type_layer_means)
+
+    # Step 5: Control — not a wealth effect
+    step5_deprivation_control(df)
+
+    # Step 6: Implication — it's locked in
+    step6_lockin(df)
+
+    # Step 7: The other side of scaling — economic output
+    step7_scaling(df)
 
     # Final summary
     print("\n" + "=" * 70)
     print("PROOF OF CONCEPT SUMMARY")
     print("=" * 70)
+    gates = {
+        "Step 1 (types bundle physics)": gate1,
+        "Step 2 (physics predicts energy)": gate2,
+        "Step 4 (compounding effect)": gate4,
+    }
     for name, passed in gates.items():
         icon = "PASS" if passed else "FAIL"
         print(f"  {icon}: {name}")
@@ -1634,5 +1456,4 @@ def main(scale: str = "uprn") -> None:
 
 
 if __name__ == "__main__":
-    _scale = sys.argv[1] if len(sys.argv) > 1 else "uprn"
-    main(scale=_scale)
+    main()

@@ -22,11 +22,28 @@ Metrics computed:
         - convexity: Area / convex hull area (1=simple, <1=L-shapes/courtyards)
         - compactness: Circular compactness (1=circle, lower=elongated/complex)
         - elongation: Ratio of longest to shortest axis (1=square, higher=elongated)
+        - longest_axis_length: Length of longest axis (m)
+        - fractal_dimension: Perimeter complexity (1=simple, 2=space-filling)
+        - rectangularity: Area / oriented envelope area (1=perfect rectangle)
+        - square_compactness: Compactness relative to square
+        - equivalent_rectangular_index: Closeness to perfect rectangle
+        - shape_index: Complexity index (1=circle, higher=complex perimeter)
+        - squareness: Mean deviation from 90° corners (0=all right angles)
+        - courtyard_area: Internal courtyard area (m²)
+        - courtyard_index: Courtyard area / total area
+        - facade_ratio: Area / perimeter
 
     Adjacency (via momepy):
         - shared_wall_length_m: Total length of walls shared with other buildings
         - shared_wall_ratio: shared_wall_length / perimeter
           (0 = detached, ~0.5 = terraced)
+
+    Spatial context (via momepy + libpysal):
+        - neighbor_distance: Distance to nearest neighbor (m)
+        - neighbors: Count of adjacent buildings (within tolerance)
+        - mean_interbuilding_distance: Mean distance to neighbors (m)
+        - building_adjacency: Ratio of adjacent to nearby buildings
+        - perimeter_wall: Length of perimeter touching other buildings (m)
 
     Thermal envelope (from geometry + LiDAR height + shared walls):
         - volume_m3: footprint_area × height
@@ -36,11 +53,14 @@ Metrics computed:
         - form_factor: envelope_area / volume^(2/3) (dimensionless)
 """
 
+import warnings
 
 import geopandas as gpd
 import momepy
 import numpy as np
 import pandas as pd
+import shapely
+from libpysal.graph import Graph
 from tqdm import tqdm
 
 # Configuration
@@ -92,43 +112,169 @@ def compute_shape_metrics(buildings: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         - convexity: Area / convex hull area (envelope complexity)
         - compactness: Circular compactness (shape efficiency)
         - elongation: Longest / shortest axis ratio
+        - longest_axis_length: Length of longest axis (m)
+        - fractal_dimension: Perimeter complexity (1-2)
+        - rectangularity: Area / oriented envelope area (0-1)
+        - square_compactness: Compactness relative to square
+        - equivalent_rectangular_index: Closeness to perfect rectangle
+        - shape_index: Complexity index (1=circle, higher=complex)
+        - squareness: Mean deviation from 90° corners
+        - courtyard_area: Internal courtyard area (m²)
+        - courtyard_index: Courtyard area / total area
+        - facade_ratio: Area / perimeter
     """
     buildings = buildings.copy()
 
+    shape_cols = [
+        "orientation",
+        "convexity",
+        "compactness",
+        "elongation",
+        "longest_axis_length",
+        "fractal_dimension",
+        "rectangularity",
+        "square_compactness",
+        "equivalent_rectangular_index",
+        "shape_index",
+        "squareness",
+        "courtyard_area",
+        "courtyard_index",
+        "facade_ratio",
+    ]
+
     if len(buildings) == 0:
-        buildings["orientation"] = []
-        buildings["convexity"] = []
-        buildings["compactness"] = []
-        buildings["elongation"] = []
+        for col in shape_cols:
+            buildings[col] = []
         return buildings
 
-    # Orientation: deviation from N-S/E-W (0 = aligned, 45 = diagonal)
-    try:
-        buildings["orientation"] = momepy.orientation(buildings).values
-    except Exception as e:
-        tqdm.write(f"      Warning: momepy.orientation failed: {e}")
-        buildings["orientation"] = np.nan
+    # Suppress harmless RuntimeWarnings from shapely/momepy internals:
+    # - oriented_envelope: near-degenerate geometries that pass the area filter
+    # - arccos: squareness corner angles with cosine slightly outside [-1, 1]
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message=".*oriented_envelope.*",
+            category=RuntimeWarning,
+        )
+        warnings.filterwarnings(
+            "ignore",
+            message=".*arccos.*",
+            category=RuntimeWarning,
+        )
 
-    # Convexity: area / convex hull area (1 = convex, <1 = indented/complex)
-    try:
-        buildings["convexity"] = momepy.convexity(buildings).values
-    except Exception as e:
-        tqdm.write(f"      Warning: momepy.convexity failed: {e}")
-        buildings["convexity"] = np.nan
+        # --- Existing shape metrics ---
 
-    # Circular compactness: comparison to circle (1 = circle, <1 = less compact)
-    try:
-        buildings["compactness"] = momepy.circular_compactness(buildings).values
-    except Exception as e:
-        tqdm.write(f"      Warning: momepy.circular_compactness failed: {e}")
-        buildings["compactness"] = np.nan
+        # Orientation: deviation from N-S/E-W (0 = aligned, 45 = diagonal)
+        try:
+            buildings["orientation"] = momepy.orientation(buildings).values
+        except Exception as e:
+            tqdm.write(f"      Warning: momepy.orientation failed: {e}")
+            buildings["orientation"] = np.nan
 
-    # Elongation: longest axis / shortest axis (1 = square, >1 = elongated)
-    try:
-        buildings["elongation"] = momepy.elongation(buildings).values
-    except Exception as e:
-        tqdm.write(f"      Warning: momepy.elongation failed: {e}")
-        buildings["elongation"] = np.nan
+        # Convexity: area / convex hull area (1 = convex, <1 = indented/complex)
+        try:
+            buildings["convexity"] = momepy.convexity(buildings).values
+        except Exception as e:
+            tqdm.write(f"      Warning: momepy.convexity failed: {e}")
+            buildings["convexity"] = np.nan
+
+        # Circular compactness: comparison to circle (1 = circle, <1 = less compact)
+        try:
+            buildings["compactness"] = momepy.circular_compactness(buildings).values
+        except Exception as e:
+            tqdm.write(f"      Warning: momepy.circular_compactness failed: {e}")
+            buildings["compactness"] = np.nan
+
+        # Elongation: longest axis / shortest axis (1 = square, >1 = elongated)
+        try:
+            buildings["elongation"] = momepy.elongation(buildings).values
+        except Exception as e:
+            tqdm.write(f"      Warning: momepy.elongation failed: {e}")
+            buildings["elongation"] = np.nan
+
+        # --- New shape metrics ---
+
+        # Longest axis length (m) — absolute size of longest dimension
+        try:
+            buildings["longest_axis_length"] = momepy.longest_axis_length(
+                buildings
+            ).values
+        except Exception as e:
+            tqdm.write(f"      Warning: momepy.longest_axis_length failed: {e}")
+            buildings["longest_axis_length"] = np.nan
+
+        # Fractal dimension: perimeter complexity (1 = simple, 2 = space-filling)
+        try:
+            buildings["fractal_dimension"] = momepy.fractal_dimension(buildings).values
+        except Exception as e:
+            tqdm.write(f"      Warning: momepy.fractal_dimension failed: {e}")
+            buildings["fractal_dimension"] = np.nan
+
+        # Rectangularity: area / oriented envelope area (1 = perfect rectangle)
+        try:
+            buildings["rectangularity"] = momepy.rectangularity(buildings).values
+        except Exception as e:
+            tqdm.write(f"      Warning: momepy.rectangularity failed: {e}")
+            buildings["rectangularity"] = np.nan
+
+        # Square compactness: compactness relative to a square
+        try:
+            buildings["square_compactness"] = momepy.square_compactness(
+                buildings
+            ).values
+        except Exception as e:
+            tqdm.write(f"      Warning: momepy.square_compactness failed: {e}")
+            buildings["square_compactness"] = np.nan
+
+        # Equivalent rectangular index: closeness to a perfect rectangle
+        try:
+            buildings["equivalent_rectangular_index"] = (
+                momepy.equivalent_rectangular_index(buildings).values
+            )
+        except Exception as e:
+            tqdm.write(
+                f"      Warning: momepy.equivalent_rectangular_index failed: {e}"
+            )
+            buildings["equivalent_rectangular_index"] = np.nan
+
+        # Shape index: complexity (1 = circle, higher = more complex perimeter)
+        try:
+            buildings["shape_index"] = momepy.shape_index(buildings).values
+        except Exception as e:
+            tqdm.write(f"      Warning: momepy.shape_index failed: {e}")
+            buildings["shape_index"] = np.nan
+
+        # Squareness: mean deviation of corners from 90° (0 = all right angles)
+        try:
+            buildings["squareness"] = momepy.squareness(buildings).values
+        except Exception as e:
+            tqdm.write(f"      Warning: momepy.squareness failed: {e}")
+            buildings["squareness"] = np.nan
+
+        # Courtyard area: internal courtyard area in m² (0 = no courtyard)
+        try:
+            cy_area = momepy.courtyard_area(buildings)
+            buildings["courtyard_area"] = cy_area.values
+        except Exception as e:
+            tqdm.write(f"      Warning: momepy.courtyard_area failed: {e}")
+            buildings["courtyard_area"] = 0.0
+            cy_area = None
+
+        # Courtyard index: courtyard area / total area (0 = solid, >0 = has courtyard)
+        try:
+            buildings["courtyard_index"] = momepy.courtyard_index(
+                buildings, courtyard_area=cy_area
+            ).values
+        except Exception as e:
+            tqdm.write(f"      Warning: momepy.courtyard_index failed: {e}")
+            buildings["courtyard_index"] = 0.0
+
+        # Facade ratio: area / perimeter (inverse of perimeter complexity)
+        try:
+            buildings["facade_ratio"] = momepy.facade_ratio(buildings).values
+        except Exception as e:
+            tqdm.write(f"      Warning: momepy.facade_ratio failed: {e}")
+            buildings["facade_ratio"] = np.nan
 
     return buildings
 
@@ -188,6 +334,126 @@ def compute_shared_walls(
 
     # Clamp ratio to [0, 1]
     buildings["shared_wall_ratio"] = buildings["shared_wall_ratio"].clip(0, 1)
+
+    return buildings
+
+
+def compute_spatial_context(
+    buildings: gpd.GeoDataFrame, tolerance: float = 1.5
+) -> gpd.GeoDataFrame:
+    """
+    Compute spatial context metrics using momepy + libpysal Graph.
+
+    Captures how buildings relate to their neighbours: isolation (sprawl)
+    vs clustering (compact). Uses a fuzzy contiguity graph with an absolute
+    buffer (metres) for adjacency — bridging OS Open Map Local cartographic
+    gaps — and k-nearest-neighbours for the wider neighbourhood context.
+
+    Parameters
+    ----------
+    buildings : gpd.GeoDataFrame
+        Buildings with geometry and contiguous integer index.
+    tolerance : float
+        Buffer distance in metres for adjacency graph. Default 1.5m
+        bridges OS cartographic gaps (~0.5–1m between adjacent buildings).
+
+    Returns
+    -------
+    gpd.GeoDataFrame
+        Buildings with spatial context metrics added:
+        - neighbor_distance: Distance to nearest neighbor (m)
+        - neighbors: Count of adjacent buildings (within tolerance)
+        - mean_interbuilding_distance: Mean distance to neighbors (m)
+        - building_adjacency: Ratio of adjacent to nearby buildings
+        - perimeter_wall: Length of perimeter touching other buildings (m)
+    """
+    buildings = buildings.copy()
+
+    spatial_cols = [
+        "neighbor_distance",
+        "neighbors",
+        "mean_interbuilding_distance",
+        "building_adjacency",
+        "perimeter_wall",
+    ]
+
+    if len(buildings) < 2:
+        for col in spatial_cols:
+            buildings[col] = 0.0 if len(buildings) > 0 else []
+        return buildings
+
+    # Build adjacency graph (fuzzy contiguity with buffer in metres)
+    # Uses buffer= (absolute distance) not tolerance= (percentage of bbox),
+    # bridging OS Open Map Local cartographic gaps between adjacent buildings.
+    try:
+        adjacency_graph = Graph.build_fuzzy_contiguity(buildings, buffer=tolerance)
+    except Exception as e:
+        tqdm.write(f"      Warning: adjacency graph failed: {e}")
+        for col in spatial_cols:
+            buildings[col] = np.nan
+        return buildings
+
+    # Build neighbourhood graph (k=5 nearest neighbours, from centroids)
+    try:
+        centroids = buildings.copy()
+        centroids["geometry"] = buildings.geometry.centroid
+        neighborhood_graph = Graph.build_knn(centroids, k=min(5, len(buildings) - 1))
+    except Exception as e:
+        tqdm.write(f"      Warning: knn graph failed: {e}")
+        for col in spatial_cols:
+            buildings[col] = np.nan
+        return buildings
+
+    # Neighbor distance: distance to nearest neighbour (m)
+    try:
+        buildings["neighbor_distance"] = momepy.neighbor_distance(
+            buildings, neighborhood_graph
+        ).values
+    except Exception as e:
+        tqdm.write(f"      Warning: momepy.neighbor_distance failed: {e}")
+        buildings["neighbor_distance"] = np.nan
+
+    # Neighbors: count of adjacent buildings (within tolerance buffer)
+    try:
+        buildings["neighbors"] = momepy.neighbors(buildings, adjacency_graph).values
+    except Exception as e:
+        tqdm.write(f"      Warning: momepy.neighbors failed: {e}")
+        buildings["neighbors"] = 0
+
+    # Mean interbuilding distance: average distance to neighbourhood (m)
+    # Suppress scalar divide warning for isolated buildings (0 adjacency neighbours)
+    try:
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message=".*scalar divide.*",
+                category=RuntimeWarning,
+            )
+            buildings["mean_interbuilding_distance"] = (
+                momepy.mean_interbuilding_distance(
+                    buildings, adjacency_graph, neighborhood_graph
+                ).values
+            )
+    except Exception as e:
+        tqdm.write(f"      Warning: momepy.mean_interbuilding_distance failed: {e}")
+        buildings["mean_interbuilding_distance"] = np.nan
+
+    # Building adjacency: ratio of adjacent to nearby buildings (0-1)
+    try:
+        buildings["building_adjacency"] = momepy.building_adjacency(
+            adjacency_graph, neighborhood_graph
+        ).values
+    except Exception as e:
+        tqdm.write(f"      Warning: momepy.building_adjacency failed: {e}")
+        buildings["building_adjacency"] = np.nan
+
+    # Perimeter wall: length of perimeter touching/near other buildings (m)
+    # Let momepy infer contiguity internally — avoids graph-type mismatch
+    try:
+        buildings["perimeter_wall"] = momepy.perimeter_wall(buildings).values
+    except Exception as e:
+        tqdm.write(f"      Warning: momepy.perimeter_wall failed: {e}")
+        buildings["perimeter_wall"] = np.nan
 
     return buildings
 
@@ -325,6 +591,37 @@ def process_boundary(
             tqdm.write(f"    {bua_name}: no buildings inside boundary")
         return gpd.GeoDataFrame()
 
+    # Drop sub-building artefacts (post boxes, phone boxes, etc.)
+    MIN_BUILDING_AREA_M2 = 10.0
+    n_before = len(buildings)
+    buildings = buildings[buildings.geometry.area >= MIN_BUILDING_AREA_M2].copy()
+    n_dropped = n_before - len(buildings)
+    if n_dropped > 0 and verbose:
+        tqdm.write(
+            f"    {bua_name}: dropped {n_dropped} "
+            f"sub-{MIN_BUILDING_AREA_M2}m² artefacts"
+        )
+
+    if len(buildings) == 0:
+        if verbose:
+            tqdm.write(f"    {bua_name}: no buildings after filtering")
+        return gpd.GeoDataFrame()
+
+    # Validate CRS is projected (metric distances/areas)
+    if buildings.crs and buildings.crs.is_geographic:
+        msg = f"Buildings CRS must be projected, got {buildings.crs}"
+        raise ValueError(msg)
+
+    # Fix invalid geometries
+    invalid = ~buildings.geometry.is_valid
+    if invalid.any():
+        n_invalid = invalid.sum()
+        buildings.loc[invalid, "geometry"] = shapely.make_valid(
+            buildings.loc[invalid].geometry.values
+        )
+        if verbose:
+            tqdm.write(f"    {bua_name}: fixed {n_invalid} invalid geometries")
+
     if verbose:
         tqdm.write(f"    {bua_name}: processing {len(buildings):,} buildings...")
 
@@ -335,6 +632,7 @@ def process_boundary(
     buildings = compute_geometry_metrics(buildings)
     buildings = compute_shape_metrics(buildings)
     buildings = compute_shared_walls(buildings)
+    buildings = compute_spatial_context(buildings)
 
     # Compute thermal envelope metrics (requires height + shared walls)
     height_col = None
@@ -362,7 +660,16 @@ def process_boundary(
 
 
 def main() -> None:
-    """Main processing pipeline."""
+    """
+    Main processing pipeline.
+
+    Usage:
+        uv run python processing/process_morphology.py              # all BUAs
+        uv run python processing/process_morphology.py E63011231    # one BUA
+        uv run python processing/process_morphology.py E63011231 E63007907 E63012524
+    """
+    import sys
+
     print("=" * 60)
     print("Building Morphology Processing")
     print("=" * 60)
@@ -373,14 +680,12 @@ def main() -> None:
     # Check for input data
     if not BUILDINGS_PATH.exists():
         raise FileNotFoundError(
-            f"Building heights not found: {BUILDINGS_PATH}\n"
-            "Run process_lidar.py first."
+            f"Building heights not found: {BUILDINGS_PATH}\nRun process_lidar.py first."
         )
 
     if not BOUNDARIES_PATH.exists():
         raise FileNotFoundError(
-            f"Boundaries not found: {BOUNDARIES_PATH}\n"
-            "Run process_boundaries.py first."
+            f"Boundaries not found: {BOUNDARIES_PATH}\nRun process_boundaries.py first."
         )
 
     # Load data
@@ -394,6 +699,18 @@ def main() -> None:
 
     print(f"  Loading boundaries from {BOUNDARIES_PATH}...")
     boundaries = gpd.read_file(BOUNDARIES_PATH)
+
+    # Filter to requested BUA codes if provided
+    args = sys.argv[1:]
+    if args:
+        boundaries = boundaries[boundaries["BUA22CD"].isin(args)].copy()
+        missing = set(args) - set(boundaries["BUA22CD"])
+        if missing:
+            print(f"  WARNING: BUA codes not found: {missing}")
+        if len(boundaries) == 0:
+            print("  No matching boundaries found.")
+            return
+        print(f"  Filtered to {len(boundaries)} requested BUA(s)")
 
     # Sort by area (largest first) - same order as LiDAR processing
     boundaries["_area"] = boundaries.geometry.area
@@ -441,14 +758,34 @@ def main() -> None:
                     columns=[
                         "id",
                         "geometry",
+                        # Geometry
                         "footprint_area_m2",
                         "perimeter_m",
+                        # Shape
                         "orientation",
                         "convexity",
                         "compactness",
                         "elongation",
+                        "longest_axis_length",
+                        "fractal_dimension",
+                        "rectangularity",
+                        "square_compactness",
+                        "equivalent_rectangular_index",
+                        "shape_index",
+                        "squareness",
+                        "courtyard_area",
+                        "courtyard_index",
+                        "facade_ratio",
+                        # Adjacency
                         "shared_wall_length_m",
                         "shared_wall_ratio",
+                        # Spatial context
+                        "neighbor_distance",
+                        "neighbors",
+                        "mean_interbuilding_distance",
+                        "building_adjacency",
+                        "perimeter_wall",
+                        # Thermal envelope
                         "volume_m3",
                         "external_wall_area_m2",
                         "envelope_area_m2",
@@ -541,15 +878,14 @@ def main() -> None:
     # Distribution of shared wall ratio
     detached = (combined["shared_wall_ratio"] == 0).sum()
     semi = (
-        (combined["shared_wall_ratio"] > 0)
-        & (combined["shared_wall_ratio"] < 0.3)
+        (combined["shared_wall_ratio"] > 0) & (combined["shared_wall_ratio"] < 0.3)
     ).sum()
     terraced = (combined["shared_wall_ratio"] >= 0.3).sum()
 
     n = len(combined)
-    print(f"\n  Approx. detached (ratio=0): {detached:,} ({100*detached/n:.1f}%)")
-    print(f"  Approx. semi (0<ratio<0.3): {semi:,} ({100*semi/n:.1f}%)")
-    print(f"  Approx. terraced (ratio≥0.3): {terraced:,} ({100*terraced/n:.1f}%)")
+    print(f"\n  Approx. detached (ratio=0): {detached:,} ({100 * detached / n:.1f}%)")
+    print(f"  Approx. semi (0<ratio<0.3): {semi:,} ({100 * semi / n:.1f}%)")
+    print(f"  Approx. terraced (ratio≥0.3): {terraced:,} ({100 * terraced / n:.1f}%)")
 
     if "surface_to_volume" in combined.columns:
         valid_stv = combined["surface_to_volume"].notna().sum()

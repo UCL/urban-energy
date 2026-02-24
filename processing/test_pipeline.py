@@ -1,32 +1,51 @@
 """
-Test pipeline for validating the full processing workflow on small boundaries.
+Processing pipeline for urban energy analysis.
 
-Runs all three processing stages on 1-2 small Built-Up Areas to validate
-the pipeline before running at scale.
+Runs all three processing stages on Built-Up Area boundaries:
+  Stage 1: Building morphology (from cached LiDAR + momepy metrics)
+  Stage 2: Network analysis (cityseer centrality + accessibility)
+  Stage 3: UPRN integration (joins morphology, census, EPC, network)
+
+Each city is processed independently (separate network, separate output),
+then combined into a single dataset with a city identifier column.
 
 Usage:
-    uv run python processing/test_pipeline.py
-
-Test boundaries:
-    - E63009036 (Keele): 399 buildings, 8 FSA, 20 transport stops
-    - E63007158 (Woolsington): 265 buildings, 11 FSA, 19 transport stops
+    uv run python processing/test_pipeline.py                  # all cities
+    uv run python processing/test_pipeline.py manchester       # one city
+    uv run python processing/test_pipeline.py york cambridge   # subset
 """
 
+import gc
+import sys
+import warnings
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 from scipy.spatial import cKDTree
+
+warnings.filterwarnings("ignore", message="DataFrame is highly fragmented")
 
 # Configuration
 from urban_energy.paths import TEMP_DIR
 
-TEST_OUTPUT_DIR = TEMP_DIR / "processing" / "test"
+OUTPUT_DIR = TEMP_DIR / "processing"
 
-# Test boundaries - small BUAs with good data coverage
-TEST_BOUNDARIES = [
-    "E63008401",  # Manchester
-]
+# Study cities: BUA22CD -> short name
+# Each city is processed independently through all 3 stages.
+CITIES: dict[str, str] = {
+    # Large cities
+    "E63008401": "manchester",
+    "E63012168": "bristol",
+    "E63010901": "milton_keynes",
+    "E63007706": "york",
+    "E63010556": "cambridge",
+    # Smaller towns (typological contrast)
+    "E63011231": "stevenage",  # new town (sprawl control)
+    "E63007907": "burnley",  # northern mill town (dense terraced)
+    "E63012524": "canterbury",  # historic compact city
+}
 
 # Input paths
 PATHS = {
@@ -67,17 +86,20 @@ def check_inputs() -> dict[str, bool]:
     return status
 
 
-def load_test_boundaries() -> gpd.GeoDataFrame:
-    """Load the test boundary geometries."""
+def load_boundary(bua_code: str) -> gpd.GeoDataFrame:
+    """Load a single BUA boundary geometry."""
     boundaries = gpd.read_file(PATHS["boundaries"])
-    test_bounds = boundaries[boundaries["BUA22CD"].isin(TEST_BOUNDARIES)].copy()
+    boundary = boundaries[boundaries["BUA22CD"] == bua_code].copy()
 
-    print(f"\nTest boundaries loaded: {len(test_bounds)}")
-    for _, row in test_bounds.iterrows():
-        area_km2 = row.geometry.area / 1e6
-        print(f"  - {row['BUA22CD']} ({row['BUA22NM']}): {area_km2:.2f} km²")
+    if len(boundary) == 0:
+        msg = f"BUA code {bua_code} not found in boundaries"
+        raise ValueError(msg)
 
-    return test_bounds
+    row = boundary.iloc[0]
+    area_km2 = row.geometry.area / 1e6
+    print(f"  Boundary: {row['BUA22CD']} ({row['BUA22NM']}): {area_km2:.2f} km²")
+
+    return boundary
 
 
 def run_stage1_morphology(boundaries: gpd.GeoDataFrame) -> gpd.GeoDataFrame | None:
@@ -213,182 +235,166 @@ def run_stage2_network(
 
     # Load network from OS Open Roads
     print("\n  Loading network from OS Open Roads...")
-    try:
-        bbox = buffered_bounds.bounds
-        nx_graph = io.nx_from_open_roads(
-            PATHS["roads"],
-            target_bbox=(bbox[0], bbox[1], bbox[2], bbox[3]),
-        )
-        print(
-            f"    Network: {nx_graph.number_of_nodes()} nodes, "
-            f"{nx_graph.number_of_edges()} edges"
-        )
-    except Exception as e:
-        print(f"    ERROR loading network: {e}")
-        return None
+    bbox = buffered_bounds.bounds
+    nx_graph = io.nx_from_open_roads(
+        PATHS["roads"],
+        target_bbox=(bbox[0], bbox[1], bbox[2], bbox[3]),
+    )
+    print(
+        f"    Network: {nx_graph.number_of_nodes()} nodes, "
+        f"{nx_graph.number_of_edges()} edges"
+    )
 
     # Prepare network for analysis
     print("  Preparing network...")
-    try:
-        nx_graph = graphs.nx_remove_filler_nodes(nx_graph)
-        nx_graph = graphs.nx_remove_dangling_nodes(nx_graph)
-        print(
-            f"    After cleanup: {nx_graph.number_of_nodes()} nodes, "
-            f"{nx_graph.number_of_edges()} edges"
-        )
+    nx_graph = graphs.nx_remove_filler_nodes(nx_graph)
+    nx_graph = graphs.nx_remove_dangling_nodes(nx_graph)
+    print(
+        f"    After cleanup: {nx_graph.number_of_nodes()} nodes, "
+        f"{nx_graph.number_of_edges()} edges"
+    )
 
-        # Convert to cityseer network structure
-        nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(
-            nx_graph
-        )
-        print(f"    Network structure built: {len(nodes_gdf)} nodes")
-    except Exception as e:
-        print(f"    ERROR preparing network: {e}")
-        return None
+    # Convert to cityseer network structure
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(
+        nx_graph
+    )
+    print(f"    Network structure built: {len(nodes_gdf)} nodes")
 
     # Compute centrality
     print(f"\n  Computing centrality (distances={CENTRALITY_DISTANCES})...")
-    try:
-        nodes_gdf = networks.node_centrality_shortest_adaptive(
-            network_structure,
-            nodes_gdf,
-            distances=CENTRALITY_DISTANCES,
-            compute_closeness=True,
-            compute_betweenness=True,
-        )
-        centrality_cols = [
-            c for c in nodes_gdf.columns if "beta" in c or "harmonic" in c
-        ]
-        print(f"    Centrality columns: {len(centrality_cols)}")
-    except Exception as e:
-        print(f"    ERROR computing centrality: {e}")
+    nodes_gdf = networks.node_centrality_shortest_adaptive(
+        network_structure,
+        nodes_gdf,
+        distances=CENTRALITY_DISTANCES,
+        compute_closeness=True,
+        compute_betweenness=True,
+    )
+    centrality_cols = [
+        c for c in nodes_gdf.columns if "beta" in c or "harmonic" in c
+    ]
+    print(f"    Centrality columns: {len(centrality_cols)}")
 
     # Compute building statistics over the network at accessibility distances
     STATS_DISTANCES = ACCESSIBILITY_DISTANCES
     ASSUMED_STOREY_HEIGHT_M = 3.0
     if buildings is not None and len(buildings) > 0:
         print(f"\n  Computing building stats (distances={STATS_DISTANCES})...")
-        try:
-            # Use building centroids for network assignment
-            buildings_pts = buildings.copy()
-            buildings_pts["geometry"] = buildings_pts.geometry.centroid
-            buildings_in_buffer = buildings_pts[
-                buildings_pts.intersects(buffered_bounds)
-            ].copy()
-            print(f"    Buildings in buffer: {len(buildings_in_buffer)}")
+        # Use building centroids for network assignment
+        buildings_pts = buildings.copy()
+        buildings_pts["geometry"] = buildings_pts.geometry.centroid
+        buildings_in_buffer = buildings_pts[
+            buildings_pts.intersects(buffered_bounds)
+        ].copy()
+        print(f"    Buildings in buffer: {len(buildings_in_buffer)}")
 
-            # Find all height columns
-            height_cols = [
-                c for c in buildings_in_buffer.columns if c.startswith("height_")
+        # Find all height columns
+        height_cols = [
+            c for c in buildings_in_buffer.columns if c.startswith("height_")
+        ]
+
+        # Convert all numeric columns (may be Arrow-backed strings)
+        numeric_cols = ["footprint_area_m2", "shared_wall_ratio"] + height_cols
+        for col in numeric_cols:
+            if col in buildings_in_buffer.columns:
+                buildings_in_buffer[col] = pd.to_numeric(
+                    buildings_in_buffer[col], errors="coerce"
+                )
+
+        # Ensure volume is present (from process_morphology.py or compute here)
+        if (
+            "volume_m3" not in buildings_in_buffer.columns
+            and "footprint_area_m2" in buildings_in_buffer.columns
+            and "height_median" in buildings_in_buffer.columns
+        ):
+            buildings_in_buffer["volume_m3"] = (
+                buildings_in_buffer["footprint_area_m2"]
+                * buildings_in_buffer["height_median"]
+            )
+
+        # --- Building type classification from shared_wall_ratio ---
+        if "shared_wall_ratio" in buildings_in_buffer.columns:
+            swr = buildings_in_buffer["shared_wall_ratio"]
+            buildings_in_buffer["is_detached"] = (swr == 0).astype(float)
+            buildings_in_buffer["is_semi"] = (
+                (swr > 0) & (swr < 0.3)
+            ).astype(float)
+            buildings_in_buffer["is_terraced"] = (swr >= 0.3).astype(float)
+            n_det = int(buildings_in_buffer["is_detached"].sum())
+            n_semi = int(buildings_in_buffer["is_semi"].sum())
+            n_ter = int(buildings_in_buffer["is_terraced"].sum())
+            print(
+                f"    Building types (morphology): "
+                f"detached={n_det:,}, semi={n_semi:,}, terraced={n_ter:,}"
+            )
+
+        # --- Estimated gross floor area for FAR ---
+        if (
+            "footprint_area_m2" in buildings_in_buffer.columns
+            and "height_median" in buildings_in_buffer.columns
+        ):
+            height_m = pd.to_numeric(
+                buildings_in_buffer["height_median"], errors="coerce"
+            )
+            buildings_in_buffer["estimated_floors"] = np.clip(
+                np.floor(height_m / ASSUMED_STOREY_HEIGHT_M), 1, None
+            )
+            buildings_in_buffer["gross_floor_area_m2"] = (
+                buildings_in_buffer["footprint_area_m2"]
+                * buildings_in_buffer["estimated_floors"]
+            )
+            mean_floors = buildings_in_buffer["estimated_floors"].mean()
+            print(f"    Estimated floors: mean={mean_floors:.1f}")
+
+        # Select numeric columns to aggregate
+        stats_columns = []
+        if "footprint_area_m2" in buildings_in_buffer.columns:
+            stats_columns.append("footprint_area_m2")
+        if "volume_m3" in buildings_in_buffer.columns:
+            stats_columns.append("volume_m3")
+        if "gross_floor_area_m2" in buildings_in_buffer.columns:
+            stats_columns.append("gross_floor_area_m2")
+        # Building type indicators (mean within catchment = proportion)
+        for type_col in ["is_detached", "is_semi", "is_terraced"]:
+            if type_col in buildings_in_buffer.columns:
+                stats_columns.append(type_col)
+        stats_columns.extend(height_cols)
+
+        if stats_columns:
+            print(f"    Aggregating columns: {stats_columns}")
+            nodes_gdf, _data_gdf = layers.compute_stats(
+                buildings_in_buffer,
+                stats_column_labels=stats_columns,
+                nodes_gdf=nodes_gdf,
+                network_structure=network_structure,
+                distances=STATS_DISTANCES,
+            )
+            stats_result_cols = [
+                c
+                for c in nodes_gdf.columns
+                if any(sc in c for sc in stats_columns)
             ]
+            print(f"    ✓ Building stats: {len(stats_result_cols)} columns")
+        else:
+            print("    No numeric columns found for aggregation")
 
-            # Convert all numeric columns (may be Arrow-backed strings)
-            numeric_cols = ["footprint_area_m2", "shared_wall_ratio"] + height_cols
-            for col in numeric_cols:
-                if col in buildings_in_buffer.columns:
-                    buildings_in_buffer[col] = pd.to_numeric(
-                        buildings_in_buffer[col], errors="coerce"
-                    )
-
-            # Ensure volume is present (from process_morphology.py or compute here)
-            if (
-                "volume_m3" not in buildings_in_buffer.columns
-                and "footprint_area_m2" in buildings_in_buffer.columns
-                and "height_median" in buildings_in_buffer.columns
-            ):
-                buildings_in_buffer["volume_m3"] = (
-                    buildings_in_buffer["footprint_area_m2"]
-                    * buildings_in_buffer["height_median"]
+        # --- Derive FAR and BCR from aggregated stats ---
+        print("\n  Deriving FAR and BCR from catchment stats...")
+        for dist in STATS_DISTANCES:
+            catchment_area = np.pi * dist**2
+            gfa_col = f"cc_gross_floor_area_m2_{dist}_sum"
+            if gfa_col in nodes_gdf.columns:
+                nodes_gdf[f"far_{dist}"] = (
+                    nodes_gdf[gfa_col] / catchment_area
                 )
-
-            # --- 9.8: Building type classification from shared_wall_ratio ---
-            # Classify all OS buildings by morphology (independent of EPC coverage)
-            if "shared_wall_ratio" in buildings_in_buffer.columns:
-                swr = buildings_in_buffer["shared_wall_ratio"]
-                buildings_in_buffer["is_detached"] = (swr == 0).astype(float)
-                buildings_in_buffer["is_semi"] = (
-                    (swr > 0) & (swr < 0.3)
-                ).astype(float)
-                buildings_in_buffer["is_terraced"] = (swr >= 0.3).astype(float)
-                n_det = int(buildings_in_buffer["is_detached"].sum())
-                n_semi = int(buildings_in_buffer["is_semi"].sum())
-                n_ter = int(buildings_in_buffer["is_terraced"].sum())
-                print(
-                    f"    Building types (morphology): "
-                    f"detached={n_det:,}, semi={n_semi:,}, terraced={n_ter:,}"
+                mean_far = nodes_gdf[f"far_{dist}"].mean()
+                print(f"    ✓ far_{dist}: mean={mean_far:.3f}")
+            fp_col = f"cc_footprint_area_m2_{dist}_sum"
+            if fp_col in nodes_gdf.columns:
+                nodes_gdf[f"bcr_{dist}"] = (
+                    nodes_gdf[fp_col] / catchment_area
                 )
-
-            # --- 9.16: Estimated gross floor area for FAR ---
-            if (
-                "footprint_area_m2" in buildings_in_buffer.columns
-                and "height_median" in buildings_in_buffer.columns
-            ):
-                height_m = pd.to_numeric(
-                    buildings_in_buffer["height_median"], errors="coerce"
-                )
-                buildings_in_buffer["estimated_floors"] = np.clip(
-                    np.floor(height_m / ASSUMED_STOREY_HEIGHT_M), 1, None
-                )
-                buildings_in_buffer["gross_floor_area_m2"] = (
-                    buildings_in_buffer["footprint_area_m2"]
-                    * buildings_in_buffer["estimated_floors"]
-                )
-                mean_floors = buildings_in_buffer["estimated_floors"].mean()
-                print(f"    Estimated floors: mean={mean_floors:.1f}")
-
-            # Select numeric columns to aggregate
-            stats_columns = []
-            if "footprint_area_m2" in buildings_in_buffer.columns:
-                stats_columns.append("footprint_area_m2")
-            if "volume_m3" in buildings_in_buffer.columns:
-                stats_columns.append("volume_m3")
-            if "gross_floor_area_m2" in buildings_in_buffer.columns:
-                stats_columns.append("gross_floor_area_m2")
-            # Building type indicators (mean within catchment = proportion)
-            for type_col in ["is_detached", "is_semi", "is_terraced"]:
-                if type_col in buildings_in_buffer.columns:
-                    stats_columns.append(type_col)
-            stats_columns.extend(height_cols)
-
-            if stats_columns:
-                print(f"    Aggregating columns: {stats_columns}")
-                nodes_gdf, _data_gdf = layers.compute_stats(
-                    buildings_in_buffer,
-                    stats_column_labels=stats_columns,
-                    nodes_gdf=nodes_gdf,
-                    network_structure=network_structure,
-                    distances=STATS_DISTANCES,
-                )
-                stats_result_cols = [
-                    c for c in nodes_gdf.columns if any(sc in c for sc in stats_columns)
-                ]
-                print(f"    ✓ Building stats: {len(stats_result_cols)} columns")
-            else:
-                print("    No numeric columns found for aggregation")
-
-            # --- 9.16 + 9.17: Derive FAR and BCR from aggregated stats ---
-            # Use π×d² as catchment area approximation
-            print("\n  Deriving FAR and BCR from catchment stats...")
-            for dist in STATS_DISTANCES:
-                catchment_area = np.pi * dist**2
-                # FAR = sum(gross_floor_area) / catchment_area
-                gfa_col = f"cc_gross_floor_area_m2_{dist}_sum"
-                if gfa_col in nodes_gdf.columns:
-                    nodes_gdf[f"far_{dist}"] = nodes_gdf[gfa_col] / catchment_area
-                    mean_far = nodes_gdf[f"far_{dist}"].mean()
-                    print(f"    ✓ far_{dist}: mean={mean_far:.3f}")
-                # BCR = sum(footprint_area) / catchment_area
-                fp_col = f"cc_footprint_area_m2_{dist}_sum"
-                if fp_col in nodes_gdf.columns:
-                    nodes_gdf[f"bcr_{dist}"] = nodes_gdf[fp_col] / catchment_area
-                    mean_bcr = nodes_gdf[f"bcr_{dist}"].mean()
-                    print(f"    ✓ bcr_{dist}: mean={mean_bcr:.3f}")
-
-        except Exception as e:
-            print(f"    ERROR computing building stats: {e}")
-            import traceback
-
-            traceback.print_exc()
+                mean_bcr = nodes_gdf[f"bcr_{dist}"].mean()
+                print(f"    ✓ bcr_{dist}: mean={mean_bcr:.3f}")
     else:
         print("\n  Skipping building statistics (no buildings provided)")
 
@@ -396,7 +402,7 @@ def run_stage2_network(
     print("\n  Loading land use data...")
 
     # FSA establishments - categorize by business type
-    fsa = gpd.read_file(PATHS["fsa"])
+    fsa = gpd.read_file(PATHS["fsa"], bbox=buffered_bounds.bounds)
     fsa = fsa.to_crs(boundaries.crs)
     fsa_in_buffer = fsa[fsa.intersects(buffered_bounds)].copy()
     # Map business types to analysis categories
@@ -425,7 +431,7 @@ def run_stage2_network(
     print(f"    Greenspace: {len(greenspace)} sites")
 
     # Transport
-    transport = gpd.read_file(PATHS["transport"])
+    transport = gpd.read_file(PATHS["transport"], bbox=buffered_bounds.bounds)
     transport = transport.to_crs(boundaries.crs)
     transport_in_buffer = transport[transport.intersects(buffered_bounds)].copy()
     bus_types = ["BCT", "BCS", "BCE", "BCQ", "BST"]
@@ -442,60 +448,90 @@ def run_stage2_network(
 
     # Compute accessibility metrics
     print(f"\n  Computing accessibility (distances={ACCESSIBILITY_DISTANCES})...")
-    try:
-        # FSA accessibility - by category in one call
-        fsa_keys = list(fsa_in_buffer["landuse"].unique())
+    # FSA accessibility - by category in one call
+    fsa_keys = list(fsa_in_buffer["landuse"].unique())
+    nodes_gdf, _data_gdf = layers.compute_accessibilities(
+        fsa_in_buffer,
+        landuse_column_label="landuse",
+        accessibility_keys=fsa_keys,
+        nodes_gdf=nodes_gdf,
+        network_structure=network_structure,
+        distances=ACCESSIBILITY_DISTANCES,
+    )
+    print(f"    ✓ FSA accessibility computed ({len(fsa_keys)} categories)")
+
+    # Greenspace accessibility
+    nodes_gdf, _data_gdf = layers.compute_accessibilities(
+        greenspace,
+        landuse_column_label="landuse",
+        accessibility_keys=["greenspace"],
+        nodes_gdf=nodes_gdf,
+        network_structure=network_structure,
+        distances=ACCESSIBILITY_DISTANCES,
+    )
+    print("    ✓ Greenspace accessibility computed")
+
+    # Transport accessibility - bus and rail in one call
+    transport_combined = pd.concat([bus_stops, rail_stops], ignore_index=True)
+    if len(transport_combined) > 0:
+        transport_keys = list(transport_combined["landuse"].unique())
         nodes_gdf, _data_gdf = layers.compute_accessibilities(
-            fsa_in_buffer,
+            transport_combined,
             landuse_column_label="landuse",
-            accessibility_keys=fsa_keys,
+            accessibility_keys=transport_keys,
             nodes_gdf=nodes_gdf,
             network_structure=network_structure,
             distances=ACCESSIBILITY_DISTANCES,
         )
-        print(f"    ✓ FSA accessibility computed ({len(fsa_keys)} categories)")
+        print(f"    ✓ Transport accessibility computed ({transport_keys})")
 
-        # Greenspace accessibility
-        nodes_gdf, _data_gdf = layers.compute_accessibilities(
-            greenspace,
-            landuse_column_label="landuse",
-            accessibility_keys=["greenspace"],
-            nodes_gdf=nodes_gdf,
-            network_structure=network_structure,
-            distances=ACCESSIBILITY_DISTANCES,
-        )
-        print("    ✓ Greenspace accessibility computed")
-
-        # Transport accessibility - bus and rail in one call
-        transport_combined = pd.concat([bus_stops, rail_stops], ignore_index=True)
-        if len(transport_combined) > 0:
-            transport_keys = list(transport_combined["landuse"].unique())
-            nodes_gdf, _data_gdf = layers.compute_accessibilities(
-                transport_combined,
-                landuse_column_label="landuse",
-                accessibility_keys=transport_keys,
-                nodes_gdf=nodes_gdf,
-                network_structure=network_structure,
-                distances=ACCESSIBILITY_DISTANCES,
-            )
-            print(f"    ✓ Transport accessibility computed ({transport_keys})")
-
-    except Exception as e:
-        print(f"    ERROR computing accessibility: {e}")
-        import traceback
-
-        traceback.print_exc()
+    # --- Drop redundant columns to keep output manageable ---
+    # Building stats produce 12 metrics × 6 agg types × 4 distances × 2 weights
+    # = 576 columns. We only need a curated subset for analysis.
+    all_cc = [c for c in nodes_gdf.columns if c.startswith("cc_")]
+    keep_cc: set[str] = set()
+    # Centrality (all distances): harmonic, betweenness, density, beta, cycles
+    for c in all_cc:
+        for prefix in (
+            "cc_harmonic_",
+            "cc_betweenness_",
+            "cc_density_",
+            "cc_beta_",
+            "cc_cycles_",
+        ):
+            if c.startswith(prefix):
+                keep_cc.add(c)
+    # Accessibility: weighted (_wt) and nearest only — drop unweighted (_nw)
+    for c in all_cc:
+        if c.endswith("_wt") or "_nearest_" in c:
+            keep_cc.add(c)
+    # Building stats: keep only FAR/BCR (derived) and mean height at 800
+    for c in all_cc:
+        if c.startswith("cc_gross_floor_area_m2_sum_"):
+            keep_cc.add(c)  # needed for FAR
+        if c.startswith("cc_footprint_area_m2_sum_"):
+            keep_cc.add(c)  # needed for BCR
+        if c.startswith("cc_footprint_area_m2_count_"):
+            keep_cc.add(c)  # building density
+    # FAR/BCR columns (already derived, not cc_ prefixed)
+    drop_cc = [c for c in all_cc if c not in keep_cc]
+    if drop_cc:
+        nodes_gdf = nodes_gdf.drop(columns=drop_cc)
+        print(f"\n  Trimmed: kept {len(keep_cc)} of {len(all_cc)} cc_ columns"
+              f" (dropped {len(drop_cc)} redundant stats)")
 
     # Filter to nodes within study area (not just buffer)
     nodes_in_bounds = nodes_gdf[nodes_gdf.intersects(combined_bounds)]
-    print(
-        f"\n  Nodes in study area: {len(nodes_in_bounds)} (of {len(nodes_gdf)} total)"
-    )
 
-    # Summary of columns
-    all_cols = list(nodes_gdf.columns)
-    metric_cols = [c for c in all_cols if c not in ["geometry", "x", "y"]]
-    print(f"  Metric columns: {metric_cols[:8]}...")
+    # Validate: cityseer metrics must be present
+    cc_cols = [c for c in nodes_in_bounds.columns if c.startswith("cc_")]
+    if not cc_cols:
+        raise RuntimeError(
+            "Stage 2 produced no cc_ columns. "
+            f"Columns: {list(nodes_in_bounds.columns)}"
+        )
+    print(f"  Cityseer metric columns: {len(cc_cols)}")
+    print(f"  Nodes in study area: {len(nodes_in_bounds)}")
 
     return nodes_in_bounds
 
@@ -581,7 +617,7 @@ def run_stage3_uprn_integration(
 
     # 2. Spatial join: UPRN → Census OA (demographics)
     print("\n  2. Joining UPRNs to Census Output Areas...")
-    census = gpd.read_file(PATHS["census"])
+    census = gpd.read_file(PATHS["census"], bbox=combined_bounds.bounds)
     census = census.to_crs(boundaries.crs)
 
     # Select census columns (exclude geometry and join columns)
@@ -625,12 +661,29 @@ def run_stage3_uprn_integration(
 
     # 3. Direct join: UPRN → EPC (energy performance)
     print("\n  3. Joining UPRNs to EPC records...")
-    epc = pd.read_parquet(PATHS["epc"])
-    print(f"    {len(epc)} total EPC records")
-
-    # Find UPRN column in both datasets
     uprn_col_uprn = "UPRN" if "UPRN" in uprn_gdf.columns else "uprn"
-    uprn_col_epc = "UPRN" if "UPRN" in epc.columns else "uprn"
+    # Use PyArrow to read only matching UPRNs (avoids loading 1.7GB into memory)
+    import pyarrow.compute as pc
+    import pyarrow.parquet as pq
+
+    epc_schema = pq.read_schema(PATHS["epc"])
+    uprn_col_epc = "UPRN" if "UPRN" in epc_schema.names else "uprn"
+    uprn_keys = set(uprn_gdf[uprn_col_uprn].dropna().astype(int))
+    # Exclude geometry/spatial columns from the read
+    epc_read_cols = [
+        c
+        for c in epc_schema.names
+        if c.lower() not in ["geometry", "lat", "lon", "latitude", "longitude"]
+    ]
+    uprn_arr = pa.array(list(uprn_keys), type=pa.int64())
+    epc_filter = pc.is_in(pc.field(uprn_col_epc), value_set=uprn_arr)
+    epc_table = pq.read_table(
+        PATHS["epc"], columns=epc_read_cols, filters=epc_filter
+    )
+    n_total = pq.read_metadata(PATHS["epc"]).num_rows
+    epc = epc_table.to_pandas()
+    del epc_table
+    print(f"    {n_total:,} total EPC records, {len(epc):,} matching city UPRNs")
 
     if uprn_col_uprn in uprn_gdf.columns and uprn_col_epc in epc.columns:
         # Select EPC columns to join (exclude UPRN itself and geometry-related)
@@ -678,15 +731,21 @@ def run_stage3_uprn_integration(
         tree = cKDTree(segment_coords)
         distances, indices = tree.query(uprn_coords, k=1)
 
-        # Get network metric columns (exclude geometry, x, y)
-        network_cols = [c for c in segments.columns if c not in ["geometry", "x", "y"]]
+        # Get metric columns (exclude geometry, coords, raw node fields)
+        exclude = {
+            "geometry", "geom", "x", "y",
+            "index", "ns_node_idx", "live", "weight",
+        }
+        network_cols = [c for c in segments.columns if c not in exclude]
 
         # Transfer network metrics from nearest segment
-        for col in network_cols:
-            uprn_gdf[col] = segments.iloc[indices][col].values
-
-        # Add distance to nearest segment
-        uprn_gdf["segment_distance_m"] = distances
+        # (all at once to avoid DataFrame fragmentation)
+        nearest_data = segments.iloc[indices][network_cols].reset_index(drop=True)
+        nearest_data["segment_distance_m"] = distances
+        uprn_gdf = pd.concat(
+            [uprn_gdf.reset_index(drop=True), nearest_data], axis=1
+        )
+        uprn_gdf = gpd.GeoDataFrame(uprn_gdf, geometry="geometry", crs=boundaries.crs)
 
         print(f"    ✓ All {len(uprn_gdf)} UPRNs linked to nearest segment")
         print(f"    Network columns added: {len(network_cols)}")
@@ -725,85 +784,195 @@ def print_summary(
             print(f"  ✗ {name}: Not complete")
 
 
-def save_outputs(
+def save_city_outputs(
+    city_name: str,
     buildings: gpd.GeoDataFrame | None,
     segments: gpd.GeoDataFrame | None,
     uprns: gpd.GeoDataFrame | None,
 ) -> None:
-    """Save pipeline outputs to geopackages."""
-    print()
-    print("=" * 60)
-    print("SAVING OUTPUTS")
-    print("=" * 60)
-
-    TEST_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    """Save pipeline outputs for a single city."""
+    city_dir = OUTPUT_DIR / city_name
+    city_dir.mkdir(parents=True, exist_ok=True)
 
     if buildings is not None:
-        path = TEST_OUTPUT_DIR / "buildings_morphology.gpkg"
+        path = city_dir / "buildings_morphology.gpkg"
         buildings.to_file(path, driver="GPKG")
-        print(f"  ✓ Buildings: {path}")
+        print(f"  Saved: {path}")
 
     if segments is not None:
-        path = TEST_OUTPUT_DIR / "network_segments.gpkg"
+        path = city_dir / "network_segments.gpkg"
         segments.to_file(path, driver="GPKG")
-        print(f"  ✓ Network segments: {path}")
+        print(f"  Saved: {path}")
 
     if uprns is not None:
-        # Ensure it's a GeoDataFrame before saving
         if not isinstance(uprns, gpd.GeoDataFrame):
             uprns = gpd.GeoDataFrame(uprns, geometry="geometry")
 
-        # Drop extra geometry columns (from joins) - keep only the UPRN point geometry
-        # Also drop "geom" column from cityseer network output
+        # Drop extra geometry columns (from joins)
         geom_cols = [
             c
             for c in uprns.columns
-            if c != "geometry"
-            and (
-                uprns[c].dtype == "geometry" or c == "geom"  # cityseer network column
-            )
+            if c != "geometry" and (uprns[c].dtype == "geometry" or c == "geom")
         ]
         if geom_cols:
             uprns = uprns.drop(columns=geom_cols)
 
-        path = TEST_OUTPUT_DIR / "uprn_integrated.gpkg"
+        path = city_dir / "uprn_integrated.gpkg"
         uprns.to_file(path, driver="GPKG")
-        print(f"  ✓ UPRNs: {path}")
+        print(f"  Saved: {path}")
 
 
-def main() -> None:
-    """Run the test pipeline."""
+def combine_cities(city_names: list[str]) -> None:
+    """
+    Combine per-city UPRN datasets into a single file with a city column.
+
+    Writes incrementally (one city at a time) to avoid loading all cities
+    into memory simultaneously. Also writes to the legacy ``test/`` path
+    for backward compatibility with existing analysis scripts.
+    """
     print()
     print("=" * 60)
-    print("URBAN ENERGY TEST PIPELINE")
+    print("COMBINING CITIES")
     print("=" * 60)
-    print(f"Test boundaries: {TEST_BOUNDARIES}")
-    print(f"Output directory: {TEST_OUTPUT_DIR}")
+
+    combined_dir = OUTPUT_DIR / "combined"
+    combined_dir.mkdir(parents=True, exist_ok=True)
+    combined_path = combined_dir / "uprn_integrated.gpkg"
+
+    # Remove existing file so we start fresh
+    if combined_path.exists():
+        combined_path.unlink()
+
+    total = 0
+    file_created = False
+
+    for name in city_names:
+        path = OUTPUT_DIR / name / "uprn_integrated.gpkg"
+        if not path.exists():
+            print(f"  SKIP: {name} (no output yet)")
+            continue
+
+        gdf = gpd.read_file(path)
+        gdf["city"] = name
+        print(f"  {name}: {len(gdf):,} UPRNs")
+
+        if not file_created:
+            gdf.to_file(combined_path, driver="GPKG")
+            file_created = True
+        else:
+            gdf.to_file(combined_path, driver="GPKG", mode="a")
+
+        total += len(gdf)
+        del gdf
+        gc.collect()
+
+    if total == 0:
+        print("  No city data to combine.")
+        return
+
+    print(f"\n  Combined: {total:,} UPRNs -> {combined_path}")
+
+    # Backward compatibility: copy to test/ for existing analysis scripts
+    import shutil
+
+    test_dir = OUTPUT_DIR / "test"
+    test_dir.mkdir(parents=True, exist_ok=True)
+    compat_path = test_dir / "uprn_integrated.gpkg"
+    shutil.copy2(combined_path, compat_path)
+    print(f"  Compat:   {compat_path}")
+
+
+def process_city(
+    bua_code: str,
+    city_name: str,
+    *,
+    test_mode: bool = False,
+) -> None:
+    """
+    Run the full pipeline for a single city.
+
+    Parameters
+    ----------
+    bua_code : str
+        BUA22CD code for the city boundary.
+    city_name : str
+        Short name used for output directory and city column.
+    test_mode : bool
+        If True, use reduced centrality distances for faster testing.
+    """
     print()
+    print("=" * 60)
+    print(f"PROCESSING: {city_name} ({bua_code})")
+    print("=" * 60)
 
-    # Create output directory
-    TEST_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    # Check if already processed — but verify output quality
+    uprn_path = OUTPUT_DIR / city_name / "uprn_integrated.gpkg"
+    if uprn_path.exists():
+        # Quick check: does it have cityseer columns?
+        # (fiona truncates schema at ~200 cols, use geopandas instead)
+        _probe = gpd.read_file(uprn_path, rows=1)
+        has_cc = any(c.startswith("cc_") for c in _probe.columns)
+        del _probe
+        if has_cc:
+            print(f"  Already processed (with cityseer metrics): {uprn_path}")
+            print("  Delete to reprocess.")
+            return
+        else:
+            print(f"  Incomplete output (no cityseer metrics): {uprn_path}")
+            print("  Deleting stale outputs and reprocessing...")
+            uprn_path.unlink()
+            seg_path = OUTPUT_DIR / city_name / "network_segments.gpkg"
+            if seg_path.exists():
+                seg_path.unlink()
 
-    # Check inputs
-    check_inputs()
-
-    # Load test boundaries
-    boundaries = load_test_boundaries()
+    boundary = load_boundary(bua_code)
 
     # Stage 1: Morphology
-    buildings = run_stage1_morphology(boundaries)
+    buildings = run_stage1_morphology(boundary)
 
-    # Stage 2: Network Analysis (with building statistics)
-    segments = run_stage2_network(boundaries, buildings=buildings, test_mode=True)
+    # Stage 2: Network Analysis
+    segments = run_stage2_network(boundary, buildings=buildings, test_mode=test_mode)
 
     # Stage 3: UPRN Integration
-    uprns = run_stage3_uprn_integration(boundaries, buildings, segments)
+    uprns = run_stage3_uprn_integration(boundary, buildings, segments)
 
-    # Save outputs
-    save_outputs(buildings, segments, uprns)
+    # Save per-city outputs
+    save_city_outputs(city_name, buildings, segments, uprns)
 
     # Summary
     print_summary(buildings, segments, uprns)
+
+
+def main() -> None:
+    """Run the pipeline for all (or selected) cities."""
+    # Parse CLI args: city names to process (default: all)
+    args = sys.argv[1:]
+    if args:
+        selected = {code: name for code, name in CITIES.items() if name in args}
+        if not selected:
+            print(f"Unknown cities: {args}")
+            print(f"Available: {list(CITIES.values())}")
+            sys.exit(1)
+    else:
+        selected = CITIES
+
+    print()
+    print("=" * 60)
+    print("URBAN ENERGY PROCESSING PIPELINE")
+    print("=" * 60)
+    print(f"Cities: {list(selected.values())}")
+    print(f"Output: {OUTPUT_DIR}")
+    print()
+
+    check_inputs()
+
+    # Process each city independently
+    for bua_code, city_name in selected.items():
+        process_city(bua_code, city_name, test_mode=False)
+        gc.collect()
+
+    # Combine all available city outputs
+    combine_cities(list(CITIES.values()))
 
 
 if __name__ == "__main__":
