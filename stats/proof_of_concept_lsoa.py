@@ -615,7 +615,7 @@ def compute_access_per_kwh(lsoa: pd.DataFrame) -> pd.DataFrame:
     lsoa["density_quartile"] = pd.qcut(
         lsoa["people_per_ha"],
         4,
-        labels=["Q1 dense", "Q2", "Q3", "Q4 sparse"],
+        labels=["Q4 sparse", "Q3", "Q2", "Q1 dense"],
     )
 
     # Summary by dominant housing type (Census ts044)

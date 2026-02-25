@@ -350,20 +350,6 @@ def run_stage2_network(
                 * buildings_in_buffer["height_median"]
             )
 
-        # Building type classification from shared_wall_ratio
-        if "shared_wall_ratio" in buildings_in_buffer.columns:
-            swr = buildings_in_buffer["shared_wall_ratio"]
-            buildings_in_buffer["is_detached"] = (swr == 0).astype(float)
-            buildings_in_buffer["is_semi"] = ((swr > 0) & (swr < 0.3)).astype(float)
-            buildings_in_buffer["is_terraced"] = (swr >= 0.3).astype(float)
-            n_det = int(buildings_in_buffer["is_detached"].sum())
-            n_semi = int(buildings_in_buffer["is_semi"].sum())
-            n_ter = int(buildings_in_buffer["is_terraced"].sum())
-            print(
-                f"    Building types (morphology): "
-                f"detached={n_det:,}, semi={n_semi:,}, terraced={n_ter:,}"
-            )
-
         # Estimated gross floor area for FAR
         if (
             "footprint_area_m2" in buildings_in_buffer.columns
@@ -390,9 +376,6 @@ def run_stage2_network(
             stats_columns.append("volume_m3")
         if "gross_floor_area_m2" in buildings_in_buffer.columns:
             stats_columns.append("gross_floor_area_m2")
-        for type_col in ["is_detached", "is_semi", "is_terraced"]:
-            if type_col in buildings_in_buffer.columns:
-                stats_columns.append(type_col)
         stats_columns.extend(height_cols)
 
         if stats_columns:

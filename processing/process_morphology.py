@@ -36,7 +36,6 @@ Metrics computed:
     Adjacency (via momepy):
         - shared_wall_length_m: Total length of walls shared with other buildings
         - shared_wall_ratio: shared_wall_length / perimeter
-          (0 = detached, ~0.5 = terraced)
 
     Spatial context (via momepy + libpysal):
         - neighbor_distance: Distance to nearest neighbor (m)
@@ -647,15 +646,6 @@ def process_boundary(
         if verbose:
             tqdm.write(f"    {bua_name}: no height column — skipping thermal metrics")
 
-    if verbose:
-        # Summary stats
-        mean_ratio = buildings["shared_wall_ratio"].mean()
-        detached_pct = (buildings["shared_wall_ratio"] == 0).mean() * 100
-        tqdm.write(
-            f"    {bua_name}: mean shared_wall_ratio={mean_ratio:.2f}, "
-            f"detached={detached_pct:.0f}%"
-        )
-
     return buildings
 
 
@@ -868,24 +858,6 @@ def main() -> None:
         f"  Elongation: median={combined['elongation'].median():.2f}, "
         f"mean={combined['elongation'].mean():.2f}"
     )
-
-    print("\nShared wall statistics:")
-    print(
-        f"  Shared wall ratio: median={combined['shared_wall_ratio'].median():.2f}, "
-        f"mean={combined['shared_wall_ratio'].mean():.2f}"
-    )
-
-    # Distribution of shared wall ratio
-    detached = (combined["shared_wall_ratio"] == 0).sum()
-    semi = (
-        (combined["shared_wall_ratio"] > 0) & (combined["shared_wall_ratio"] < 0.3)
-    ).sum()
-    terraced = (combined["shared_wall_ratio"] >= 0.3).sum()
-
-    n = len(combined)
-    print(f"\n  Approx. detached (ratio=0): {detached:,} ({100 * detached / n:.1f}%)")
-    print(f"  Approx. semi (0<ratio<0.3): {semi:,} ({100 * semi / n:.1f}%)")
-    print(f"  Approx. terraced (ratio≥0.3): {terraced:,} ({100 * terraced / n:.1f}%)")
 
     if "surface_to_volume" in combined.columns:
         valid_stv = combined["surface_to_volume"].notna().sum()
