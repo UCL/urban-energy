@@ -1,25 +1,33 @@
 """
-LSOA-Level Conduit Analysis.
+LSOA-Level Conduit Analysis: Three Energy Surfaces.
 
-Cities are conduits that capture energy and recycle it through layers of
-human interaction (Jacobs, 2000). The measure of urban efficiency is not
-how much energy a neighbourhood consumes, but how many transactions,
-connections, and transformations that energy enables before it dissipates.
+A building's morphological type is not just a thermal envelope — it is a
+commitment to a pattern of living. This script decomposes the urban energy
+landscape into three surfaces:
 
-This script asks two questions:
+    1. THE THERMAL SURFACE (building envelope)
+       Heat through walls and roofs. Metered building energy is roughly
+       flat across housing types (~13–14k kWh/hh); only detached breaks
+       away at ~16k. The theoretical S/V advantage of compact form is
+       real but absorbed by smaller household sizes per capita. This
+       surface is a wash.
 
-    1. THE COST: How much energy does it take to house and move a household
-       in this neighbourhood? (metered building energy + transport from
-       commute patterns)
+    2. THE MOBILITY SURFACE (transport cost)
+       How far you drive. This is where morphology saves energy — not
+       walls and roofs but proximity. Transport energy doubles from
+       compact to sprawl (6,400 → 12,900 kWh/hh). Invisible to EPCs,
+       this is the dominant cost gradient.
 
-    2. THE RETURN: What does that energy buy? How many amenities, transit
-       stops, green spaces are reachable on foot? How connected is the
-       street network?
+    3. THE ACCESSIBILITY SURFACE (the return)
+       What you can reach on foot without spending energy. Compact form
+       delivers dramatically more reachable city — amenities, transit,
+       green space within a 10-minute walk. This is the conduit dividend.
 
-    conduit_efficiency = return / cost
+    conduit_efficiency = accessibility_return / energy_cost
 
-The test: does compact urban form (lower aggregate S/V, taller buildings,
-denser fabric) deliver more city per kWh?
+The stratification uses both S/V quartiles (continuous, for regression)
+and Census accommodation type (ts044 — dominant housing type per LSOA,
+more interpretable for descriptive tables).
 
 All variables aggregate to LSOA (~1,500 people), where metered energy is
 native and building counts are large enough for stable physics averages.
@@ -46,7 +54,7 @@ from sklearn.preprocessing import StandardScaler
 
 from urban_energy.paths import TEMP_DIR
 
-DATA_PATH = TEMP_DIR / "processing" / "test" / "uprn_integrated.gpkg"
+DATA_PATH = TEMP_DIR / "processing" / "combined" / "lsoa_integrated.gpkg"
 
 # ---------------------------------------------------------------------------
 # Census column names
@@ -86,8 +94,25 @@ _TS061_TOTAL = (
 _TS061_WALK = "ts061_Method of travel to workplace: On foot"
 _TS061_CYCLE = "ts061_Method of travel to workplace: Bicycle"
 _TS006_DENSITY = (
-    "ts006_Population Density: "
-    "Persons per square kilometre; measures: Value"
+    "ts006_Population Density: Persons per square kilometre; measures: Value"
+)
+
+# Car ownership (ts045) — for total transport energy
+_TS045_TOTAL = "ts045_Number of cars or vans: Total: All households"
+_TS045_NONE = "ts045_Number of cars or vans: No cars or vans in household"
+_TS045_ONE = "ts045_Number of cars or vans: 1 car or van in household"
+_TS045_TWO = "ts045_Number of cars or vans: 2 cars or vans in household"
+_TS045_THREE = "ts045_Number of cars or vans: 3 or more cars or vans in household"
+
+# Accommodation type (ts044) — Census-derived, complete coverage
+_TS044_TOTAL = "ts044_Accommodation type: Total: All households"
+_TS044_DETACHED = "ts044_Accommodation type: Detached"
+_TS044_SEMI = "ts044_Accommodation type: Semi-detached"
+_TS044_TERRACED = "ts044_Accommodation type: Terraced"
+_TS044_FLAT = "ts044_Accommodation type: In a purpose-built block of flats or tenement"
+_TS044_COMMERCIAL = (
+    "ts044_Accommodation type: In a commercial building, "
+    "for example, in an office building, hotel or over a shop"
 )
 
 # ---------------------------------------------------------------------------
@@ -133,12 +158,23 @@ _CENSUS_REQUIRED = [
     _TS061_WALK,
     _TS061_CYCLE,
     _TS006_DENSITY,
+    _TS045_TOTAL,
+    _TS045_NONE,
+    _TS045_ONE,
+    _TS045_TWO,
+    _TS045_THREE,
+    _TS044_TOTAL,
+    _TS044_DETACHED,
+    _TS044_SEMI,
+    _TS044_TERRACED,
+    _TS044_FLAT,
+    _TS044_COMMERCIAL,
     *_COMMUTE_BANDS.keys(),
 ]
 
 # Every column the script requires — missing any of these is a hard error
 _REQUIRED = (
-    ["LSOA21CD", "OA21CD"]
+    ["LSOA21CD"]
     + _BUILDING_COLS
     + _LSOA_ENERGY
     + _CC_ACCESSIBILITY
@@ -182,10 +218,18 @@ def _validate_columns(available: set[str]) -> None:
 
 def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
     """
-    Load UPRN data, aggregate to LSOA with proper Census deduplication.
+    Load pre-aggregated LSOA data from pipeline_lsoa.py output.
 
-    Compound metrics (S/V) are computed as aggregate ratios at LSOA level:
-    lsoa_sv = sum(envelope) / sum(volume), not mean(per-building S/V).
+    The pipeline has already performed:
+    - Census deduplication (OA-level first, then sum to LSOA)
+    - Building physics aggregation (sum/mean per LSOA)
+    - Cityseer metric averaging across UPRNs
+    - EPC coverage and building era derivation
+    - Metered energy join
+    - Aggregate S/V ratio computation
+
+    This function reads the LSOA GeoPackage and computes analytical
+    derived variables (transport energy, deprivation, housing type, etc.).
 
     Parameters
     ----------
@@ -195,7 +239,7 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
     Returns
     -------
     pd.DataFrame
-        LSOA-level dataset.
+        LSOA-level dataset with derived analytical variables.
 
     Raises
     ------
@@ -203,95 +247,54 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
         If required columns are missing from the dataset.
     """
     print("=" * 70)
-    print("LOADING & AGGREGATING TO LSOA")
+    print("LOADING LSOA DATA")
     print("=" * 70)
 
-    # Probe available columns and validate
+    # Validate columns
     _probe = gpd.read_file(DATA_PATH, rows=1)
     available = set(_probe.columns)
     del _probe
     _validate_columns(available)
 
-    # Build column list — only what we use
-    load_cols = ["city"] + _REQUIRED
-    load_cols = [c for c in load_cols if c in available]
+    lsoa = gpd.read_file(DATA_PATH)
+    print(f"  Loaded {len(lsoa):,} LSOAs ({len(lsoa.columns)} columns)")
 
-    col_list = ", ".join(f'"{c}"' for c in load_cols)
-    sql = f"SELECT {col_list} FROM uprn_integrated"
-    df = gpd.read_file(DATA_PATH, sql=sql)
-    print(f"  Loaded {len(df):,} UPRNs ({len(load_cols)} columns)")
+    if cities and "city" in lsoa.columns:
+        lsoa = lsoa[lsoa["city"].isin(cities)].copy()
+        print(f"  Filtered to {cities}: {len(lsoa):,}")
 
-    if cities and "city" in df.columns:
-        df = df[df["city"].isin(cities)].copy()
-        print(f"  Filtered to {cities}: {len(df):,}")
-
-    df = df[df["LSOA21CD"].notna()].copy()
+    lsoa = lsoa[lsoa["LSOA21CD"].notna()].copy()
 
     # Coerce numerics
     for col in _BUILDING_COLS:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
+        if col in lsoa.columns:
+            lsoa[col] = pd.to_numeric(lsoa[col], errors="coerce")
 
-    # ===================================================================
-    # Phase 1: Census deduplication (OA-level → sum to LSOA)
-    # ===================================================================
-    census_cols = [c for c in df.columns if c.startswith("ts0")]
-    oa_census = df.groupby("OA21CD")[census_cols].first()
-    oa_to_lsoa = df.groupby("OA21CD")["LSOA21CD"].first()
-    oa_census["LSOA21CD"] = oa_to_lsoa
+    # Drop geometry — analysis is non-spatial from here
+    if "geometry" in lsoa.columns:
+        lsoa = pd.DataFrame(lsoa.drop(columns=["geometry"]))
 
-    # Derive OA area from pop density before summing
-    # area_km2 = population / (persons per km²)
-    if _TS006_DENSITY in oa_census.columns and _TS001_POP in oa_census.columns:
-        oa_pop = pd.to_numeric(oa_census[_TS001_POP], errors="coerce")
-        oa_dens = pd.to_numeric(
-            oa_census[_TS006_DENSITY], errors="coerce"
+    # Building era categories (from pipeline's median_build_year)
+    if "median_build_year" in lsoa.columns:
+        bins = [0, 1945, 1982, 2100]
+        labels = ["pre-1945", "1945-1982", "post-1982"]
+        valid_yr = lsoa["median_build_year"].notna()
+        lsoa.loc[valid_yr, "building_era"] = pd.cut(
+            lsoa.loc[valid_yr, "median_build_year"],
+            bins=bins,
+            labels=labels,
         )
-        oa_census["_oa_area_km2"] = oa_pop / oa_dens.replace(0, np.nan)
-
-    lsoa_census = oa_census.groupby("LSOA21CD").sum()
-    print(f"  Census: {len(oa_census):,} OAs → {len(lsoa_census):,} LSOAs")
-
-    # ===================================================================
-    # Phase 2: UPRN → LSOA aggregation
-    # ===================================================================
-    # S/V = sum(envelope) / sum(volume) — UPRN duplication cancels in the
-    # ratio. Means (height, form_factor) weight by UPRN count, giving
-    # buildings with more dwellings proportionally more influence.
-    # All buildings (residential + commercial) are included: they all
-    # shape the neighbourhood's built form and pedestrian environment.
-    building_agg: dict[str, str] = {
-        # SUM — totals for aggregate ratios
-        "footprint_area_m2": "sum",
-        "volume_m3": "sum",
-        "envelope_area_m2": "sum",
-        # MEAN — average building characteristics
-        "surface_to_volume": "mean",
-        "height_mean": "mean",
-        "form_factor": "mean",
-    }
-    if "city" in df.columns:
-        building_agg["city"] = "first"
-
-    # Cityseer — MEAN accessibility across UPRNs
-    for col in _CC_ACCESSIBILITY + _CC_CENTRALITY:
-        building_agg[col] = "mean"
-
-    # LSOA metered energy — FIRST (already LSOA-level)
-    for col in _LSOA_ENERGY:
-        building_agg[col] = "first"
-
-    sizes = df.groupby("LSOA21CD").size().reset_index(name="n_uprns")
-    lsoa = df.groupby("LSOA21CD").agg(building_agg).reset_index()
-    lsoa = lsoa.merge(sizes, on="LSOA21CD")
-    lsoa = lsoa.merge(lsoa_census, on="LSOA21CD", how="left")
-    lsoa = lsoa.copy()  # defragment
 
     # ===================================================================
     # Derived variables
     # ===================================================================
 
     # --- Aggregate S/V (the primary physics metric) ---
-    lsoa["lsoa_sv"] = lsoa["envelope_area_m2"] / lsoa["volume_m3"].replace(0, np.nan)
+    # Pipeline pre-computes lsoa_sv; recompute as fallback
+    if "lsoa_sv" not in lsoa.columns:
+        lsoa["lsoa_sv"] = lsoa["envelope_area_m2"] / lsoa["volume_m3"].replace(
+            0, np.nan
+        )
     # Also keep mean per-building S/V for comparison
     lsoa["mean_building_sv"] = lsoa["surface_to_volume"]
 
@@ -310,20 +313,33 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
         lsoa["lsoa_total_mean_kwh"], errors="coerce"
     )
 
-    # Transport energy from Census commute patterns
+    # --- Transport energy from car ownership (ts045) ---
+    # Captures ALL driving (commute + shopping + school + leisure + errands),
+    # not just commuting. Census commute is ~20% of total car travel (NTS).
+    # cars_per_hh × 11,900 km/yr (NTS 2019 avg) × 0.73 kWh/km
+    kwh_per_km_car = 0.73  # petrol: ~8L/100km × 9.1 kWh/L
+    annual_km_per_car = 11_900  # NTS 2019 average
+    one_car = pd.to_numeric(lsoa[_TS045_ONE], errors="coerce")
+    two_car = pd.to_numeric(lsoa[_TS045_TWO], errors="coerce")
+    three_car = pd.to_numeric(lsoa[_TS045_THREE], errors="coerce")
+    car_hh_total = pd.to_numeric(lsoa[_TS045_TOTAL], errors="coerce")
+    lsoa["cars_per_hh"] = (
+        one_car + 2 * two_car + 3 * three_car
+    ) / car_hh_total.replace(0, np.nan)
+    lsoa["transport_kwh_per_hh"] = (
+        lsoa["cars_per_hh"] * annual_km_per_car * kwh_per_km_car
+    )
+
+    # Commute stats — kept for context (mode share, active travel)
     total_commuters = pd.to_numeric(lsoa[_COMMUTE_TOTAL], errors="coerce")
     weighted_km = sum(
         km * pd.to_numeric(lsoa[col], errors="coerce")
         for col, km in _COMMUTE_BANDS.items()
     )
     lsoa["avg_commute_km"] = weighted_km / total_commuters.replace(0, np.nan)
-
-    # Car commute share
     car = pd.to_numeric(lsoa[_TS061_CAR], errors="coerce")
     total_w = pd.to_numeric(lsoa[_TS061_TOTAL], errors="coerce")
     lsoa["car_commute_share"] = car / total_w.replace(0, np.nan)
-
-    # Walk/cycle shares
     lsoa["walk_share"] = pd.to_numeric(
         lsoa[_TS061_WALK], errors="coerce"
     ) / total_w.replace(0, np.nan)
@@ -331,17 +347,6 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
         lsoa[_TS061_CYCLE], errors="coerce"
     ) / total_w.replace(0, np.nan)
     lsoa["active_share"] = lsoa["walk_share"].fillna(0) + lsoa["cycle_share"].fillna(0)
-
-    # Transport kWh/hh: commute_km * 2 (return) * 230 days * car% * kWh/km
-    kwh_per_km_car = 0.17 / 0.233  # ~0.73
-    workers_per_hh = total_commuters / lsoa["total_hh"].replace(0, np.nan)
-    annual_commute_km = lsoa["avg_commute_km"] * 2 * 230
-    lsoa["transport_kwh_per_hh"] = (
-        annual_commute_km
-        * lsoa["car_commute_share"]
-        * kwh_per_km_car
-        * workers_per_hh.clip(upper=2)
-    )
 
     # Total energy cost per household
     lsoa["total_kwh_per_hh"] = lsoa["building_kwh_per_hh"] + lsoa[
@@ -352,30 +357,23 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
     lsoa["log_building_kwh_per_hh"] = np.log(lsoa["building_kwh_per_hh"].clip(lower=1))
 
     # --- Occupation density (Census-derived, no building-type confound) ---
-    lsoa["avg_hh_size"] = (
-        lsoa["total_people"] / lsoa["total_hh"].replace(0, np.nan)
-    )
+    lsoa["avg_hh_size"] = lsoa["total_people"] / lsoa["total_hh"].replace(0, np.nan)
 
     # --- Population density (from Census OA areas) ---
     if "_oa_area_km2" in lsoa.columns:
         lsoa_area_km2 = lsoa["_oa_area_km2"]
-        lsoa["people_per_ha"] = (
-            lsoa["total_people"]
-            / (lsoa_area_km2 * 100).replace(0, np.nan)
+        lsoa["people_per_ha"] = lsoa["total_people"] / (lsoa_area_km2 * 100).replace(
+            0, np.nan
         )
         lsoa.drop(columns=["_oa_area_km2"], inplace=True)
 
     # --- Energy per person (building only, metered) ---
     lsoa_total_bldg = lsoa["building_kwh_per_hh"] * lsoa["total_hh"]
-    lsoa["kwh_per_person"] = (
-        lsoa_total_bldg
-        / lsoa["total_people"].replace(0, np.nan)
-    )
+    lsoa["kwh_per_person"] = lsoa_total_bldg / lsoa["total_people"].replace(0, np.nan)
     # Total (building + transport) per person
     lsoa_total_all = lsoa["total_kwh_per_hh"] * lsoa["total_hh"]
-    lsoa["total_kwh_per_person"] = (
-        lsoa_total_all
-        / lsoa["total_people"].replace(0, np.nan)
+    lsoa["total_kwh_per_person"] = lsoa_total_all / lsoa["total_people"].replace(
+        0, np.nan
     )
 
     # NOTE: volume_per_person and kwh_per_m3 are not computed. Building
@@ -397,6 +395,42 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
             q=5,
             labels=["Q1 most", "Q2", "Q3", "Q4", "Q5 least"],
         )
+
+    # --- Accommodation type (Census ts044, complete coverage) ---
+    ts044_total = pd.to_numeric(lsoa[_TS044_TOTAL], errors="coerce")
+    ts044_denom = ts044_total.replace(0, np.nan)
+    lsoa["pct_detached"] = (
+        pd.to_numeric(lsoa[_TS044_DETACHED], errors="coerce") / ts044_denom * 100
+    )
+    lsoa["pct_semi"] = (
+        pd.to_numeric(lsoa[_TS044_SEMI], errors="coerce") / ts044_denom * 100
+    )
+    lsoa["pct_terraced"] = (
+        pd.to_numeric(lsoa[_TS044_TERRACED], errors="coerce") / ts044_denom * 100
+    )
+    lsoa["pct_flat"] = (
+        pd.to_numeric(lsoa[_TS044_FLAT], errors="coerce") / ts044_denom * 100
+    )
+    lsoa["pct_in_commercial"] = (
+        pd.to_numeric(lsoa[_TS044_COMMERCIAL], errors="coerce") / ts044_denom * 100
+    )
+
+    # --- Dominant housing type (Census ts044, complete coverage) ---
+    # Assign each LSOA the accommodation type with the highest percentage.
+    # Ordered categorical: compact → sprawl.
+    _type_map = {
+        "pct_flat": "Flat",
+        "pct_terraced": "Terraced",
+        "pct_semi": "Semi",
+        "pct_detached": "Detached",
+    }
+    _type_order = ["Flat", "Terraced", "Semi", "Detached"]
+    type_pcts = lsoa[list(_type_map.keys())].fillna(0)
+    lsoa["dominant_type"] = pd.Categorical(
+        type_pcts.idxmax(axis=1).map(_type_map),
+        categories=_type_order,
+        ordered=True,
+    )
 
     # --- Filter ---
     valid = (
@@ -424,8 +458,34 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
     print("\n  Cost (kWh/household):")
     print(f"    Building: median={lsoa['building_kwh_per_hh'].median():.0f}")
     t = lsoa["transport_kwh_per_hh"].dropna()
-    print(f"    Transport: median={t.median():.0f}")
-    print(f"    Total: median={lsoa['total_kwh_per_hh'].median():.0f}")
+    print(
+        f"    Transport: median={t.median():,.0f}  "
+        f"(cars/hh={lsoa['cars_per_hh'].median():.2f})"
+    )
+    print(f"    Total: median={lsoa['total_kwh_per_hh'].median():,.0f}")
+    if "median_build_year" in lsoa.columns:
+        yr = lsoa["median_build_year"].dropna()
+        print(f"\n  Stock: median build year={yr.median():.0f}")
+    if "building_era" in lsoa.columns:
+        era_counts = lsoa["building_era"].value_counts().sort_index()
+        for era, n in era_counts.items():
+            print(f"    {era}: {n:,} LSOAs")
+    if "epc_coverage" in lsoa.columns:
+        print(f"\n  EPC coverage: median={lsoa['epc_coverage'].median():.1%}")
+    print("\n  Accommodation (Census ts044):")
+    for label, col in [
+        ("Detached", "pct_detached"),
+        ("Semi", "pct_semi"),
+        ("Terraced", "pct_terraced"),
+        ("Flat", "pct_flat"),
+    ]:
+        if col in lsoa.columns:
+            print(f"    {label}: median={lsoa[col].median():.0f}%")
+    if "dominant_type" in lsoa.columns:
+        print("  Dominant type:")
+        for dtype in _type_order:
+            n = (lsoa["dominant_type"] == dtype).sum()
+            print(f"    {dtype}: {n:,} LSOAs")
 
     return lsoa
 
@@ -598,19 +658,21 @@ def compute_conduit(lsoa: pd.DataFrame) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# 4. Systematic summary: the compounding normalisations
+# 4. Systematic summary: three energy surfaces
 # ---------------------------------------------------------------------------
 
 
 def print_systematic_summary(lsoa: pd.DataFrame) -> None:
     """
-    Show how the efficiency gap widens with each normalisation layer.
+    Decompose the urban energy landscape into three surfaces.
 
-    This is the centerpiece table: same data, different denominators,
-    and the Q1/Q4 ratio reveals the compounding.
+    Shows how building energy is roughly flat across morphological types
+    (the thermal wash), transport is the dominant cost gradient (the
+    mobility surface), and accessibility completes the conduit (the
+    return surface).
     """
     print(f"\n{'=' * 70}")
-    print("SYSTEMATIC SUMMARY BY COMPACTNESS QUARTILE")
+    print("THREE ENERGY SURFACES BY COMPACTNESS QUARTILE")
     print("=" * 70)
 
     if "sv_quartile" not in lsoa.columns:
@@ -623,14 +685,20 @@ def print_systematic_summary(lsoa: pd.DataFrame) -> None:
     metrics: list[tuple[str, str, str, str]] = [
         ("FORM", "S/V ratio", "lsoa_sv", ".3f"),
         ("FORM", "Height (m)", "height_mean", ".1f"),
+        ("STOCK", "% detached", "pct_detached", ".0f"),
+        ("STOCK", "% semi", "pct_semi", ".0f"),
+        ("STOCK", "% terraced", "pct_terraced", ".0f"),
+        ("STOCK", "% flat", "pct_flat", ".0f"),
+        ("STOCK", "Build year", "median_build_year", ".0f"),
         ("DENSITY", "People/ha", "people_per_ha", ".0f"),
         ("DENSITY", "People/hh", "avg_hh_size", ".2f"),
-        ("ENERGY", "kWh/person", "kwh_per_person", ",.0f"),
-        ("ENERGY", "kWh/hh (bldg)", "building_kwh_per_hh", ",.0f"),
-        ("ENERGY", "kWh/hh (trans)", "transport_kwh_per_hh", ",.0f"),
-        ("ENERGY", "kWh/hh (total)", "total_kwh_per_hh", ",.0f"),
-        ("ENERGY", "kWh/person+trans", "total_kwh_per_person", ",.0f"),
-        ("RETURN", "Accessibility", "accessibility_pc1", ".2f"),
+        ("1:THERMAL", "kWh/hh (bldg)", "building_kwh_per_hh", ",.0f"),
+        ("1:THERMAL", "kWh/person (bldg)", "kwh_per_person", ",.0f"),
+        ("2:MOBILITY", "Cars/hh", "cars_per_hh", ".2f"),
+        ("2:MOBILITY", "kWh/hh (trans)", "transport_kwh_per_hh", ",.0f"),
+        ("2:MOBILITY", "kWh/hh (total)", "total_kwh_per_hh", ",.0f"),
+        ("2:MOBILITY", "kWh/person+trans", "total_kwh_per_person", ",.0f"),
+        ("3:RETURN", "Accessibility", "accessibility_pc1", ".2f"),
         ("CONDUIT", "Access/kWh_hh", "conduit_total", ".6f"),
     ]
 
@@ -652,10 +720,7 @@ def print_systematic_summary(lsoa: pd.DataFrame) -> None:
             print(f"  {section}")
             prev_section = section
 
-        vals = [
-            lsoa.loc[lsoa["sv_quartile"] == q, col].median()
-            for q in qs
-        ]
+        vals = [lsoa.loc[lsoa["sv_quartile"] == q, col].median() for q in qs]
         line = f"    {label:<20s}"
         for v in vals:
             line += f" {v:>{w}{fmt}}"
@@ -664,28 +729,151 @@ def print_systematic_summary(lsoa: pd.DataFrame) -> None:
             line += f" {v1 / v4:>6.2f}x"
         print(line)
 
-    # Narrative: the compounding
+    # Narrative: three surfaces decomposition
     q1 = lsoa[lsoa["sv_quartile"] == "Q1 compact"]
     q4 = lsoa[lsoa["sv_quartile"] == "Q4 sprawl"]
     if len(q1) == 0 or len(q4) == 0:
         return
 
-    print("\n  The compounding effect (Q1 compact / Q4 sprawl):")
-    steps = [
-        ("kWh/hh (bldg)", "building_kwh_per_hh", "building energy cost"),
-        ("kWh/hh (total)", "total_kwh_per_hh", "+ transport"),
-        ("kWh/person", "total_kwh_per_person", "+ occupation density"),
-    ]
-    for label, col, gloss in steps:
-        if col not in lsoa.columns:
-            continue
-        r = q1[col].median() / q4[col].median()
-        print(f"    {label:<20s} {r:.2f}x  ({gloss})")
+    print("\n  Three surfaces (Q1 compact / Q4 sprawl):")
+
+    r_bldg = q1["building_kwh_per_hh"].median()
+    r_bldg /= q4["building_kwh_per_hh"].median()
+    r_pcap = q1["kwh_per_person"].median()
+    r_pcap /= q4["kwh_per_person"].median()
+    print("    1. THERMAL SURFACE")
+    print(f"       kWh/hh (bldg)    {r_bldg:.2f}x  -- ~flat")
+    print(
+        f"       kWh/person (bldg) {r_pcap:.2f}x  -- "
+        "smaller households wash out S/V gain"
+    )
+
+    r_cars = q1["cars_per_hh"].median()
+    r_cars /= q4["cars_per_hh"].median()
+    r_trans = q1["transport_kwh_per_hh"].median()
+    r_trans /= q4["transport_kwh_per_hh"].median()
+    r_total = q1["total_kwh_per_hh"].median()
+    r_total /= q4["total_kwh_per_hh"].median()
+    print("    2. MOBILITY SURFACE")
+    print(f"       Cars/hh           {r_cars:.2f}x  -- car ownership halves in compact")
+    print(f"       kWh/hh (trans)    {r_trans:.2f}x  -- THE dominant cost gradient")
+    print(f"       kWh/hh (total)    {r_total:.2f}x  -- transport flips the sign")
+
+    acc_q1 = q1["accessibility_pc1"].median()
+    acc_q4 = q4["accessibility_pc1"].median()
+    print("    3. ACCESSIBILITY SURFACE")
+    print(
+        f"       Access PC1        {acc_q1:.2f} vs "
+        f"{acc_q4:.2f}  -- compact delivers more city"
+    )
 
     if "conduit_total" in lsoa.columns:
-        r = q1["conduit_total"].median() / q4["conduit_total"].median()
-        print(f"    {'Conduit':<20s} {r:.2f}x  (+ accessibility return)")
+        r = q1["conduit_total"].median()
+        r /= q4["conduit_total"].median()
+        print("    CONDUIT (return / cost)")
+        print(f"       Access/kWh        {r:.2f}x  -- more city per kWh")
 
+
+# ---------------------------------------------------------------------------
+# 4b. Three surfaces by dominant housing type
+# ---------------------------------------------------------------------------
+
+
+def print_housing_type_summary(lsoa: pd.DataFrame) -> None:
+    """
+    Show three energy surfaces stratified by dominant housing type.
+
+    Census ts044 accommodation type provides a cleaner, more interpretable
+    stratification than S/V quartiles. "Flat-dominant neighbourhood vs
+    detached-dominant" is immediately legible.
+
+    Parameters
+    ----------
+    lsoa : pd.DataFrame
+        LSOA data with dominant_type column.
+    """
+    print(f"\n{'=' * 70}")
+    print("THREE SURFACES BY DOMINANT HOUSING TYPE (Census ts044)")
+    print("=" * 70)
+
+    if "dominant_type" not in lsoa.columns:
+        print("  No dominant_type column — skipping")
+        return
+
+    types = ["Flat", "Terraced", "Semi", "Detached"]
+    w = 12
+
+    metrics: list[tuple[str, str, str, str]] = [
+        ("FORM", "S/V ratio", "lsoa_sv", ".3f"),
+        ("FORM", "Height (m)", "height_mean", ".1f"),
+        ("DENSITY", "People/ha", "people_per_ha", ".0f"),
+        ("DENSITY", "People/hh", "avg_hh_size", ".2f"),
+        ("1:THERMAL", "kWh/hh (bldg)", "building_kwh_per_hh", ",.0f"),
+        ("1:THERMAL", "kWh/person(bldg)", "kwh_per_person", ",.0f"),
+        ("2:MOBILITY", "Cars/hh", "cars_per_hh", ".2f"),
+        ("2:MOBILITY", "kWh/hh (trans)", "transport_kwh_per_hh", ",.0f"),
+        ("2:MOBILITY", "kWh/hh (total)", "total_kwh_per_hh", ",.0f"),
+        ("3:RETURN", "Accessibility", "accessibility_pc1", ".2f"),
+        ("CONDUIT", "Access/kWh_hh", "conduit_total", ".6f"),
+    ]
+
+    # Header
+    hdr = f"  {'':22s}"
+    for t in types:
+        hdr += f" {t:>{w}s}"
+    hdr += f" {'Flat/Det':>8s}"
+    print(f"\n{hdr}")
+    print(f"  {'-' * (22 + len(types) * (w + 1) + 9)}")
+
+    # Count row
+    line = f"    {'N LSOAs':<20s}"
+    for t in types:
+        n = (lsoa["dominant_type"] == t).sum()
+        line += f" {n:>{w},d}"
+    print(line)
+    print()
+
+    prev_section = ""
+    for section, label, col, fmt in metrics:
+        if col not in lsoa.columns:
+            continue
+        if section != prev_section:
+            if prev_section:
+                print()
+            print(f"  {section}")
+            prev_section = section
+
+        vals = [lsoa.loc[lsoa["dominant_type"] == t, col].median() for t in types]
+        line = f"    {label:<20s}"
+        for v in vals:
+            line += f" {v:>{w}{fmt}}"
+        v_flat, v_det = vals[0], vals[3]
+        if v_det != 0 and not np.isnan(v_flat) and not np.isnan(v_det):
+            line += f" {v_flat / v_det:>7.2f}x"
+        print(line)
+
+    # Narrative
+    flat = lsoa[lsoa["dominant_type"] == "Flat"]
+    det = lsoa[lsoa["dominant_type"] == "Detached"]
+    if len(flat) == 0 or len(det) == 0:
+        return
+
+    print("\n  Three surfaces (Flat-dominant / Detached-dominant):")
+
+    r_bldg = flat["building_kwh_per_hh"].median()
+    r_bldg /= det["building_kwh_per_hh"].median()
+    r_trans = flat["transport_kwh_per_hh"].median()
+    r_trans /= det["transport_kwh_per_hh"].median()
+    r_total = flat["total_kwh_per_hh"].median()
+    r_total /= det["total_kwh_per_hh"].median()
+    print(f"    1. Thermal:  {r_bldg:.2f}x  (building energy ~flat)")
+    print(f"    2. Mobility: {r_trans:.2f}x  (transport doubles)")
+    print(f"    3. Total:    {r_total:.2f}x  (transport dominates)")
+
+    if "conduit_total" in lsoa.columns:
+        r = flat["conduit_total"].median()
+        r /= det["conduit_total"].median()
+        print(f"    Conduit:     {r:.2f}x  (city per kWh)")
 
 
 # ---------------------------------------------------------------------------
@@ -694,7 +882,7 @@ def print_systematic_summary(lsoa: pd.DataFrame) -> None:
 
 
 def print_energy_decomposition(lsoa: pd.DataFrame) -> None:
-    """Show building vs transport energy by compactness."""
+    """Show building vs transport energy by compactness and housing type."""
     print(f"\n{'=' * 70}")
     print("ENERGY COST DECOMPOSITION")
     print("=" * 70)
@@ -736,6 +924,32 @@ def print_energy_decomposition(lsoa: pd.DataFrame) -> None:
         act = s["active_share"].median()
         print(
             f"  {q:<14s} {b:>7.0f} {t:>7.0f} {tot:>7.0f} "
+            f"{tpct:>4.0%} {car:>4.0%} {km:>7.1f}km {act:>5.0%}"
+        )
+
+    # --- By dominant housing type ---
+    if "dominant_type" not in sub.columns:
+        return
+
+    print("\n  By dominant housing type:")
+    print(
+        f"  {'Type':<14s} {'Build':>7s} {'Trans':>7s} {'Total':>7s} "
+        f"{'T%':>5s} {'Car%':>5s} {'Commute':>8s} {'Active':>7s}"
+    )
+    print(f"  {'-' * 62}")
+    for dtype in ["Flat", "Terraced", "Semi", "Detached"]:
+        s = sub[sub["dominant_type"] == dtype]
+        if len(s) == 0:
+            continue
+        b = s["building_kwh_per_hh"].median()
+        t = s["transport_kwh_per_hh"].median()
+        tot = s["total_kwh_per_hh"].median()
+        tpct = (s["transport_kwh_per_hh"] / s["total_kwh_per_hh"]).median()
+        car = s["car_commute_share"].median()
+        km = s["avg_commute_km"].median()
+        act = s["active_share"].median()
+        print(
+            f"  {dtype:<14s} {b:>7.0f} {t:>7.0f} {tot:>7.0f} "
             f"{tpct:>4.0%} {car:>4.0%} {km:>7.1f}km {act:>5.0%}"
         )
 
@@ -815,6 +1029,15 @@ def run_regressions(lsoa: pd.DataFrame) -> None:
     occupation = ["people_per_ha"]
     controls = ["pct_not_deprived"]
 
+    # City fixed effects — absorb city-level confounds (climate, stock age, etc.)
+    city_dummies: list[str] = []
+    if "city" in lsoa.columns and lsoa["city"].nunique() > 1:
+        dummies = pd.get_dummies(lsoa["city"], prefix="city", drop_first=True)
+        # Ensure boolean columns become numeric
+        dummies = dummies.astype(int)
+        city_dummies = list(dummies.columns)
+        lsoa = pd.concat([lsoa, dummies], axis=1)
+
     # --- A: DV = log(conduit efficiency) ---
     print("\n  --- A. What makes a neighbourhood an efficient conduit? ---")
     print("  DV = log(accessibility / kWh per household)\n")
@@ -833,9 +1056,42 @@ def run_regressions(lsoa: pd.DataFrame) -> None:
     )
     r2 = _print_model(a3, "A3 +Deprivation", r2)
 
-    best_a = a3 or a2 or a1
+    if city_dummies:
+        a4 = _run_ols(
+            lsoa,
+            "log_conduit_total",
+            physics + occupation + controls + city_dummies,
+            "A4 +City FE",
+        )
+        r2 = _print_model(a4, "A4 +City FE", r2)
+        best_a = a4 or a3 or a2 or a1
+    else:
+        best_a = a3 or a2 or a1
+
     if best_a:
-        _print_coefficients(best_a)
+        # Print only substantive coefficients (skip city dummies)
+        print(f"\n  {'Variable':<25s} {'β':>8s} {'SE':>8s} {'t':>8s} {'p':>10s}")
+        print(f"  {'-' * 62}")
+        for var in best_a.params.index:
+            if var == "const" or var.startswith("city_"):
+                continue
+            print(
+                f"  {var:<25s} {best_a.params[var]:>8.4f} "
+                f"{best_a.bse[var]:>8.4f} "
+                f"{best_a.tvalues[var]:>8.2f} "
+                f"{best_a.pvalues[var]:>8.1e} "
+                f"{_sigstars(best_a.pvalues[var])}"
+            )
+        if city_dummies:
+            n_city_sig = sum(
+                1
+                for v in city_dummies
+                if v in best_a.pvalues and best_a.pvalues[v] < 0.05
+            )
+            print(
+                f"  ({len(city_dummies)} city dummies, "
+                f"{n_city_sig} significant at p<0.05)"
+            )
 
     # --- B: DV = accessibility, energy as predictor ---
     print("\n\n  --- B. For a given energy spend, does form deliver more access? ---")
@@ -860,9 +1116,41 @@ def run_regressions(lsoa: pd.DataFrame) -> None:
     )
     r2 = _print_model(b3, "B3 +Occ+Dep", r2)
 
-    best_b = b3 or b2 or b1
+    if city_dummies:
+        b4 = _run_ols(
+            lsoa,
+            "accessibility_pc1",
+            ["log_total_kwh_per_hh"] + physics + occupation + controls + city_dummies,
+            "B4 +City FE",
+        )
+        r2 = _print_model(b4, "B4 +City FE", r2)
+        best_b = b4 or b3 or b2 or b1
+    else:
+        best_b = b3 or b2 or b1
+
     if best_b:
-        _print_coefficients(best_b)
+        print(f"\n  {'Variable':<25s} {'β':>8s} {'SE':>8s} {'t':>8s} {'p':>10s}")
+        print(f"  {'-' * 62}")
+        for var in best_b.params.index:
+            if var == "const" or var.startswith("city_"):
+                continue
+            print(
+                f"  {var:<25s} {best_b.params[var]:>8.4f} "
+                f"{best_b.bse[var]:>8.4f} "
+                f"{best_b.tvalues[var]:>8.2f} "
+                f"{best_b.pvalues[var]:>8.1e} "
+                f"{_sigstars(best_b.pvalues[var])}"
+            )
+        if city_dummies:
+            n_city_sig = sum(
+                1
+                for v in city_dummies
+                if v in best_b.pvalues and best_b.pvalues[v] < 0.05
+            )
+            print(
+                f"  ({len(city_dummies)} city dummies, "
+                f"{n_city_sig} significant at p<0.05)"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -971,7 +1259,7 @@ def run_per_city(lsoa: pd.DataFrame) -> None:
 def main(cities: list[str] | None = None) -> None:
     """Run the LSOA conduit analysis."""
     print("=" * 70)
-    print("LSOA CONDUIT ANALYSIS")
+    print("LSOA CONDUIT ANALYSIS: THREE ENERGY SURFACES")
     print("Per unit energy spent, how much city do you get?")
     print("=" * 70)
 
@@ -979,6 +1267,7 @@ def main(cities: list[str] | None = None) -> None:
     lsoa = build_accessibility(lsoa)
     lsoa = compute_conduit(lsoa)
     print_systematic_summary(lsoa)
+    print_housing_type_summary(lsoa)
     print_energy_decomposition(lsoa)
     run_regressions(lsoa)
     run_deprivation_control(lsoa)

@@ -1,18 +1,19 @@
 """
-Processing pipeline for urban energy analysis.
+LSOA-level processing pipeline for urban energy analysis.
 
-Runs all three processing stages on Built-Up Area boundaries:
+Three stages:
   Stage 1: Building morphology (from cached LiDAR + momepy metrics)
   Stage 2: Network analysis (cityseer centrality + accessibility)
-  Stage 3: UPRN integration (joins morphology, census, EPC, network)
+  Stage 3: LSOA aggregation (transient UPRN joins → aggregate to LSOA polygons)
 
-Each city is processed independently (separate network, separate output),
-then combined into a single dataset with a city identifier column.
+Output structure:
+    processing/{city}/lsoa_integrated.gpkg   — per-city LSOA polygons
+    processing/combined/lsoa_integrated.gpkg — all cities merged
 
 Usage:
-    uv run python processing/test_pipeline.py                  # all cities
-    uv run python processing/test_pipeline.py manchester       # one city
-    uv run python processing/test_pipeline.py york cambridge   # subset
+    uv run python processing/pipeline_lsoa.py                  # all cities
+    uv run python processing/pipeline_lsoa.py manchester       # one city
+    uv run python processing/pipeline_lsoa.py york cambridge   # subset
 """
 
 import gc
@@ -23,19 +24,23 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pyarrow as pa
+import pyarrow.compute as pc
+import pyarrow.parquet as pq
 from scipy.spatial import cKDTree
 
 warnings.filterwarnings("ignore", message="DataFrame is highly fragmented")
 
+from urban_energy.paths import TEMP_DIR  # noqa: E402
+
+# ---------------------------------------------------------------------------
 # Configuration
-from urban_energy.paths import TEMP_DIR
+# ---------------------------------------------------------------------------
 
 OUTPUT_DIR = TEMP_DIR / "processing"
 
 # Study cities: BUA22CD -> short name
-# Each city is processed independently through all 3 stages.
 CITIES: dict[str, str] = {
-    # Large cities
+    # Large cities (original 8)
     "E63008401": "manchester",
     "E63012168": "bristol",
     "E63010901": "milton_keynes",
@@ -45,6 +50,18 @@ CITIES: dict[str, str] = {
     "E63011231": "stevenage",  # new town (sprawl control)
     "E63007907": "burnley",  # northern mill town (dense terraced)
     "E63012524": "canterbury",  # historic compact city
+    # Expansion — large provincial cities for statistical power
+    "E63010038": "birmingham",
+    "E63007883": "leeds",
+    "E63008489": "sheffield",
+    "E63008477": "liverpool",
+    "E63007169": "newcastle",
+    "E63009088": "nottingham",
+    "E63009743": "leicester",
+    # Southern/coastal for regional balance
+    "E63014082": "plymouth",
+    "E63013524": "southampton",
+    "E63013666": "brighton",
 }
 
 # Input paths
@@ -61,6 +78,40 @@ PATHS = {
     "transport": TEMP_DIR / "transport" / "naptan_england.gpkg",
     "energy_stats": TEMP_DIR / "statistics" / "lsoa_energy_consumption.parquet",
 }
+
+# Building physics columns needed for LSOA aggregation
+_MORPH_SUM_COLS = ["footprint_area_m2", "volume_m3", "envelope_area_m2"]
+_MORPH_MEAN_COLS = ["surface_to_volume", "height_mean", "form_factor"]
+
+# Census column names needed for OA area derivation
+_TS001_POP = "ts001_Residence type: Lives in a household; measures: Value"
+_TS006_DENSITY = (
+    "ts006_Population Density: Persons per square kilometre; measures: Value"
+)
+
+# Maps EPC CONSTRUCTION_AGE_BAND strings → midpoint year
+ERA_MAP: dict[str, int] = {
+    "England and Wales: before 1900": 1880,
+    "England and Wales: 1900-1929": 1915,
+    "England and Wales: 1930-1949": 1940,
+    "England and Wales: 1950-1966": 1958,
+    "England and Wales: 1967-1975": 1971,
+    "England and Wales: 1976-1982": 1979,
+    "England and Wales: 1983-1990": 1987,
+    "England and Wales: 1991-1995": 1993,
+    "England and Wales: 1996-2002": 1999,
+    "England and Wales: 2003-2006": 2005,
+    "England and Wales: 2007 onwards": 2010,
+    "England and Wales: 2007-2011": 2009,
+    "England and Wales: 2012 onwards": 2016,
+    "England and Wales: 2012-2021": 2016,
+    "England and Wales: 2022 onwards": 2023,
+}
+
+
+# ---------------------------------------------------------------------------
+# Stage 1: Building Morphology
+# ---------------------------------------------------------------------------
 
 
 def check_inputs() -> dict[str, bool]:
@@ -106,8 +157,7 @@ def run_stage1_morphology(boundaries: gpd.GeoDataFrame) -> gpd.GeoDataFrame | No
     """
     Stage 1: Building Morphology.
 
-    Check if morphology is already cached for test boundaries.
-    If not, compute it.
+    Load cached morphology results for boundaries.
     """
     print()
     print("=" * 60)
@@ -129,18 +179,16 @@ def run_stage1_morphology(boundaries: gpd.GeoDataFrame) -> gpd.GeoDataFrame | No
                 results.append(gdf)
         else:
             print(f"  {bua_code} ({bua_name}): No cache found - needs processing")
-            # TODO: Run morphology processing for this boundary
             return None
 
     if not results:
         print("  No buildings found in test boundaries!")
         return None
 
-    # Combine all buildings
     buildings = pd.concat(results, ignore_index=True)
     buildings = gpd.GeoDataFrame(buildings, crs=results[0].crs)
 
-    # Validate required columns (including thermal metrics from process_morphology.py)
+    # Validate required columns
     required_cols = [
         "footprint_area_m2",
         "perimeter_m",
@@ -182,6 +230,11 @@ def run_stage1_morphology(boundaries: gpd.GeoDataFrame) -> gpd.GeoDataFrame | No
     return buildings
 
 
+# ---------------------------------------------------------------------------
+# Stage 2: Network Analysis
+# ---------------------------------------------------------------------------
+
+
 def run_stage2_network(
     boundaries: gpd.GeoDataFrame,
     buildings: gpd.GeoDataFrame | None = None,
@@ -200,11 +253,6 @@ def run_stage2_network(
         Buildings with morphology metrics for statistical aggregation.
     test_mode : bool
         If True, use reduced buffer and centrality distances for faster testing.
-
-    Buffer requirements (full mode):
-    - Centrality: 10, 20, 40, 60, 120 minutes (max 120 min)
-    - Accessibility: 5, 10, 20, 60 minutes (max 60 min)
-    - At 1.33 m/s, 120 min = ~9600m buffer needed
     """
     from cityseer.metrics import layers, networks
     from cityseer.tools import graphs, io
@@ -217,19 +265,17 @@ def run_stage2_network(
     # Analysis parameters - distances in meters (based on ~80m/min walking speed)
     # 5min=400m, 10min=800m, 20min=1600m, 40min=3200m, 60min=4800m, 120min=9600m
     if test_mode:
-        CENTRALITY_DISTANCES = [800, 1600]  # Reduced for faster testing
+        CENTRALITY_DISTANCES = [800, 1600]
         ACCESSIBILITY_DISTANCES = [400, 800, 1600]
         print("  [TEST MODE: reduced distances for faster processing]")
     else:
         CENTRALITY_DISTANCES = [800, 1600, 3200, 4800, 9600]
         ACCESSIBILITY_DISTANCES = [400, 800, 1600, 4800]
 
-    # Buffer must cover max analysis distance
     max_distance = max(max(CENTRALITY_DISTANCES), max(ACCESSIBILITY_DISTANCES))
-    buffer_m = int(max_distance * 1.1)  # 10% margin
+    buffer_m = int(max_distance * 1.1)
     print(f"  Buffer: {buffer_m}m (max distance + 10% margin)")
 
-    # Get combined boundary for clipping
     combined_bounds = boundaries.union_all()
     buffered_bounds = combined_bounds.buffer(buffer_m)
 
@@ -254,10 +300,7 @@ def run_stage2_network(
         f"{nx_graph.number_of_edges()} edges"
     )
 
-    # Convert to cityseer network structure
-    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(
-        nx_graph
-    )
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(nx_graph)
     print(f"    Network structure built: {len(nodes_gdf)} nodes")
 
     # Compute centrality
@@ -269,9 +312,7 @@ def run_stage2_network(
         compute_closeness=True,
         compute_betweenness=True,
     )
-    centrality_cols = [
-        c for c in nodes_gdf.columns if "beta" in c or "harmonic" in c
-    ]
+    centrality_cols = [c for c in nodes_gdf.columns if "beta" in c or "harmonic" in c]
     print(f"    Centrality columns: {len(centrality_cols)}")
 
     # Compute building statistics over the network at accessibility distances
@@ -279,7 +320,6 @@ def run_stage2_network(
     ASSUMED_STOREY_HEIGHT_M = 3.0
     if buildings is not None and len(buildings) > 0:
         print(f"\n  Computing building stats (distances={STATS_DISTANCES})...")
-        # Use building centroids for network assignment
         buildings_pts = buildings.copy()
         buildings_pts["geometry"] = buildings_pts.geometry.centroid
         buildings_in_buffer = buildings_pts[
@@ -287,7 +327,6 @@ def run_stage2_network(
         ].copy()
         print(f"    Buildings in buffer: {len(buildings_in_buffer)}")
 
-        # Find all height columns
         height_cols = [
             c for c in buildings_in_buffer.columns if c.startswith("height_")
         ]
@@ -300,7 +339,7 @@ def run_stage2_network(
                     buildings_in_buffer[col], errors="coerce"
                 )
 
-        # Ensure volume is present (from process_morphology.py or compute here)
+        # Ensure volume is present
         if (
             "volume_m3" not in buildings_in_buffer.columns
             and "footprint_area_m2" in buildings_in_buffer.columns
@@ -311,13 +350,11 @@ def run_stage2_network(
                 * buildings_in_buffer["height_median"]
             )
 
-        # --- Building type classification from shared_wall_ratio ---
+        # Building type classification from shared_wall_ratio
         if "shared_wall_ratio" in buildings_in_buffer.columns:
             swr = buildings_in_buffer["shared_wall_ratio"]
             buildings_in_buffer["is_detached"] = (swr == 0).astype(float)
-            buildings_in_buffer["is_semi"] = (
-                (swr > 0) & (swr < 0.3)
-            ).astype(float)
+            buildings_in_buffer["is_semi"] = ((swr > 0) & (swr < 0.3)).astype(float)
             buildings_in_buffer["is_terraced"] = (swr >= 0.3).astype(float)
             n_det = int(buildings_in_buffer["is_detached"].sum())
             n_semi = int(buildings_in_buffer["is_semi"].sum())
@@ -327,7 +364,7 @@ def run_stage2_network(
                 f"detached={n_det:,}, semi={n_semi:,}, terraced={n_ter:,}"
             )
 
-        # --- Estimated gross floor area for FAR ---
+        # Estimated gross floor area for FAR
         if (
             "footprint_area_m2" in buildings_in_buffer.columns
             and "height_median" in buildings_in_buffer.columns
@@ -353,7 +390,6 @@ def run_stage2_network(
             stats_columns.append("volume_m3")
         if "gross_floor_area_m2" in buildings_in_buffer.columns:
             stats_columns.append("gross_floor_area_m2")
-        # Building type indicators (mean within catchment = proportion)
         for type_col in ["is_detached", "is_semi", "is_terraced"]:
             if type_col in buildings_in_buffer.columns:
                 stats_columns.append(type_col)
@@ -369,30 +405,24 @@ def run_stage2_network(
                 distances=STATS_DISTANCES,
             )
             stats_result_cols = [
-                c
-                for c in nodes_gdf.columns
-                if any(sc in c for sc in stats_columns)
+                c for c in nodes_gdf.columns if any(sc in c for sc in stats_columns)
             ]
             print(f"    ✓ Building stats: {len(stats_result_cols)} columns")
         else:
             print("    No numeric columns found for aggregation")
 
-        # --- Derive FAR and BCR from aggregated stats ---
+        # Derive FAR and BCR from aggregated stats
         print("\n  Deriving FAR and BCR from catchment stats...")
         for dist in STATS_DISTANCES:
             catchment_area = np.pi * dist**2
             gfa_col = f"cc_gross_floor_area_m2_{dist}_sum"
             if gfa_col in nodes_gdf.columns:
-                nodes_gdf[f"far_{dist}"] = (
-                    nodes_gdf[gfa_col] / catchment_area
-                )
+                nodes_gdf[f"far_{dist}"] = nodes_gdf[gfa_col] / catchment_area
                 mean_far = nodes_gdf[f"far_{dist}"].mean()
                 print(f"    ✓ far_{dist}: mean={mean_far:.3f}")
             fp_col = f"cc_footprint_area_m2_{dist}_sum"
             if fp_col in nodes_gdf.columns:
-                nodes_gdf[f"bcr_{dist}"] = (
-                    nodes_gdf[fp_col] / catchment_area
-                )
+                nodes_gdf[f"bcr_{dist}"] = nodes_gdf[fp_col] / catchment_area
                 mean_bcr = nodes_gdf[f"bcr_{dist}"].mean()
                 print(f"    ✓ bcr_{dist}: mean={mean_bcr:.3f}")
     else:
@@ -401,11 +431,10 @@ def run_stage2_network(
     # Load land use data for accessibility
     print("\n  Loading land use data...")
 
-    # FSA establishments - categorize by business type
+    # FSA establishments
     fsa = gpd.read_file(PATHS["fsa"], bbox=buffered_bounds.bounds)
     fsa = fsa.to_crs(boundaries.crs)
     fsa_in_buffer = fsa[fsa.intersects(buffered_bounds)].copy()
-    # Map business types to analysis categories
     fsa_category_map = {
         "Restaurant/Cafe/Canteen": "fsa_restaurant",
         "Takeaway/sandwich shop": "fsa_takeaway",
@@ -418,7 +447,7 @@ def run_stage2_network(
     for cat, count in fsa_in_buffer["landuse"].value_counts().items():
         print(f"      - {cat}: {count}")
 
-    # Greenspace - use centroids
+    # Greenspace
     greenspace = gpd.read_file(
         PATHS["greenspace"],
         layer="greenspace_site",
@@ -448,7 +477,6 @@ def run_stage2_network(
 
     # Compute accessibility metrics
     print(f"\n  Computing accessibility (distances={ACCESSIBILITY_DISTANCES})...")
-    # FSA accessibility - by category in one call
     fsa_keys = list(fsa_in_buffer["landuse"].unique())
     nodes_gdf, _data_gdf = layers.compute_accessibilities(
         fsa_in_buffer,
@@ -460,7 +488,6 @@ def run_stage2_network(
     )
     print(f"    ✓ FSA accessibility computed ({len(fsa_keys)} categories)")
 
-    # Greenspace accessibility
     nodes_gdf, _data_gdf = layers.compute_accessibilities(
         greenspace,
         landuse_column_label="landuse",
@@ -471,7 +498,6 @@ def run_stage2_network(
     )
     print("    ✓ Greenspace accessibility computed")
 
-    # Transport accessibility - bus and rail in one call
     transport_combined = pd.concat([bus_stops, rail_stops], ignore_index=True)
     if len(transport_combined) > 0:
         transport_keys = list(transport_combined["landuse"].unique())
@@ -485,12 +511,9 @@ def run_stage2_network(
         )
         print(f"    ✓ Transport accessibility computed ({transport_keys})")
 
-    # --- Drop redundant columns to keep output manageable ---
-    # Building stats produce 12 metrics × 6 agg types × 4 distances × 2 weights
-    # = 576 columns. We only need a curated subset for analysis.
+    # Drop redundant columns to keep output manageable
     all_cc = [c for c in nodes_gdf.columns if c.startswith("cc_")]
     keep_cc: set[str] = set()
-    # Centrality (all distances): harmonic, betweenness, density, beta, cycles
     for c in all_cc:
         for prefix in (
             "cc_harmonic_",
@@ -501,34 +524,31 @@ def run_stage2_network(
         ):
             if c.startswith(prefix):
                 keep_cc.add(c)
-    # Accessibility: weighted (_wt) and nearest only — drop unweighted (_nw)
     for c in all_cc:
         if c.endswith("_wt") or "_nearest_" in c:
             keep_cc.add(c)
-    # Building stats: keep only FAR/BCR (derived) and mean height at 800
     for c in all_cc:
         if c.startswith("cc_gross_floor_area_m2_sum_"):
-            keep_cc.add(c)  # needed for FAR
+            keep_cc.add(c)
         if c.startswith("cc_footprint_area_m2_sum_"):
-            keep_cc.add(c)  # needed for BCR
+            keep_cc.add(c)
         if c.startswith("cc_footprint_area_m2_count_"):
-            keep_cc.add(c)  # building density
-    # FAR/BCR columns (already derived, not cc_ prefixed)
+            keep_cc.add(c)
     drop_cc = [c for c in all_cc if c not in keep_cc]
     if drop_cc:
         nodes_gdf = nodes_gdf.drop(columns=drop_cc)
-        print(f"\n  Trimmed: kept {len(keep_cc)} of {len(all_cc)} cc_ columns"
-              f" (dropped {len(drop_cc)} redundant stats)")
+        print(
+            f"\n  Trimmed: kept {len(keep_cc)} of {len(all_cc)} cc_ columns"
+            f" (dropped {len(drop_cc)} redundant stats)"
+        )
 
     # Filter to nodes within study area (not just buffer)
     nodes_in_bounds = nodes_gdf[nodes_gdf.intersects(combined_bounds)]
 
-    # Validate: cityseer metrics must be present
     cc_cols = [c for c in nodes_in_bounds.columns if c.startswith("cc_")]
     if not cc_cols:
         raise RuntimeError(
-            "Stage 2 produced no cc_ columns. "
-            f"Columns: {list(nodes_in_bounds.columns)}"
+            f"Stage 2 produced no cc_ columns. Columns: {list(nodes_in_bounds.columns)}"
         )
     print(f"  Cityseer metric columns: {len(cc_cols)}")
     print(f"  Nodes in study area: {len(nodes_in_bounds)}")
@@ -536,350 +556,407 @@ def run_stage2_network(
     return nodes_in_bounds
 
 
-def run_stage3_uprn_integration(
+# ---------------------------------------------------------------------------
+# Stage 3: LSOA Aggregation
+# ---------------------------------------------------------------------------
+
+
+def run_stage3_lsoa_aggregation(
     boundaries: gpd.GeoDataFrame,
     buildings: gpd.GeoDataFrame | None,
-    segments: gpd.GeoDataFrame | None,
+    nodes: gpd.GeoDataFrame | None,
+    city_name: str,
 ) -> gpd.GeoDataFrame | None:
     """
-    Stage 3: UPRN Integration.
+    Stage 3: Aggregate all data to LSOA level.
 
-    Link all attributes to UPRNs as the atomic unit of analysis.
+    UPRNs are the transient join key — used to link morphology, census, EPC,
+    and network data — then immediately discarded after aggregation.
 
-    Performs:
-    - Spatial join: UPRN → Building (point-in-polygon for morphology)
-    - Spatial join: UPRN → Census OA (point-in-polygon for demographics)
-    - Direct join: UPRN → EPC (by UPRN field for energy performance)
-    - Nearest: UPRN → Street segment (for network metrics)
+    Parameters
+    ----------
+    boundaries : gpd.GeoDataFrame
+        Study area boundaries.
+    buildings : gpd.GeoDataFrame or None
+        Buildings with morphology metrics from Stage 1.
+    nodes : gpd.GeoDataFrame or None
+        Network nodes with cityseer metrics from Stage 2.
+    city_name : str
+        Short name for the city (added as a column).
+
+    Returns
+    -------
+    gpd.GeoDataFrame or None
+        LSOA-level dataset with polygon geometry, or None if no data.
     """
     print()
     print("=" * 60)
-    print("STAGE 3: UPRN INTEGRATION")
+    print("STAGE 3: LSOA AGGREGATION")
     print("=" * 60)
 
-    # Get combined boundary
     combined_bounds = boundaries.union_all()
 
-    # Load UPRNs
+    # ------------------------------------------------------------------
+    # 1. Load UPRNs (transient — never saved)
+    # ------------------------------------------------------------------
     print("  Loading UPRNs...")
-    uprn = gpd.read_file(
-        PATHS["uprn"],
-        bbox=combined_bounds.bounds,
-    )
+    uprn = gpd.read_file(PATHS["uprn"], bbox=combined_bounds.bounds)
     uprn = uprn.to_crs(boundaries.crs)
     uprn_gdf = uprn[uprn.intersects(combined_bounds)].copy()
-    print(f"    {len(uprn_gdf)} UPRNs in test boundaries")
+    uprn_gdf = uprn_gdf.reset_index(drop=True)
+    del uprn
+    print(f"    {len(uprn_gdf):,} UPRNs in boundary")
 
     if len(uprn_gdf) == 0:
-        print("  WARNING: No UPRNs found in test boundaries")
+        print("  WARNING: No UPRNs found in boundary")
         return None
 
-    # 1. Spatial join: UPRN → Building (morphology)
+    uprn_col = "UPRN" if "UPRN" in uprn_gdf.columns else "uprn"
+
+    # ------------------------------------------------------------------
+    # 2. Spatial join: UPRN → Building (morphology)
+    # ------------------------------------------------------------------
     print("\n  1. Joining UPRNs to buildings...")
     if buildings is not None:
-        # Select morphology columns to transfer
         morph_cols = [
-            "footprint_area_m2",
-            "perimeter_m",
-            "orientation",
-            "convexity",
-            "compactness",
-            "elongation",
-            "shared_wall_length_m",
-            "shared_wall_ratio",
-            # Thermal efficiency metrics
-            "surface_to_volume",
-            "form_factor",
-            "external_wall_area_m2",
-            "envelope_area_m2",
-            "volume_m3",
+            c for c in _MORPH_SUM_COLS + _MORPH_MEAN_COLS if c in buildings.columns
         ]
-        # Include height columns if present
-        height_cols = [c for c in buildings.columns if c.startswith("height_")]
-        cols_to_join = [c for c in morph_cols + height_cols if c in buildings.columns]
+        if "height_mean" not in buildings.columns:
+            for alt in ["height_median", "height_max"]:
+                if alt in buildings.columns:
+                    morph_cols.append(alt)
+                    print(f"    Note: using {alt} (height_mean not found)")
+                    break
 
-        # Perform spatial join
-        buildings_for_join = buildings[["geometry"] + cols_to_join].copy()
+        buildings_for_join = buildings[["geometry"] + morph_cols].copy()
         uprn_gdf = gpd.sjoin(
             uprn_gdf,
             buildings_for_join,
             how="left",
             predicate="within",
-        )
-        # Drop index column from sjoin
-        if "index_right" in uprn_gdf.columns:
-            uprn_gdf = uprn_gdf.drop(columns=["index_right"])
+        ).drop(columns=["index_right"], errors="ignore")
 
-        matched = uprn_gdf[cols_to_join[0]].notna().sum() if cols_to_join else 0
-        print(f"    ✓ {matched}/{len(uprn_gdf)} UPRNs matched to buildings")
+        matched = uprn_gdf[morph_cols[0]].notna().sum() if morph_cols else 0
+        print(f"    {matched:,}/{len(uprn_gdf):,} UPRNs matched to buildings")
     else:
-        print("    ✗ Buildings not available - skipping")
+        print("    Buildings not available — skipping")
 
-    # 2. Spatial join: UPRN → Census OA (demographics)
+    # ------------------------------------------------------------------
+    # 3. Spatial join: UPRN → Census OA
+    # ------------------------------------------------------------------
     print("\n  2. Joining UPRNs to Census Output Areas...")
     census = gpd.read_file(PATHS["census"], bbox=combined_bounds.bounds)
     census = census.to_crs(boundaries.crs)
 
-    # Select census columns (exclude geometry and join columns)
-    census_cols = [
-        c for c in census.columns if c not in ["geometry", "index_right", "index_left"]
-    ]
-    census_for_join = census[["geometry"] + census_cols].copy()
+    census_ts_cols = [c for c in census.columns if c.startswith("ts0")]
+    census_id_cols = [c for c in ["OA21CD", "LSOA21CD"] if c in census.columns]
+    census_for_join = census[["geometry"] + census_id_cols + census_ts_cols].copy()
 
     uprn_gdf = gpd.sjoin(
         uprn_gdf,
         census_for_join,
         how="left",
         predicate="within",
+    ).drop(columns=["index_right"], errors="ignore")
+
+    # Deduplicate: sjoin can produce duplicates at OA boundaries
+    uprn_gdf = uprn_gdf.drop_duplicates(subset=[uprn_col], keep="first")
+
+    n_with_lsoa = uprn_gdf["LSOA21CD"].notna().sum()
+    print(f"    {n_with_lsoa:,}/{len(uprn_gdf):,} UPRNs matched to Census OAs")
+
+    if n_with_lsoa == 0:
+        print("  WARNING: No UPRNs matched to Census OAs")
+        return None
+
+    # ------------------------------------------------------------------
+    # 3b. LSOA geometry: dissolve OA polygons
+    # ------------------------------------------------------------------
+    print("\n  3. Dissolving OA polygons to LSOA boundaries...")
+    lsoa_geom = (
+        census[["LSOA21CD", "geometry"]]
+        .dissolve(by="LSOA21CD")
+        .reset_index()[["LSOA21CD", "geometry"]]
     )
-    if "index_right" in uprn_gdf.columns:
-        uprn_gdf = uprn_gdf.drop(columns=["index_right"])
+    print(f"    {len(lsoa_geom):,} LSOA polygons")
+    del census
+    gc.collect()
 
-    # Count matches using first census column
-    if census_cols:
-        matched = uprn_gdf[census_cols[0]].notna().sum()
-        print(f"    ✓ {matched}/{len(uprn_gdf)} UPRNs matched to Census OAs")
-        print(f"    Census columns added: {len(census_cols)}")
+    # ------------------------------------------------------------------
+    # 4. Direct join: UPRN → EPC (narrow read)
+    # ------------------------------------------------------------------
+    print("\n  4. Joining UPRNs to EPC records...")
+    has_epc_coverage = False
+    has_build_year = False
 
-    # 2b. Tabular join: UPRN → LSOA metered energy consumption (DESNZ)
-    energy_stats_path = PATHS.get("energy_stats")
-    if (
-        energy_stats_path
-        and energy_stats_path.exists()
-        and "LSOA21CD" in uprn_gdf.columns
-    ):
-        print("\n  2b. Joining LSOA metered energy consumption (DESNZ)...")
-        energy_df = pd.read_parquet(energy_stats_path)
-        energy_cols = [c for c in energy_df.columns if c != "LSOA21CD"]
-        uprn_gdf = uprn_gdf.merge(energy_df, on="LSOA21CD", how="left")
-        if energy_cols:
-            matched = uprn_gdf[energy_cols[0]].notna().sum()
-            print(f"    ✓ {matched}/{len(uprn_gdf)} UPRNs matched to LSOA energy")
-            print(f"    Energy columns added: {len(energy_cols)}")
-    else:
-        print("\n  2b. LSOA energy data not available - skipping")
+    epc_path = PATHS.get("epc")
+    if epc_path and epc_path.exists():
+        epc_schema = pq.read_schema(epc_path)
+        uprn_col_epc = "UPRN" if "UPRN" in epc_schema.names else "uprn"
 
-    # 3. Direct join: UPRN → EPC (energy performance)
-    print("\n  3. Joining UPRNs to EPC records...")
-    uprn_col_uprn = "UPRN" if "UPRN" in uprn_gdf.columns else "uprn"
-    # Use PyArrow to read only matching UPRNs (avoids loading 1.7GB into memory)
-    import pyarrow.compute as pc
-    import pyarrow.parquet as pq
-
-    epc_schema = pq.read_schema(PATHS["epc"])
-    uprn_col_epc = "UPRN" if "UPRN" in epc_schema.names else "uprn"
-    uprn_keys = set(uprn_gdf[uprn_col_uprn].dropna().astype(int))
-    # Exclude geometry/spatial columns from the read
-    epc_read_cols = [
-        c
-        for c in epc_schema.names
-        if c.lower() not in ["geometry", "lat", "lon", "latitude", "longitude"]
-    ]
-    uprn_arr = pa.array(list(uprn_keys), type=pa.int64())
-    epc_filter = pc.is_in(pc.field(uprn_col_epc), value_set=uprn_arr)
-    epc_table = pq.read_table(
-        PATHS["epc"], columns=epc_read_cols, filters=epc_filter
-    )
-    n_total = pq.read_metadata(PATHS["epc"]).num_rows
-    epc = epc_table.to_pandas()
-    del epc_table
-    print(f"    {n_total:,} total EPC records, {len(epc):,} matching city UPRNs")
-
-    if uprn_col_uprn in uprn_gdf.columns and uprn_col_epc in epc.columns:
-        # Select EPC columns to join (exclude UPRN itself and geometry-related)
-        epc_cols = [
-            c
-            for c in epc.columns
-            if c.lower()
-            not in ["uprn", "geometry", "lat", "lon", "latitude", "longitude"]
+        epc_want = [
+            uprn_col_epc,
+            "INSPECTION_DATE",
+            "PROPERTY_TYPE",
+            "CONSTRUCTION_AGE_BAND",
         ]
+        epc_read_cols = [c for c in epc_want if c in epc_schema.names]
 
-        # Merge on UPRN
-        epc_for_join = epc[[uprn_col_epc] + epc_cols].copy()
-        epc_for_join = epc_for_join.rename(columns={uprn_col_epc: uprn_col_uprn})
+        uprn_keys = set(uprn_gdf[uprn_col].dropna().astype(int))
+        uprn_arr = pa.array(list(uprn_keys), type=pa.int64())
+        epc_filter = pc.is_in(pc.field(uprn_col_epc), value_set=uprn_arr)
+        epc_table = pq.read_table(epc_path, columns=epc_read_cols, filters=epc_filter)
+        epc = epc_table.to_pandas()
+        del epc_table
+        print(f"    {len(epc):,} EPC records matching city UPRNs")
 
-        # Take most recent EPC per UPRN if duplicates exist
-        if "INSPECTION_DATE" in epc_for_join.columns:
-            epc_for_join = epc_for_join.sort_values("INSPECTION_DATE", ascending=False)
-            epc_for_join = epc_for_join.drop_duplicates(
-                subset=[uprn_col_uprn], keep="first"
+        if "INSPECTION_DATE" in epc.columns:
+            epc = epc.sort_values("INSPECTION_DATE", ascending=False).drop_duplicates(
+                subset=[uprn_col_epc], keep="first"
             )
 
-        before_count = len(uprn_gdf)
-        uprn_gdf = uprn_gdf.merge(
-            epc_for_join,
-            on=uprn_col_uprn,
-            how="left",
+        epc_join_cols = [
+            c for c in ["PROPERTY_TYPE", "CONSTRUCTION_AGE_BAND"] if c in epc.columns
+        ]
+        epc_for_join = epc[[uprn_col_epc] + epc_join_cols].rename(
+            columns={uprn_col_epc: uprn_col}
         )
-        matched = uprn_gdf[epc_cols[0]].notna().sum() if epc_cols else 0
-        print(f"    ✓ {matched}/{before_count} UPRNs matched to EPC records")
-        print(f"    EPC columns added: {len(epc_cols)}")
+        uprn_gdf = uprn_gdf.merge(epc_for_join, on=uprn_col, how="left")
+
+        matched = (
+            uprn_gdf["PROPERTY_TYPE"].notna().sum()
+            if "PROPERTY_TYPE" in uprn_gdf.columns
+            else 0
+        )
+        print(f"    {matched:,}/{len(uprn_gdf):,} UPRNs matched to EPC")
+        has_epc_coverage = "PROPERTY_TYPE" in uprn_gdf.columns
+        has_build_year = "CONSTRUCTION_AGE_BAND" in uprn_gdf.columns
+        del epc
+        gc.collect()
     else:
-        print("    ✗ UPRN column not found - skipping")
+        print("    EPC data not available — skipping")
 
-    # 4. Nearest: UPRN → Street segment (network metrics)
-    print("\n  4. Joining UPRNs to nearest street segments...")
-    if segments is not None and len(segments) > 0:
-        # Get segment centroids for nearest neighbour search
-        segment_points = segments.geometry.centroid
-        segment_coords = list(zip(segment_points.x, segment_points.y))
+    # ------------------------------------------------------------------
+    # 5. Nearest: UPRN → Network node (cKDTree)
+    # ------------------------------------------------------------------
+    print("\n  5. Joining UPRNs to nearest network nodes...")
+    if nodes is not None and len(nodes) > 0:
+        exclude = {
+            "geometry",
+            "geom",
+            "x",
+            "y",
+            "index",
+            "ns_node_idx",
+            "live",
+            "weight",
+        }
+        network_cols = [
+            c
+            for c in nodes.columns
+            if c not in exclude
+            and (c.startswith("cc_") or c.startswith("far_") or c.startswith("bcr_"))
+        ]
 
-        # Get UPRN coordinates
-        uprn_coords = list(zip(uprn_gdf.geometry.x, uprn_gdf.geometry.y))
-
-        # Build KDTree for efficient nearest neighbour search
-        tree = cKDTree(segment_coords)
+        node_coords = np.column_stack([nodes.geometry.x, nodes.geometry.y])
+        uprn_coords = np.column_stack([uprn_gdf.geometry.x, uprn_gdf.geometry.y])
+        tree = cKDTree(node_coords)
         distances, indices = tree.query(uprn_coords, k=1)
 
-        # Get metric columns (exclude geometry, coords, raw node fields)
-        exclude = {
-            "geometry", "geom", "x", "y",
-            "index", "ns_node_idx", "live", "weight",
-        }
-        network_cols = [c for c in segments.columns if c not in exclude]
-
-        # Transfer network metrics from nearest segment
-        # (all at once to avoid DataFrame fragmentation)
-        nearest_data = segments.iloc[indices][network_cols].reset_index(drop=True)
-        nearest_data["segment_distance_m"] = distances
-        uprn_gdf = pd.concat(
-            [uprn_gdf.reset_index(drop=True), nearest_data], axis=1
-        )
+        nearest_data = nodes.iloc[indices][network_cols].reset_index(drop=True)
+        uprn_gdf = pd.concat([uprn_gdf.reset_index(drop=True), nearest_data], axis=1)
         uprn_gdf = gpd.GeoDataFrame(uprn_gdf, geometry="geometry", crs=boundaries.crs)
 
-        print(f"    ✓ All {len(uprn_gdf)} UPRNs linked to nearest segment")
-        print(f"    Network columns added: {len(network_cols)}")
-        print(f"    Mean distance to segment: {distances.mean():.1f}m")
+        print(f"    {len(uprn_gdf):,} UPRNs linked to nearest node")
+        print(f"    Network columns: {len(network_cols)}")
+        print(f"    Mean distance: {distances.mean():.1f}m")
     else:
-        print("    ✗ Network segments not available - skipping")
+        print("    Network nodes not available — skipping")
 
-    # Summary
-    n_cols = len(uprn_gdf.columns)
-    print(f"\n  Final UPRN dataset: {len(uprn_gdf)} records, {n_cols} columns")
+    # ==================================================================
+    # AGGREGATION TO LSOA
+    # ==================================================================
+    print("\n  " + "=" * 56)
+    print("  AGGREGATING TO LSOA")
+    print("  " + "=" * 56)
 
-    return uprn_gdf
+    uprn_gdf = uprn_gdf[uprn_gdf["LSOA21CD"].notna()].copy()
+
+    for col in _MORPH_SUM_COLS + _MORPH_MEAN_COLS:
+        if col in uprn_gdf.columns:
+            uprn_gdf[col] = pd.to_numeric(uprn_gdf[col], errors="coerce")
+
+    # Phase 1: Census deduplication (OA → LSOA)
+    print("\n  Phase 1: Census deduplication...")
+    census_cols = [c for c in uprn_gdf.columns if c.startswith("ts0")]
+    oa_census = uprn_gdf.groupby("OA21CD")[census_cols].first()
+    oa_to_lsoa = uprn_gdf.groupby("OA21CD")["LSOA21CD"].first()
+    oa_census["LSOA21CD"] = oa_to_lsoa
+
+    if _TS006_DENSITY in oa_census.columns and _TS001_POP in oa_census.columns:
+        oa_pop = pd.to_numeric(oa_census[_TS001_POP], errors="coerce")
+        oa_dens = pd.to_numeric(oa_census[_TS006_DENSITY], errors="coerce")
+        oa_census["_oa_area_km2"] = oa_pop / oa_dens.replace(0, np.nan)
+
+    lsoa_census = oa_census.groupby("LSOA21CD").sum()
+    n_oas = len(oa_census)
+    n_lsoas_census = len(lsoa_census)
+    print(f"    {n_oas:,} OAs → {n_lsoas_census:,} LSOAs")
+
+    # Phase 2: UPRN → LSOA aggregation
+    print("\n  Phase 2: UPRN aggregation...")
+
+    n_uprns = uprn_gdf.groupby("LSOA21CD").size().reset_index(name="n_uprns")
+
+    sum_cols = [c for c in _MORPH_SUM_COLS if c in uprn_gdf.columns]
+    mean_cols = [c for c in _MORPH_MEAN_COLS if c in uprn_gdf.columns]
+
+    agg_dict: dict[str, str] = {}
+    for c in sum_cols:
+        agg_dict[c] = "sum"
+    for c in mean_cols:
+        agg_dict[c] = "mean"
+
+    cc_cols = [c for c in uprn_gdf.columns if c.startswith(("cc_", "far_", "bcr_"))]
+    for c in cc_cols:
+        agg_dict[c] = "mean"
+
+    lsoa_agg = uprn_gdf.groupby("LSOA21CD").agg(agg_dict).reset_index()
+    print(f"    {len(lsoa_agg):,} LSOAs from UPRN aggregation")
+
+    # EPC-derived aggregations
+    epc_pieces: list[pd.DataFrame] = []
+
+    if has_epc_coverage:
+        print("\n  EPC coverage...")
+        n_epc = (
+            uprn_gdf.groupby("LSOA21CD")["PROPERTY_TYPE"]
+            .apply(lambda s: s.notna().sum())
+            .reset_index(name="n_epc")
+        )
+        epc_pieces.append(n_epc)
+
+    if has_build_year:
+        print("  Building era...")
+        age = uprn_gdf[["LSOA21CD", "CONSTRUCTION_AGE_BAND"]].copy()
+        age = age[age["CONSTRUCTION_AGE_BAND"].notna()].copy()
+        age["_year"] = age["CONSTRUCTION_AGE_BAND"].map(ERA_MAP)
+        unmapped = age["_year"].isna()
+        age.loc[unmapped, "_year"] = pd.to_numeric(
+            age.loc[unmapped, "CONSTRUCTION_AGE_BAND"], errors="coerce"
+        )
+        age = age[age["_year"].notna()]
+        if len(age) > 0:
+            median_year = (
+                age.groupby("LSOA21CD")["_year"]
+                .median()
+                .reset_index(name="median_build_year")
+            )
+            epc_pieces.append(median_year)
+
+    # Assemble LSOA DataFrame
+    print("\n  Assembling LSOA dataset...")
+
+    lsoa = lsoa_geom.copy()
+    lsoa = lsoa.merge(n_uprns, on="LSOA21CD", how="inner")
+    lsoa = lsoa.merge(lsoa_agg, on="LSOA21CD", how="left")
+    lsoa = lsoa.merge(lsoa_census.reset_index(), on="LSOA21CD", how="left")
+
+    for piece in epc_pieces:
+        lsoa = lsoa.merge(piece, on="LSOA21CD", how="left")
+
+    if "n_epc" in lsoa.columns:
+        lsoa["epc_coverage"] = lsoa["n_epc"] / lsoa["n_uprns"]
+
+    # Aggregate S/V ratio — sum(envelope) / sum(volume)
+    if "envelope_area_m2" in lsoa.columns and "volume_m3" in lsoa.columns:
+        lsoa["lsoa_sv"] = lsoa["envelope_area_m2"] / lsoa["volume_m3"].replace(
+            0, np.nan
+        )
+
+    # Metered energy — direct join on LSOA21CD
+    energy_path = PATHS.get("energy_stats")
+    if energy_path and energy_path.exists():
+        print("  Joining metered energy...")
+        energy_df = pd.read_parquet(energy_path)
+        energy_cols = [c for c in energy_df.columns if c != "LSOA21CD"]
+        lsoa = lsoa.merge(energy_df, on="LSOA21CD", how="left")
+        matched = lsoa[energy_cols[0]].notna().sum() if energy_cols else 0
+        print(f"    {matched:,}/{len(lsoa):,} LSOAs matched to metered energy")
+
+    lsoa["city"] = city_name
+    lsoa = gpd.GeoDataFrame(lsoa, geometry="geometry", crs=boundaries.crs)
+
+    del uprn_gdf
+    gc.collect()
+
+    print(f"\n  LSOA output: {len(lsoa):,} LSOAs, {len(lsoa.columns)} columns")
+    return lsoa
 
 
-def print_summary(
-    buildings: gpd.GeoDataFrame | None,
-    segments: gpd.GeoDataFrame | None,
-    uprns: gpd.GeoDataFrame | None,
-) -> None:
-    """Print a summary of the test pipeline results."""
-    print()
-    print("=" * 60)
-    print("SUMMARY")
-    print("=" * 60)
-
-    stages = [
-        ("Stage 1: Morphology", buildings),
-        ("Stage 2: Network", segments),
-        ("Stage 3: UPRN Integration", uprns),
-    ]
-
-    for name, result in stages:
-        if result is not None:
-            print(f"  ✓ {name}: {len(result)} records")
-        else:
-            print(f"  ✗ {name}: Not complete")
+# ---------------------------------------------------------------------------
+# Save and combine
+# ---------------------------------------------------------------------------
 
 
-def save_city_outputs(
-    city_name: str,
-    buildings: gpd.GeoDataFrame | None,
-    segments: gpd.GeoDataFrame | None,
-    uprns: gpd.GeoDataFrame | None,
-) -> None:
-    """Save pipeline outputs for a single city."""
+def save_city_lsoa(city_name: str, lsoa: gpd.GeoDataFrame | None) -> None:
+    """Save LSOA GeoPackage for a single city."""
+    if lsoa is None:
+        return
+
     city_dir = OUTPUT_DIR / city_name
     city_dir.mkdir(parents=True, exist_ok=True)
 
-    if buildings is not None:
-        path = city_dir / "buildings_morphology.gpkg"
-        buildings.to_file(path, driver="GPKG")
-        print(f"  Saved: {path}")
+    # Drop any extra geometry columns from joins
+    geom_cols = [
+        c
+        for c in lsoa.columns
+        if c != "geometry" and (lsoa[c].dtype == "geometry" or c == "geom")
+    ]
+    if geom_cols:
+        lsoa = lsoa.drop(columns=geom_cols)
 
-    if segments is not None:
-        path = city_dir / "network_segments.gpkg"
-        segments.to_file(path, driver="GPKG")
-        print(f"  Saved: {path}")
-
-    if uprns is not None:
-        if not isinstance(uprns, gpd.GeoDataFrame):
-            uprns = gpd.GeoDataFrame(uprns, geometry="geometry")
-
-        # Drop extra geometry columns (from joins)
-        geom_cols = [
-            c
-            for c in uprns.columns
-            if c != "geometry" and (uprns[c].dtype == "geometry" or c == "geom")
-        ]
-        if geom_cols:
-            uprns = uprns.drop(columns=geom_cols)
-
-        path = city_dir / "uprn_integrated.gpkg"
-        uprns.to_file(path, driver="GPKG")
-        print(f"  Saved: {path}")
+    path = city_dir / "lsoa_integrated.gpkg"
+    lsoa.to_file(path, driver="GPKG")
+    print(f"  Saved: {path}")
 
 
-def combine_cities(city_names: list[str]) -> None:
-    """
-    Combine per-city UPRN datasets into a single file with a city column.
-
-    Writes incrementally (one city at a time) to avoid loading all cities
-    into memory simultaneously. Also writes to the legacy ``test/`` path
-    for backward compatibility with existing analysis scripts.
-    """
+def combine_lsoa_cities(city_names: list[str]) -> None:
+    """Combine per-city LSOA datasets into a single GeoPackage."""
     print()
     print("=" * 60)
-    print("COMBINING CITIES")
+    print("COMBINING LSOA OUTPUTS")
     print("=" * 60)
 
-    combined_dir = OUTPUT_DIR / "combined"
-    combined_dir.mkdir(parents=True, exist_ok=True)
-    combined_path = combined_dir / "uprn_integrated.gpkg"
-
-    # Remove existing file so we start fresh
-    if combined_path.exists():
-        combined_path.unlink()
-
-    total = 0
-    file_created = False
-
+    frames: list[gpd.GeoDataFrame] = []
     for name in city_names:
-        path = OUTPUT_DIR / name / "uprn_integrated.gpkg"
+        path = OUTPUT_DIR / name / "lsoa_integrated.gpkg"
         if not path.exists():
             print(f"  SKIP: {name} (no output yet)")
             continue
-
         gdf = gpd.read_file(path)
-        gdf["city"] = name
-        print(f"  {name}: {len(gdf):,} UPRNs")
+        if "city" not in gdf.columns:
+            gdf["city"] = name
+        frames.append(gdf)
+        print(f"  {name}: {len(gdf):,} LSOAs")
 
-        if not file_created:
-            gdf.to_file(combined_path, driver="GPKG")
-            file_created = True
-        else:
-            gdf.to_file(combined_path, driver="GPKG", mode="a")
-
-        total += len(gdf)
-        del gdf
-        gc.collect()
-
-    if total == 0:
+    if not frames:
         print("  No city data to combine.")
         return
 
-    print(f"\n  Combined: {total:,} UPRNs -> {combined_path}")
+    combined = pd.concat(frames, ignore_index=True)
+    combined = gpd.GeoDataFrame(combined, geometry="geometry", crs=frames[0].crs)
 
-    # Backward compatibility: copy to test/ for existing analysis scripts
-    import shutil
+    combined_dir = OUTPUT_DIR / "combined"
+    combined_dir.mkdir(parents=True, exist_ok=True)
+    out_path = combined_dir / "lsoa_integrated.gpkg"
+    combined.to_file(out_path, driver="GPKG")
+    print(f"\n  Combined: {len(combined):,} LSOAs → {out_path}")
 
-    test_dir = OUTPUT_DIR / "test"
-    test_dir.mkdir(parents=True, exist_ok=True)
-    compat_path = test_dir / "uprn_integrated.gpkg"
-    shutil.copy2(combined_path, compat_path)
-    print(f"  Compat:   {compat_path}")
+
+# ---------------------------------------------------------------------------
+# Per-city orchestration
+# ---------------------------------------------------------------------------
 
 
 def process_city(
@@ -889,7 +966,7 @@ def process_city(
     test_mode: bool = False,
 ) -> None:
     """
-    Run the full pipeline for a single city.
+    Run the full LSOA pipeline for a single city.
 
     Parameters
     ----------
@@ -902,50 +979,63 @@ def process_city(
     """
     print()
     print("=" * 60)
-    print(f"PROCESSING: {city_name} ({bua_code})")
+    print(f"PROCESSING (LSOA): {city_name} ({bua_code})")
     print("=" * 60)
 
-    # Check if already processed — but verify output quality
-    uprn_path = OUTPUT_DIR / city_name / "uprn_integrated.gpkg"
-    if uprn_path.exists():
-        # Quick check: does it have cityseer columns?
-        # (fiona truncates schema at ~200 cols, use geopandas instead)
-        _probe = gpd.read_file(uprn_path, rows=1)
+    # Skip if already complete
+    lsoa_path = OUTPUT_DIR / city_name / "lsoa_integrated.gpkg"
+    if lsoa_path.exists():
+        _probe = gpd.read_file(lsoa_path, rows=1)
         has_cc = any(c.startswith("cc_") for c in _probe.columns)
         del _probe
         if has_cc:
-            print(f"  Already processed (with cityseer metrics): {uprn_path}")
+            print(f"  Already processed (with cityseer metrics): {lsoa_path}")
             print("  Delete to reprocess.")
             return
-        else:
-            print(f"  Incomplete output (no cityseer metrics): {uprn_path}")
-            print("  Deleting stale outputs and reprocessing...")
-            uprn_path.unlink()
-            seg_path = OUTPUT_DIR / city_name / "network_segments.gpkg"
-            if seg_path.exists():
-                seg_path.unlink()
+        print("  Incomplete output (no cityseer metrics) — reprocessing...")
+        lsoa_path.unlink()
 
     boundary = load_boundary(bua_code)
 
     # Stage 1: Morphology
     buildings = run_stage1_morphology(boundary)
 
-    # Stage 2: Network Analysis
-    segments = run_stage2_network(boundary, buildings=buildings, test_mode=test_mode)
+    # Stage 2: Network Analysis — use cache if available
+    nodes_cache = OUTPUT_DIR / city_name / "network_segments.gpkg"
+    nodes = None
+    if nodes_cache.exists():
+        _probe = gpd.read_file(nodes_cache, rows=1)
+        has_cc = any(c.startswith("cc_") for c in _probe.columns)
+        del _probe
+        if has_cc:
+            print(f"\n  Loading cached network: {nodes_cache}")
+            nodes = gpd.read_file(nodes_cache)
+            print(f"  {len(nodes):,} nodes from cache")
+    if nodes is None:
+        nodes = run_stage2_network(boundary, buildings=buildings, test_mode=test_mode)
+        if nodes is not None:
+            city_dir = OUTPUT_DIR / city_name
+            city_dir.mkdir(parents=True, exist_ok=True)
+            nodes.to_file(nodes_cache, driver="GPKG")
+            print(f"  Saved network cache: {nodes_cache}")
 
-    # Stage 3: UPRN Integration
-    uprns = run_stage3_uprn_integration(boundary, buildings, segments)
+    # Stage 3: LSOA Aggregation
+    lsoa = run_stage3_lsoa_aggregation(boundary, buildings, nodes, city_name)
 
-    # Save per-city outputs
-    save_city_outputs(city_name, buildings, segments, uprns)
+    # Save
+    save_city_lsoa(city_name, lsoa)
 
-    # Summary
-    print_summary(buildings, segments, uprns)
+    if lsoa is not None:
+        print(f"\n  {city_name}: {len(lsoa):,} LSOAs, {len(lsoa.columns)} columns")
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 
 
 def main() -> None:
-    """Run the pipeline for all (or selected) cities."""
-    # Parse CLI args: city names to process (default: all)
+    """Run the LSOA pipeline for all (or selected) cities."""
     args = sys.argv[1:]
     if args:
         selected = {code: name for code, name in CITIES.items() if name in args}
@@ -958,7 +1048,7 @@ def main() -> None:
 
     print()
     print("=" * 60)
-    print("URBAN ENERGY PROCESSING PIPELINE")
+    print("URBAN ENERGY LSOA PIPELINE")
     print("=" * 60)
     print(f"Cities: {list(selected.values())}")
     print(f"Output: {OUTPUT_DIR}")
@@ -966,13 +1056,11 @@ def main() -> None:
 
     check_inputs()
 
-    # Process each city independently
     for bua_code, city_name in selected.items():
         process_city(bua_code, city_name, test_mode=False)
         gc.collect()
 
-    # Combine all available city outputs
-    combine_cities(list(CITIES.values()))
+    combine_lsoa_cities(list(CITIES.values()))
 
 
 if __name__ == "__main__":
