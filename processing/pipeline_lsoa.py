@@ -307,6 +307,7 @@ def run_stage2_network(
     # Cityseer computes metrics only for live nodes; buffer nodes provide network
     # context for accurate catchment computation at the boundary edge.
     from shapely.geometry import Point as _Point
+
     for node_key, node_data in nx_graph.nodes(data=True):
         x, y = node_data["x"], node_data["y"]
         node_data["live"] = combined_bounds.contains(_Point(x, y))
@@ -940,7 +941,11 @@ def run_stage3_lsoa_aggregation(
         scaling_df = pd.read_parquet(scaling_path)
         scaling_df = scaling_df.rename(columns={"LSOA_CODE": "LSOA21CD"})
         lsoa = lsoa.merge(scaling_df, on="LSOA21CD", how="left")
-        matched = lsoa["lsoa_gva_millions"].notna().sum() if "lsoa_gva_millions" in lsoa.columns else 0
+        matched = (
+            lsoa["lsoa_gva_millions"].notna().sum()
+            if "lsoa_gva_millions" in lsoa.columns
+            else 0
+        )
         print(f"    {matched:,}/{len(lsoa):,} LSOAs matched to GVA")
 
     lsoa["city"] = city_name

@@ -1,181 +1,87 @@
 # Statistical Analysis
 
-Research design and methodology for quantifying the structural energy penalties of urban sprawl.
-
-**Scope:** Domestic (residential) buildings only.
-
-For key findings, see the [analysis report](analysis_report_v3.md).
+LSOA-level analysis of urban form and energy consumption across 18 English cities.
 
 ---
 
 ## Prerequisites
 
-Complete the data pipeline before running analysis:
+Complete the data and processing pipelines first:
 
 ```text
-1. DATA ACQUISITION    → data/README.md
-2. PROCESSING          → processing/README.md
-3. STATISTICAL ANALYSIS → (this document)
+1. DATA ACQUISITION      → data/README.md (10 download/prep scripts)
+2. BUILDING MORPHOLOGY   → processing/process_morphology.py
+3. LSOA PIPELINE         → processing/pipeline_lsoa.py
+4. STATISTICAL ANALYSIS  → (this directory)
 ```
 
-**Required input:** Processed EPC data with Census linkage
+**Required input:** `temp/processing/combined/lsoa_integrated.gpkg`
 
 ---
 
 ## Running the Analysis
 
 ```bash
-# Run complete analysis pipeline
-uv run python stats/run_all.py
+# Regenerate all case-one figures and tables
+uv run python stats/build_case.py
 
 # Or run individual scripts
-uv run python stats/05_lockin_analysis.py  # Core lock-in analysis
-uv run python stats/06_generate_report.py  # Generate report from results
+uv run python stats/lsoa_figures.py           # Three-surfaces figures
+uv run python stats/basket_index_v1.py        # Basket index + land-use penalty
+uv run python stats/diagnostic_fig1b.py       # Confounder diagnostics
+
+# Optionally restrict to specific cities
+uv run python stats/build_case.py "Manchester" "London"
 ```
 
-### Scripts
+## Scripts
 
-| Script                      | Purpose                                     | Output                                   |
-| --------------------------- | ------------------------------------------- | ---------------------------------------- |
-| `00_data_quality.py`        | Data quality assessment, sample description | `temp/stats/data_quality/`               |
-| `01_regression_analysis.py` | Regression models, effect decomposition     | Coefficients, variance decomposition     |
-| `02_mediation_analysis.py`  | Mediation through building type composition | Direct/indirect effect estimates         |
-| `03_transport_analysis.py`  | Transport energy estimation from Census     | Combined building + transport footprints |
-| `04_generate_figures.py`    | Publication-ready figures                   | `stats/figures/`                         |
-| `05_lockin_analysis.py`     | **Core lock-in quantification**             | `temp/stats/results/lockin_summary.json` |
-| `06_generate_report.py`     | Generate narrative report from JSON         | `stats/analysis_report_v3.md`            |
-| `run_all.py`                | Pipeline orchestrator                       | Runs all scripts in sequence             |
+| Script | Purpose | Output |
+|--------|---------|--------|
+| `build_case.py` | Entry point: regenerates all case-one figures | Calls the two scripts below |
+| `lsoa_figures.py` | Three energy surfaces publication figures | `figures/fig1_*` through `fig6_*`, summary CSVs |
+| `basket_index_v1.py` | TCPA-aligned basket index, land-use penalty | `figures/basket_v1/` (figures + tables) |
+| `proof_of_concept_lsoa.py` | Core LSOA data loading and analysis functions | Imported by the above scripts |
+| `diagnostic_fig1b.py` | Confounder scatter diagnostics | Diagnostic figure |
 
-### Output
-
-| File                                     | Description                                    |
-| ---------------------------------------- | ---------------------------------------------- |
-| `stats/analysis_report_v3.md`            | Main findings narrative (generated)            |
-| `temp/stats/results/lockin_summary.json` | Machine-readable results for report generation |
-| `stats/figures/*.png`                    | Publication figures                            |
-
----
-
-## Research Hypotheses
-
-### H1: Floor Area Lock-In
-
-> Sprawling development (detached houses) is associated with larger floor area, resulting in higher total energy demand regardless of efficiency.
-
-- **Metric:** Total floor area (m²) by built form
-- **Expected:** Detached ~60% larger than mid-terraces
-
-### H2: Envelope Lock-In
-
-> Detached houses have higher energy intensity per square metre than attached dwellings due to greater exposed wall area (~17% reduction per shared wall).
-
-- **Metric:** Energy intensity (kWh/m²) in matched samples (same era, same size)
-- **Expected:** Detached ~50% higher intensity than mid-terrace
-
-### H3: Transport Lock-In
-
-> Low-density development is associated with higher car ownership, resulting in more vehicle-km and higher transport energy.
-
-- **Metric:** Cars per household (Census TS045) by density quartile
-- **Expected:** Low-density ~20% more cars per household
-
-### Implication: Technology Persistence
-
-H1-H3 describe penalties that are structural — rooted in geometry (surface-area-to-volume ratio) and geography (distance to services). Because these penalties are proportional, technology improvements (better insulation, EVs) reduce absolute demand for all forms but cannot close the gap between compact and sprawling development.
-
-- **Test:** Scenario modelling across insulation and vehicle technology levels
-- **Expected:** Proportional penalty approximately constant
-
----
-
-## Analytical Approach
-
-### Primary Method: Matched Comparison
-
-The core analysis uses **matched comparisons** to isolate the shared-wall effect from confounders:
-
-**Problem:** Raw data shows detached houses with _lower_ energy intensity than terraces because detached homes tend to be newer (better insulation).
-
-**Solution:** Match on construction era and floor area to compare like with like.
+## Output
 
 ```text
-Matched Sample Criteria:
-- Construction era: 1945-1979 (same building regulations)
-- Floor area: 80-100 m² (removes size confounding)
+stats/figures/
+├── fig1_building_energy.png          # Building energy by dominant housing type
+├── fig2_mobility_penalty.png         # Building + transport energy by type
+├── fig2b_private_public_transport.png # Private vs public commute decomposition
+├── fig3_density_transport.png        # Density and transport energy (KDE)
+├── fig4_accessibility_dividend.png   # Local accessibility network frontage
+├── fig5_access_bar.png               # Accessibility components by type
+├── fig6_correlation_heatmap.png      # Correlation matrix
+├── table1_three_surfaces.csv         # Energy decomposition summary
+├── table2_energy_decomposition.csv   # Component breakdown
+└── basket_v1/
+    ├── fig_basket_v1_by_type.png
+    ├── fig_basket_v1_category_scores_heatmap.png
+    ├── fig_basket_v1_deprivation_gradient.png
+    ├── fig_basket_v1_scatter_energy_vs_basket.png
+    ├── lsoa_basket_v1_scores.csv
+    ├── table_basket_v1_by_type.csv
+    ├── table_basket_v1_by_deprivation.csv
+    └── table_basket_v1_schema.csv
 ```
 
-### Complementary Methods
+## Analytical Framework
 
-| Method                 | Purpose                                          | Implementation           |
-| ---------------------- | ------------------------------------------------ | ------------------------ |
-| **OLS Regression**     | Effect sizes with controls                       | `statsmodels`            |
-| **Mediation Analysis** | Decompose density → building type → energy paths | Baron-Kenny approach     |
-| **Scenario Modelling** | Technology persistence testing                   | Manual calculation       |
-| **Spatial Regression** | Account for spatial autocorrelation              | `pysal` (in `advanced/`) |
+The analysis constructs three "energy surfaces" per LSOA, then compounds them:
 
----
+1. **Building energy** (kWh/m2): DESNZ metered gas + electricity, normalised by floor area
+2. **Transport energy** (kWh/capita): Census commute distance x mode-specific intensity
+3. **Accessibility** (gravity-weighted count): land-use destinations within 800m walk
 
-## Key Variables
+The basket index adds a trip-demand model (TCPA-aligned) to quantify how much of a household's routine travel can be satisfied locally, producing a "land-use access penalty" that compounds with building and transport energy.
 
-### Dependent Variable
+## Key Finding
 
-| Variable           | Definition                       | Use Case                      |
-| ------------------ | -------------------------------- | ----------------------------- |
-| `energy_intensity` | SAP energy / floor area (kWh/m²) | **PRIMARY** - thermal physics |
-| `total_energy`     | SAP energy (kWh/year)            | Combined lock-in analysis     |
-
-**Critical:** Use intensity (kWh/m²) for thermal efficiency questions. Per-capita metrics confound efficiency with household size.
-
-### Independent Variables
-
-| Variable                | Description                | Source       |
-| ----------------------- | -------------------------- | ------------ |
-| `BUILT_FORM`            | Detached/Semi/Terrace/Flat | EPC          |
-| `TOTAL_FLOOR_AREA`      | Floor area (m²)            | EPC          |
-| `CONSTRUCTION_AGE_BAND` | Construction era           | EPC          |
-| `pop_density`           | Persons per hectare        | Census       |
-| `cars_per_hh`           | Cars per household         | Census TS045 |
-
----
-
-## Methodological Considerations
-
-### 1. SAP vs Metered Consumption
-
-EPC energy is SAP-modelled, not metered.
-
-| Captured by SAP                 | NOT Captured by SAP           |
-| ------------------------------- | ----------------------------- |
-| Building envelope (walls, roof) | Actual thermostat settings    |
-| Window area and glazing type    | Occupancy patterns            |
-| Heating system efficiency       | Fuel poverty (under-heating)  |
-| Building geometry (floor area)  | Lifestyle/behavioural choices |
-
-**Advantage:** SAP isolates building physics from behaviour—exactly what we need for envelope lock-in.
-
-**Language:** Use "potential energy demand" not "consumption".
-
-### 2. Selection Bias in EPCs
-
-EPCs required only at sale/rental—biased toward transacted properties.
-
-### 3. Causal Inference
-
-Observational design cannot establish causation.
-
-- Use "associated with" not "causes"
-- Use "lock-in" for structural constraints, not causal mechanisms
-
-### 4. Transport Energy Estimation
-
-Derived from Census car ownership (12,000 km/year per car assumed).
-
-**Limitation:** Census 2021 affected by COVID (31% WFH).
-
----
-
-## References
-
-- Ewing & Rong (2008) — Residential energy and urban form
-- Steadman et al. (2014) — UK building stock modelling
-- Rode et al. (2014) — Cities and energy, morphology effects
+The compounding widens the efficiency gap at each normalisation level:
+- kWh/m2: modest difference (~1.04x detached vs flat)
+- kWh/capita: gap widens (~1.76x)
+- kWh/capita/accessibility: gap widens further (~2.79x)
+- With basket penalty: 3.5x between detached-dominant and flat-dominant LSOAs

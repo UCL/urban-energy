@@ -627,7 +627,9 @@ def main() -> None:
     cached_ids = {f.stem for f in cached_files}
     n_to_process = len(boundaries) - len(cached_ids & set(boundaries["BUA22CD"]))
     if cached_ids:
-        print(f"  Found {len(cached_ids)} cached files, {n_to_process} remaining to process")
+        print(
+            f"  Found {len(cached_ids)} cached files, {n_to_process} remaining to process"
+        )
     else:
         print(f"  No cache found, processing all {len(boundaries)} boundaries")
 

@@ -107,7 +107,9 @@ def parse_gias(content: bytes) -> gpd.GeoDataFrame:
     # Standardise column names: GIAS uses mixed case with spaces
     col_map = {}
     for col in df.columns:
-        col_lower = col.strip().lower().replace(" ", "_").replace("(", "").replace(")", "")
+        col_lower = (
+            col.strip().lower().replace(" ", "_").replace("(", "").replace(")", "")
+        )
         col_map[col] = col_lower
     df = df.rename(columns=col_map)
 

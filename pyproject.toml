@@ -52,4 +52,4 @@ target-version = "py310"
 select = ["E", "F", "I", "W"]
 
 [dependency-groups]
-dev = ["ruff>=0.14.14", "setuptools>=80.10.2", "ty>=0.0.14"]
+dev = ["pytest>=8.0.0", "ruff>=0.14.14", "setuptools>=80.10.2", "ty>=0.0.14"]

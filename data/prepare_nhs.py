@@ -210,9 +210,7 @@ def load_postcode_lookup() -> pd.DataFrame:
     return lookup
 
 
-def geocode_by_postcode(
-    df: pd.DataFrame, lookup: pd.DataFrame
-) -> gpd.GeoDataFrame:
+def geocode_by_postcode(df: pd.DataFrame, lookup: pd.DataFrame) -> gpd.GeoDataFrame:
     """
     Join NHS ODS records to OS postcode centroids and build GeoDataFrame.
 
@@ -242,7 +240,9 @@ def geocode_by_postcode(
     geometry = [Point(e, n) for e, n in zip(merged["easting"], merged["northing"])]
 
     return gpd.GeoDataFrame(
-        merged[["ods_code", "name", "facility_type", "postcode", "easting", "northing"]],
+        merged[
+            ["ods_code", "name", "facility_type", "postcode", "easting", "northing"]
+        ],
         geometry=geometry,
         crs="EPSG:27700",
     )

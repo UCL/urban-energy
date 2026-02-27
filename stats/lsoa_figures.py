@@ -70,7 +70,7 @@ def _add_centroid_marker(
     """Draw a small centroid marker for a contour cluster."""
     if pd.isna(x) or pd.isna(y):
         return
-    x_plot = 10 ** x if x_is_log10 else x
+    x_plot = 10**x if x_is_log10 else x
     ax.scatter(
         [x_plot],
         [y],
@@ -82,7 +82,9 @@ def _add_centroid_marker(
     )
 
 
-def _kde_peak_xy(X: np.ndarray, Y: np.ndarray, Z: np.ndarray) -> tuple[float, float] | None:
+def _kde_peak_xy(
+    X: np.ndarray, Y: np.ndarray, Z: np.ndarray
+) -> tuple[float, float] | None:
     """Return the peak-density coordinate from a KDE surface grid."""
     if Z.size == 0 or not np.isfinite(Z).any():
         return None
@@ -137,8 +139,7 @@ _SRC_TRANSPORT_TOTAL_EST = (
     "(NTS 2024 total miles / commuting miles per person: 6,082 / 1,007)."
 )
 _SRC_TRANSPORT_MODE = (
-    "Mode decomposition uses the same commute-energy method:"
-    f" {_SRC_TRANSPORT}"
+    f"Mode decomposition uses the same commute-energy method: {_SRC_TRANSPORT}"
 )
 _SRC_DENSITY = "Population density: Census 2021 population / OA area (people/ha)."
 _SRC_ACCESS = (
@@ -228,7 +229,9 @@ def save_summary_tables(lsoa: pd.DataFrame) -> None:
                 "total_kwh_hh_commute_base": transport_summary.loc[
                     t, "total_kwh_hh_commute_base"
                 ],
-                "total_kwh_hh_total_est": transport_summary.loc[t, "total_kwh_hh_total_est"],
+                "total_kwh_hh_total_est": transport_summary.loc[
+                    t, "total_kwh_hh_total_est"
+                ],
                 "transport_share_commute_est": transport_summary.loc[
                     t, "transport_kwh_hh_commute_est"
                 ]
@@ -279,7 +282,10 @@ def fig1_building_energy(lsoa: pd.DataFrame) -> None:
     bars = ax.bar(x, vals, color=colors, edgecolor="black", linewidth=0.5)
     ax.axhline(
         lsoa[col].median(),
-        color="gray", linestyle="--", linewidth=1, label="Overall median",
+        color="gray",
+        linestyle="--",
+        linewidth=1,
+        label="Overall median",
     )
     ax.set_xticks(x)
     ax.set_xticklabels(TYPE_ORDER)
@@ -291,7 +297,10 @@ def fig1_building_energy(lsoa: pd.DataFrame) -> None:
             bar.get_x() + bar.get_width() / 2,
             v + ax.get_ylim()[1] * 0.01,
             f"{v:,.0f}",
-            ha="center", va="bottom", fontsize=9, fontweight="bold",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+            fontweight="bold",
         )
     axes[0].set_xlabel("Housing type", labelpad=10)
 
@@ -317,8 +326,13 @@ def fig1_building_energy(lsoa: pd.DataFrame) -> None:
         ]
         offset = (i - 1) * bar_width
         bars = ax.bar(
-            x + offset, vals, bar_width,
-            color=dc, edgecolor="black", linewidth=0.5, label=dep,
+            x + offset,
+            vals,
+            bar_width,
+            color=dc,
+            edgecolor="black",
+            linewidth=0.5,
+            label=dep,
         )
         for bar, v in zip(bars, vals):
             if pd.notna(v):
@@ -326,7 +340,10 @@ def fig1_building_energy(lsoa: pd.DataFrame) -> None:
                     bar.get_x() + bar.get_width() / 2,
                     v + 100,
                     f"{v:,.0f}",
-                    ha="center", va="bottom", fontsize=6, fontweight="bold",
+                    ha="center",
+                    va="bottom",
+                    fontsize=6,
+                    fontweight="bold",
                 )
     ax.set_xticks(x)
     ax.set_xticklabels(TYPE_ORDER)
@@ -336,7 +353,9 @@ def fig1_building_energy(lsoa: pd.DataFrame) -> None:
     axes[1].set_xlabel("Housing type", labelpad=10)
     fig.suptitle(
         "Surface 1: Building Energy by Housing Type",
-        fontsize=14, fontweight="bold", y=1.02,
+        fontsize=14,
+        fontweight="bold",
+        y=1.02,
     )
     _add_footnote(
         fig,
@@ -378,19 +397,27 @@ def _transport_type_summary(lsoa: pd.DataFrame) -> pd.DataFrame:
             {
                 "type": t,
                 "building_kwh_hh": float(s["building_kwh_per_hh"].median()),
-                "private_kwh_hh_est": float(s["private_transport_kwh_per_hh_est"].median()),
-                "public_kwh_hh_est": float(s["public_transport_kwh_per_hh_est"].median()),
+                "private_kwh_hh_est": float(
+                    s["private_transport_kwh_per_hh_est"].median()
+                ),
+                "public_kwh_hh_est": float(
+                    s["public_transport_kwh_per_hh_est"].median()
+                ),
             }
         )
     out = pd.DataFrame(rows).set_index("type")
-    out["transport_kwh_hh_commute_est"] = out["private_kwh_hh_est"] + out["public_kwh_hh_est"]
+    out["transport_kwh_hh_commute_est"] = (
+        out["private_kwh_hh_est"] + out["public_kwh_hh_est"]
+    )
     out["transport_kwh_hh_total_est"] = (
         out["transport_kwh_hh_commute_est"] * _NTS_TOTAL_TO_COMMUTE_DISTANCE_FACTOR
     )
     out["total_kwh_hh_commute_base"] = (
         out["building_kwh_hh"] + out["transport_kwh_hh_commute_est"]
     )
-    out["total_kwh_hh_total_est"] = out["building_kwh_hh"] + out["transport_kwh_hh_total_est"]
+    out["total_kwh_hh_total_est"] = (
+        out["building_kwh_hh"] + out["transport_kwh_hh_total_est"]
+    )
     return out
 
 
@@ -425,7 +452,12 @@ def fig2_mobility_penalty(lsoa: pd.DataFrame) -> None:
             total = b + t
             tpct = t / total * 100
             ax.text(
-                i, total + 200, f"{total:,.0f}", ha="center", fontsize=10, fontweight="bold"
+                i,
+                total + 200,
+                f"{total:,.0f}",
+                ha="center",
+                fontsize=10,
+                fontweight="bold",
             )
             ax.text(
                 i,
@@ -623,14 +655,18 @@ def fig3_density_transport_scatter(lsoa: pd.DataFrame) -> None:
         band_alphas = [0.07, 0.13, 0.21, 0.33, 0.52]
         for lo, hi, a in zip(band_levels, band_levels[1:] + [1.01], band_alphas):
             ax.contourf(
-                10 ** Xi, Yi, Z,
+                10**Xi,
+                Yi,
+                Z,
                 levels=[lo, hi],
                 colors=[color],
                 alpha=a,
             )
         # Crisp outer boundary line
         ax.contour(
-            10 ** Xi, Yi, Z,
+            10**Xi,
+            Yi,
+            Z,
             levels=[0.35],
             colors=[color],
             linewidths=[1.0],
@@ -642,9 +678,7 @@ def fig3_density_transport_scatter(lsoa: pd.DataFrame) -> None:
         if peak_xy is not None:
             _add_centroid_marker(ax, peak_xy[0], peak_xy[1], color, x_is_log10=True)
 
-    _, _, r, *_ = sp_stats.linregress(
-        log_dens_all, valid["transport_kwh_per_hh_est"]
-    )
+    _, _, r, *_ = sp_stats.linregress(log_dens_all, valid["transport_kwh_per_hh_est"])
 
     ax.set_xscale("log")
     ax.set_xlim(*X_LIM)
@@ -652,7 +686,8 @@ def fig3_density_transport_scatter(lsoa: pd.DataFrame) -> None:
     ax.set_ylabel("Transport kWh / household (est.)")
     ax.set_title(
         "Neighbourhood density is associated with transport energy",
-        fontsize=13, fontweight="bold",
+        fontsize=13,
+        fontweight="bold",
     )
     ax.legend(title="Dominant type", fontsize=8)
     ax.set_xlabel("Population density (people / ha, log scale)", labelpad=10)
@@ -697,10 +732,11 @@ def _kde_gradient(
     band_levels = [0.35, 0.55, 0.72, 0.85, 0.93]
     band_alphas = [0.07, 0.13, 0.21, 0.33, 0.52]
     for lo, hi, a in zip(band_levels, band_levels[1:] + [1.01], band_alphas):
-        ax.contourf(10 ** Xi, Yi, Z, levels=[lo, hi], colors=[color], alpha=a)
+        ax.contourf(10**Xi, Yi, Z, levels=[lo, hi], colors=[color], alpha=a)
     # Crisp outer boundary line
-    ax.contour(10 ** Xi, Yi, Z, levels=[0.35], colors=[color],
-               linewidths=[1.0], alpha=0.7)
+    ax.contour(
+        10**Xi, Yi, Z, levels=[0.35], colors=[color], linewidths=[1.0], alpha=0.7
+    )
     return _kde_peak_xy(Xi, Yi, Z)
 
 
@@ -734,11 +770,15 @@ def fig4_accessibility_dividend(lsoa: pd.DataFrame) -> None:
             np.log10(x_vals),
             y_vals,
             TYPE_COLORS[t],
-            xmin_log, xmax_log,
-            ymin, ymax,
+            xmin_log,
+            xmax_log,
+            ymin,
+            ymax,
         )
         if peak_xy is not None:
-            _add_centroid_marker(ax, peak_xy[0], peak_xy[1], TYPE_COLORS[t], x_is_log10=True)
+            _add_centroid_marker(
+                ax, peak_xy[0], peak_xy[1], TYPE_COLORS[t], x_is_log10=True
+            )
         ax.plot([], [], color=TYPE_COLORS[t], linewidth=8, alpha=0.35, label=t)
 
     ax.set_xscale("log")
@@ -814,9 +854,13 @@ def fig5_access_bar(lsoa: pd.DataFrame) -> None:
             if len(vals) > 0:
                 q25, q75 = vals.quantile(0.25), vals.quantile(0.75)
                 ax.errorbar(
-                    i, medians[i],
+                    i,
+                    medians[i],
                     yerr=[[medians[i] - q25], [q75 - medians[i]]],
-                    fmt="none", color="black", capsize=3, linewidth=1,
+                    fmt="none",
+                    color="black",
+                    capsize=3,
+                    linewidth=1,
                 )
 
         # Detached/Flat ratio annotation

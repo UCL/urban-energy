@@ -166,7 +166,7 @@ def download_topic_summary(ts_number: int) -> pd.DataFrame:
     return df
 
 
-def main():
+def main() -> None:
     """Main download and processing pipeline."""
     print("=" * 60)
     print("Census 2021 Output Area Data Download")

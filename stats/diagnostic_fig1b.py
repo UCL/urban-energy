@@ -79,7 +79,9 @@ def run_diagnostic(cities: list[str] | None = None) -> None:
 
     # Type dummies bivariate R²
     type_dummies = pd.get_dummies(
-        lsoa["dominant_type"], drop_first=True, dtype=float,
+        lsoa["dominant_type"],
+        drop_first=True,
+        dtype=float,
     )
     r2_type_only = _ols_r2(type_dummies, y)
     print(f"  {'Housing type (dummies)':<22s}  R²={r2_type_only:.3f}")
@@ -97,9 +99,14 @@ def run_diagnostic(cities: list[str] | None = None) -> None:
         ysub = y[mask]
         conf_only = sub[[col]]
         conf_type = pd.concat(
-            [sub[[col]], pd.get_dummies(
-                sub["dominant_type"], drop_first=True, dtype=float,
-            )],
+            [
+                sub[[col]],
+                pd.get_dummies(
+                    sub["dominant_type"],
+                    drop_first=True,
+                    dtype=float,
+                ),
+            ],
             axis=1,
         )
         r2_conf = _ols_r2(conf_only, ysub)
@@ -119,27 +126,27 @@ def run_diagnostic(cities: list[str] | None = None) -> None:
     print("3. FULL MODEL: all confounders vs all confounders + type")
     print("=" * 70)
     mask = (
-        lsoa[available].notna().all(axis=1)
-        & y.notna()
-        & lsoa["dominant_type"].notna()
+        lsoa[available].notna().all(axis=1) & y.notna() & lsoa["dominant_type"].notna()
     )
     sub = lsoa[mask]
     ysub = y[mask]
     conf_all = sub[available]
     conf_all_type = pd.concat(
-        [sub[available], pd.get_dummies(
-            sub["dominant_type"], drop_first=True, dtype=float,
-        )],
+        [
+            sub[available],
+            pd.get_dummies(
+                sub["dominant_type"],
+                drop_first=True,
+                dtype=float,
+            ),
+        ],
         axis=1,
     )
     r2_conf_all = _ols_r2(conf_all, ysub)
     r2_full_all = _ols_r2(conf_all_type, ysub)
     print(f"  All confounders R²={r2_conf_all:.3f}")
     partial_all = r2_full_all - r2_conf_all
-    print(
-        f"  + type dummies  R²={r2_full_all:.3f}"
-        f"  (partial={partial_all:.3f})"
-    )
+    print(f"  + type dummies  R²={r2_full_all:.3f}  (partial={partial_all:.3f})")
 
     # -----------------------------------------------------------------------
     # 4. Confounder means by dominant type

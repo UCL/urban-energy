@@ -46,7 +46,6 @@ GVA_URL = (
 )
 
 
-
 def download_csv(url: str, desc: str, cache_name: str) -> pd.DataFrame:
     """
     Download CSV from NOMIS API with caching.

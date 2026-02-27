@@ -1,41 +1,31 @@
 # Urban Energy
 
-Investigating the structural energy penalties of urban sprawl in England.
-
-**Dataset:** 173,907 domestic EPC certificates with UPRN coordinates (Greater Manchester). SAP-modelled potential energy demand, not metered consumption.
+Investigating the relationship between urban form and per-capita energy consumption across 18 English cities at LSOA level.
 
 ## Thesis
 
-Sprawling development locks in energy penalties that persist regardless of technology:
+Cities are conduits that capture energy and recycle it through layers of human interaction. The measure of urban efficiency is not how much energy a neighbourhood consumes, but how many transactions, connections, and transformations that energy enables before it dissipates. Sprawling morphologies consume more energy per capita and deliver less city per unit of energy consumed.
 
-| Lock-In        | Mechanism                       | Evidence                                   | Magnitude      |
-| -------------- | ------------------------------- | ------------------------------------------ | -------------- |
-| **Floor area** | Detached houses are larger      | All types compared                         | +59%           |
-| **Envelope**   | More exposed walls per m2       | Matched by construction era and floor area | +53% kWh/m2    |
-| **Transport**  | Low density = car dependence    | Census density quartiles                   | +22% cars/hh   |
-| **Combined**   | Floor area + transport together | High-density flats vs low-density houses   | **+50% total** |
-
-Each shared wall eliminates ~17% of heat loss — a geometric relationship that no amount of insulation can change. Technology reduces absolute demand but the proportional penalty persists.
-
-See [analysis report](stats/analysis_report_v3.md) for detailed findings.
+**Key result:** 3.5x land-use access penalty between detached-dominant and flat-dominant LSOAs. The efficiency gap widens at each normalisation level (building -> transport -> accessibility).
 
 ## Project Structure
 
-| Folder                              | Purpose                               |
-| ----------------------------------- | ------------------------------------- |
-| [data/](data/README.md)             | Data acquisition (Census, EPC, LiDAR) |
-| [processing/](processing/README.md) | Building morphology extraction        |
-| [stats/](stats/README.md)           | Statistical analysis and methodology  |
-| [paper/](paper/README.md)           | Academic paper and literature review  |
+| Folder | Purpose |
+| ------ | ------- |
+| [data/](data/README.md) | Data acquisition (Census, DESNZ, EPC, LiDAR, FSA, NaPTAN, GIAS, NHS ODS) |
+| [processing/](processing/README.md) | Building morphology + LSOA aggregation pipeline |
+| [stats/](stats/README.md) | Statistical analysis and figure generation |
+| [paper/](paper/README.md) | Academic paper and literature review |
+| [docs/](docs/) | Archived working notes from earlier phases |
 
 ## Quick Start
 
 ```bash
-# Run complete analysis pipeline
-uv run python stats/run_all.py
+# Regenerate all case-one figures and tables
+uv run python stats/build_case.py
 ```
 
-Output: [stats/analysis_report_v3.md](stats/analysis_report_v3.md)
+Output: figures in `stats/figures/`, narrative in `paper/case_v1.md`.
 
 ## License
 

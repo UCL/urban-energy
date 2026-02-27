@@ -94,7 +94,9 @@ _TS061_TAXI = "ts061_Method of travel to workplace: Taxi"
 _TS061_MOTORCYCLE = "ts061_Method of travel to workplace: Motorcycle, scooter or moped"
 _TS061_BUS = "ts061_Method of travel to workplace: Bus, minibus or coach"
 _TS061_TRAIN = "ts061_Method of travel to workplace: Train"
-_TS061_METRO = "ts061_Method of travel to workplace: Underground, metro, light rail, tram"
+_TS061_METRO = (
+    "ts061_Method of travel to workplace: Underground, metro, light rail, tram"
+)
 _TS061_TOTAL = (
     "ts061_Method of travel to workplace: "
     "Total: All usual residents aged 16 years and over "
@@ -372,8 +374,12 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
     # Backward-compatible average distance (includes WFH/offshore in denominator).
     lsoa["avg_commute_km"] = weighted_km / total_commuters.replace(0, np.nan)
     # More exact travelling-commuter average distance for mode-energy decomposition.
-    lsoa["avg_commute_km_travelling"] = weighted_km / travelling_commuters.replace(0, np.nan)
-    lsoa["work_from_home_share"] = home_commuters_ts058 / total_commuters.replace(0, np.nan)
+    lsoa["avg_commute_km_travelling"] = weighted_km / travelling_commuters.replace(
+        0, np.nan
+    )
+    lsoa["work_from_home_share"] = home_commuters_ts058 / total_commuters.replace(
+        0, np.nan
+    )
     lsoa["offshore_or_no_fixed_share"] = offshore_commuters / total_commuters.replace(
         0, np.nan
     )
@@ -397,8 +403,12 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
     lsoa["cycle_share"] = cycle_commuters / total_w.replace(0, np.nan)
     lsoa["active_share"] = lsoa["walk_share"].fillna(0) + lsoa["cycle_share"].fillna(0)
     lsoa["bus_share"] = bus_commuters / total_w.replace(0, np.nan)
-    lsoa["rail_share"] = (train_commuters + metro_commuters) / total_w.replace(0, np.nan)
-    lsoa["work_from_home_share_ts061"] = home_commuters_ts061 / total_w.replace(0, np.nan)
+    lsoa["rail_share"] = (train_commuters + metro_commuters) / total_w.replace(
+        0, np.nan
+    )
+    lsoa["work_from_home_share_ts061"] = home_commuters_ts061 / total_w.replace(
+        0, np.nan
+    )
 
     private_commuters = (
         car_commuters + passenger_commuters + taxi_commuters + motorcycle_commuters
@@ -431,7 +441,8 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
         public_commute_kwh_annual / total_hh_for_transport
     )
     lsoa["motorised_commute_kwh_per_hh_est"] = (
-        lsoa["private_transport_kwh_per_hh_est"] + lsoa["public_transport_kwh_per_hh_est"]
+        lsoa["private_transport_kwh_per_hh_est"]
+        + lsoa["public_transport_kwh_per_hh_est"]
     )
     lsoa["transport_kwh_per_hh_est"] = lsoa["motorised_commute_kwh_per_hh_est"]
     lsoa["transport_kwh_per_hh_total_est"] = (
@@ -500,9 +511,9 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
 
     # --- GVA per household (ONS Small Area GVA) ---
     if "lsoa_gva_millions" in lsoa.columns:
-        lsoa["gva_per_hh"] = (
-            lsoa["lsoa_gva_millions"] * 1_000_000
-        ) / lsoa["total_hh"].replace(0, np.nan)
+        lsoa["gva_per_hh"] = (lsoa["lsoa_gva_millions"] * 1_000_000) / lsoa[
+            "total_hh"
+        ].replace(0, np.nan)
 
     # --- Accommodation type (Census ts044, complete coverage) ---
     ts044_total = pd.to_numeric(lsoa[_TS044_TOTAL], errors="coerce")
@@ -580,7 +591,9 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
             f"public={lsoa['public_transport_kwh_per_hh_est'].median():,.0f}"
         )
     print(f"    Total: median={lsoa['total_kwh_per_hh'].median():,.0f}")
-    print(f"    Total (overall scenario): median={lsoa['total_kwh_per_hh_total_est'].median():,.0f}")
+    print(
+        f"    Total (overall scenario): median={lsoa['total_kwh_per_hh_total_est'].median():,.0f}"
+    )
     if "median_build_year" in lsoa.columns:
         yr = lsoa["median_build_year"].dropna()
         print(f"\n  Stock: median build year={yr.median():.0f}")
@@ -790,7 +803,12 @@ def print_systematic_summary(lsoa: pd.DataFrame) -> None:
         ("1:THERMAL", "kWh/person (bldg)", "kwh_per_person", ",.0f"),
         ("2:MOBILITY", "Cars/hh", "cars_per_hh", ".2f"),
         ("2:MOBILITY", "kWh/hh (trans)", "transport_kwh_per_hh_est", ",.0f"),
-        ("2:MOBILITY", "kWh/hh (trans total est)", "transport_kwh_per_hh_total_est", ",.0f"),
+        (
+            "2:MOBILITY",
+            "kWh/hh (trans total est)",
+            "transport_kwh_per_hh_total_est",
+            ",.0f",
+        ),
         ("2:MOBILITY", "kWh/hh (total)", "total_kwh_per_hh", ",.0f"),
         ("2:MOBILITY", "kWh/hh (total est)", "total_kwh_per_hh_total_est", ",.0f"),
         ("2:MOBILITY", "kWh/person+trans", "total_kwh_per_person", ",.0f"),
@@ -906,7 +924,9 @@ def print_energy_decomposition(lsoa: pd.DataFrame) -> None:
         print(f"  {label:<25s} {s.median():>8.0f} {s.mean():>8.0f}")
     t_share = sub["transport_kwh_per_hh_est"] / sub["total_kwh_per_hh"]
     print(f"  {'Transport share':<25s} {t_share.median():>7.0%} {t_share.mean():>7.0%}")
-    t_total_share = sub["transport_kwh_per_hh_total_est"] / sub["total_kwh_per_hh_total_est"]
+    t_total_share = (
+        sub["transport_kwh_per_hh_total_est"] / sub["total_kwh_per_hh_total_est"]
+    )
     print(
         f"  {'Transport share (overall)':<25s} "
         f"{t_total_share.median():>7.0%} {t_total_share.mean():>7.0%}"
@@ -1307,7 +1327,7 @@ def run_gva_stratified(lsoa: pd.DataFrame) -> None:
         print(line)
 
     if within_ratios:
-        print(f"\n  Within-city Flat/Detached GVA ratio:")
+        print("\n  Within-city Flat/Detached GVA ratio:")
         print(f"    Median across cities: {np.median(within_ratios):.2f}x")
         print(f"    Range: {min(within_ratios):.2f}x – {max(within_ratios):.2f}x")
         print(f"    Cities with both types: {len(within_ratios)}")
@@ -1414,7 +1434,9 @@ def _collect_results(lsoa: pd.DataFrame) -> dict:
                 tsub = csub[csub["dominant_type"] == t]
                 if len(tsub) >= 5:
                     city_entry[t] = {
-                        "median_gva_per_hh": round(float(tsub["gva_per_hh"].median()), 0),
+                        "median_gva_per_hh": round(
+                            float(tsub["gva_per_hh"].median()), 0
+                        ),
                         "n": len(tsub),
                     }
             if "Flat" in city_entry and "Detached" in city_entry:

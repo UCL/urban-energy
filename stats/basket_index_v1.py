@@ -30,12 +30,16 @@ from proof_of_concept_lsoa import load_and_aggregate  # noqa: E402
 
 from urban_energy.paths import PROJECT_DIR  # noqa: E402
 
-
 plt.style.use("seaborn-v0_8-whitegrid")
 plt.rcParams.update({"figure.dpi": 150, "savefig.dpi": 150})
 
 TYPE_ORDER = ["Flat", "Terraced", "Semi", "Detached"]
-TYPE_LABELS = {"Flat": "Flat", "Terraced": "Terraced", "Semi": "Semi-detached", "Detached": "Detached"}
+TYPE_LABELS = {
+    "Flat": "Flat",
+    "Terraced": "Terraced",
+    "Semi": "Semi-detached",
+    "Detached": "Detached",
+}
 TYPE_COLORS = {
     "Flat": "#3498db",
     "Terraced": "#2ecc71",
@@ -48,6 +52,7 @@ LOCAL_WALK_HALF_DISTANCE_M = 500.0
 LOCAL_WALK_DECAY_SHAPE = 2.0
 
 OUT_DIR = PROJECT_DIR / "stats" / "figures" / "basket_v1"
+DOC_PATH = OUT_DIR / "basket_v1_summary.md"
 
 # ---------------------------------------------------------------------------
 # Trip-demand assumptions for access-energy budgeting
@@ -139,7 +144,8 @@ TRIP_DEMAND_ASSUMPTIONS: dict[str, dict[str, object]] = {
         "method_note": "Retained as mode-access enabler; excluded from summed destination trip budget",
     },
     "hospital": {
-        "annual_trips_per_person": _OUTPATIENT_ATTENDED_ANNUAL / _ENGLAND_POP_APPROX_2024,
+        "annual_trips_per_person": _OUTPATIENT_ATTENDED_ANNUAL
+        / _ENGLAND_POP_APPROX_2024,
         "annual_trips_per_household": np.nan,
         "include_in_trip_budget": True,
         "source": "NHS Digital Hospital Outpatient Activity 2024/25",
@@ -285,13 +291,21 @@ def prepare_lsoa(cities: list[str] | None = None) -> pd.DataFrame:
     """Load PoC LSOA dataset and derive basket inputs."""
     lsoa = load_and_aggregate(cities=cities)
 
-    fsa_cols_local = [c for c in lsoa.columns if c.startswith("cc_fsa_") and c.endswith("_800_wt")]
-    fsa_cols_wider = [c for c in lsoa.columns if c.startswith("cc_fsa_") and c.endswith("_4800_wt")]
+    fsa_cols_local = [
+        c for c in lsoa.columns if c.startswith("cc_fsa_") and c.endswith("_800_wt")
+    ]
+    fsa_cols_wider = [
+        c for c in lsoa.columns if c.startswith("cc_fsa_") and c.endswith("_4800_wt")
+    ]
     lsoa = _ensure_numeric(lsoa, fsa_cols_local + fsa_cols_wider)
     if not fsa_cols_local:
-        raise ValueError("No cc_fsa_*_800_wt columns found for FSA-based local basket proxy")
+        raise ValueError(
+            "No cc_fsa_*_800_wt columns found for FSA-based local basket proxy"
+        )
     if not fsa_cols_wider:
-        raise ValueError("No cc_fsa_*_4800_wt columns found for FSA-based wider basket proxy")
+        raise ValueError(
+            "No cc_fsa_*_4800_wt columns found for FSA-based wider basket proxy"
+        )
     lsoa["cc_fsa_total_800_wt"] = lsoa[fsa_cols_local].sum(axis=1)
     lsoa["cc_fsa_total_4800_wt"] = lsoa[fsa_cols_wider].sum(axis=1)
     fsa_nearest_cols = [
@@ -307,25 +321,33 @@ def prepare_lsoa(cities: list[str] | None = None) -> pd.DataFrame:
     else:
         lsoa["cc_fsa_total_nearest_max_4800"] = np.nan
 
-    needed = [row["source_column_local"] for row in BASKET_SCHEMA] + [
-        row["source_column_wider"] for row in BASKET_SCHEMA
-    ] + [
-        row["nearest_column"] for row in BASKET_SCHEMA
-    ] + [
-        "total_kwh_per_hh",
-        "total_kwh_per_hh_total_est",
-        "transport_kwh_per_hh_est",
-        "transport_kwh_per_hh_total_est",
-        "total_kwh_per_person",
-        "dominant_type",
-        "people_per_ha",
-        "avg_hh_size",
-        "pct_not_deprived",
-        "cc_density_800",
-        "cc_harmonic_800",
-        "city",
-    ]
-    _ensure_numeric(lsoa, [c for c in needed if c in lsoa.columns and c != "dominant_type" and c != "city"])
+    needed = (
+        [row["source_column_local"] for row in BASKET_SCHEMA]
+        + [row["source_column_wider"] for row in BASKET_SCHEMA]
+        + [row["nearest_column"] for row in BASKET_SCHEMA]
+        + [
+            "total_kwh_per_hh",
+            "total_kwh_per_hh_total_est",
+            "transport_kwh_per_hh_est",
+            "transport_kwh_per_hh_total_est",
+            "total_kwh_per_person",
+            "dominant_type",
+            "people_per_ha",
+            "avg_hh_size",
+            "pct_not_deprived",
+            "cc_density_800",
+            "cc_harmonic_800",
+            "city",
+        ]
+    )
+    _ensure_numeric(
+        lsoa,
+        [
+            c
+            for c in needed
+            if c in lsoa.columns and c != "dominant_type" and c != "city"
+        ],
+    )
     return lsoa
 
 
@@ -339,8 +361,12 @@ def calibrate_schema(lsoa: pd.DataFrame) -> pd.DataFrame:
     )
     for cfg in BASKET_SCHEMA:
         cid = cfg["id"]
-        local_half_distance = float(cfg.get("local_walk_half_distance_m", LOCAL_WALK_HALF_DISTANCE_M))
-        local_decay_shape = float(cfg.get("local_walk_decay_shape", LOCAL_WALK_DECAY_SHAPE))
+        local_half_distance = float(
+            cfg.get("local_walk_half_distance_m", LOCAL_WALK_HALF_DISTANCE_M)
+        )
+        local_decay_shape = float(
+            cfg.get("local_walk_decay_shape", LOCAL_WALK_DECAY_SHAPE)
+        )
         col_local = cfg["source_column_local"]
         col_wider = cfg["source_column_wider"]
         if col_local not in lsoa.columns:
@@ -350,9 +376,13 @@ def calibrate_schema(lsoa: pd.DataFrame) -> pd.DataFrame:
         s = pd.to_numeric(lsoa[col_local], errors="coerce").dropna()
         s_wider = pd.to_numeric(lsoa[col_wider], errors="coerce").dropna()
         if len(s) == 0:
-            raise ValueError(f"No non-null values for basket column (local): {col_local}")
+            raise ValueError(
+                f"No non-null values for basket column (local): {col_local}"
+            )
         if len(s_wider) == 0:
-            raise ValueError(f"No non-null values for basket column (wider): {col_wider}")
+            raise ValueError(
+                f"No non-null values for basket column (wider): {col_wider}"
+            )
         floor_q = float(cfg["floor_quantile"])
         target_q = float(cfg["target_quantile"])
         floor_v = float(s.quantile(floor_q))
@@ -405,7 +435,9 @@ def calibrate_schema(lsoa: pd.DataFrame) -> pd.DataFrame:
     else:
         schema["trip_weight"] = np.nan
     if not np.isclose(schema["weight"].sum(), 1.0):
-        raise ValueError(f"Basket weights must sum to 1.0 (got {schema['weight'].sum():.3f})")
+        raise ValueError(
+            f"Basket weights must sum to 1.0 (got {schema['weight'].sum():.3f})"
+        )
     return schema
 
 
@@ -431,7 +463,9 @@ def compute_basket_index(lsoa: pd.DataFrame, schema: pd.DataFrame) -> pd.DataFra
 
         out[f"basket_{cid}_score_local"] = local_score
         out[f"basket_{cid}_score_wider"] = wider_score
-        out[f"basket_{cid}_score_travel_gap"] = (wider_score - local_score).clip(lower=0, upper=1)
+        out[f"basket_{cid}_score_travel_gap"] = (wider_score - local_score).clip(
+            lower=0, upper=1
+        )
         # Backward-compatibility aliases (local baseline).
         out[f"basket_{cid}_score"] = out[f"basket_{cid}_score_local"]
 
@@ -452,18 +486,12 @@ def compute_basket_index(lsoa: pd.DataFrame, schema: pd.DataFrame) -> pd.DataFra
     weighted_local = np.zeros(len(out), dtype=float)
     weighted_wider = np.zeros(len(out), dtype=float)
     for row in schema.to_dict("records"):
-        weighted_local += (
-            pd.to_numeric(out[f"basket_{row['id']}_score_local"], errors="coerce")
-            .fillna(0)
-            .to_numpy()
-            * float(row["weight"])
-        )
-        weighted_wider += (
-            pd.to_numeric(out[f"basket_{row['id']}_score_wider"], errors="coerce")
-            .fillna(0)
-            .to_numpy()
-            * float(row["weight"])
-        )
+        weighted_local += pd.to_numeric(
+            out[f"basket_{row['id']}_score_local"], errors="coerce"
+        ).fillna(0).to_numpy() * float(row["weight"])
+        weighted_wider += pd.to_numeric(
+            out[f"basket_{row['id']}_score_wider"], errors="coerce"
+        ).fillna(0).to_numpy() * float(row["weight"])
     out["basket_raw_score_local"] = weighted_local
     out["basket_raw_score_wider"] = weighted_wider
     out["basket_raw_score"] = out["basket_raw_score_local"]
@@ -494,16 +522,29 @@ def compute_basket_index(lsoa: pd.DataFrame, schema: pd.DataFrame) -> pd.DataFra
     )
 
     # Penalise missing essentials without collapsing the scale entirely.
-    out["basket_core_penalty_local"] = 0.5 + 0.5 * out["basket_core_coverage_rate_local"]
-    out["basket_core_penalty_wider"] = 0.5 + 0.5 * out["basket_core_coverage_rate_wider"]
+    out["basket_core_penalty_local"] = (
+        0.5 + 0.5 * out["basket_core_coverage_rate_local"]
+    )
+    out["basket_core_penalty_wider"] = (
+        0.5 + 0.5 * out["basket_core_coverage_rate_wider"]
+    )
     out["basket_core_penalty"] = out["basket_core_penalty_local"]
-    out["basket_score_local"] = 100 * out["basket_raw_score_local"] * out["basket_core_penalty_local"]
-    out["basket_score_wider"] = 100 * out["basket_raw_score_wider"] * out["basket_core_penalty_wider"]
+    out["basket_score_local"] = (
+        100 * out["basket_raw_score_local"] * out["basket_core_penalty_local"]
+    )
+    out["basket_score_wider"] = (
+        100 * out["basket_raw_score_wider"] * out["basket_core_penalty_wider"]
+    )
     out["basket_score"] = out["basket_score_local"]
-    out["basket_score_travel_gap"] = (out["basket_score_wider"] - out["basket_score_local"]).clip(lower=0)
+    out["basket_score_travel_gap"] = (
+        out["basket_score_wider"] - out["basket_score_local"]
+    ).clip(lower=0)
 
     # Trip-demand weighted companion scores (local/wider).
-    if "trip_weight" in schema.columns and pd.to_numeric(schema["trip_weight"], errors="coerce").notna().any():
+    if (
+        "trip_weight" in schema.columns
+        and pd.to_numeric(schema["trip_weight"], errors="coerce").notna().any()
+    ):
         weighted_trip_local = np.zeros(len(out), dtype=float)
         weighted_trip_wider = np.zeros(len(out), dtype=float)
         for row in schema.to_dict("records"):
@@ -524,16 +565,23 @@ def compute_basket_index(lsoa: pd.DataFrame, schema: pd.DataFrame) -> pd.DataFra
             )
         out["basket_trip_weighted_raw_score_local"] = weighted_trip_local
         out["basket_trip_weighted_raw_score_wider"] = weighted_trip_wider
-        out["basket_trip_weighted_raw_score"] = out["basket_trip_weighted_raw_score_local"]
+        out["basket_trip_weighted_raw_score"] = out[
+            "basket_trip_weighted_raw_score_local"
+        ]
         out["basket_trip_weighted_score_local"] = (
-            100 * out["basket_trip_weighted_raw_score_local"] * out["basket_core_penalty_local"]
+            100
+            * out["basket_trip_weighted_raw_score_local"]
+            * out["basket_core_penalty_local"]
         )
         out["basket_trip_weighted_score_wider"] = (
-            100 * out["basket_trip_weighted_raw_score_wider"] * out["basket_core_penalty_wider"]
+            100
+            * out["basket_trip_weighted_raw_score_wider"]
+            * out["basket_core_penalty_wider"]
         )
         out["basket_trip_weighted_score"] = out["basket_trip_weighted_score_local"]
         out["basket_trip_weighted_score_travel_gap"] = (
-            out["basket_trip_weighted_score_wider"] - out["basket_trip_weighted_score_local"]
+            out["basket_trip_weighted_score_wider"]
+            - out["basket_trip_weighted_score_local"]
         ).clip(lower=0)
 
     # Annual access trip budgets by catchment.
@@ -554,12 +602,15 @@ def compute_basket_index(lsoa: pd.DataFrame, schema: pd.DataFrame) -> pd.DataFra
         cid = row["id"]
         nearest_col = row.get("nearest_column")
         nearest_m = pd.to_numeric(out[nearest_col], errors="coerce")
-        local_access_flag = nearest_m <= LOCAL_ACCESS_M
         wider_access_flag = nearest_m <= WIDER_ACCESS_M
         local_access_share = _local_access_distance_share(
             nearest_m,
-            half_distance_m=float(row.get("local_walk_half_distance_m", LOCAL_WALK_HALF_DISTANCE_M)),
-            decay_shape=float(row.get("local_walk_decay_shape", LOCAL_WALK_DECAY_SHAPE)),
+            half_distance_m=float(
+                row.get("local_walk_half_distance_m", LOCAL_WALK_HALF_DISTANCE_M)
+            ),
+            decay_shape=float(
+                row.get("local_walk_decay_shape", LOCAL_WALK_DECAY_SHAPE)
+            ),
         )
         wider_access_share = wider_access_flag.astype(float)
         trips_pp = float(row.get("annual_trips_per_person", np.nan))
@@ -597,15 +648,19 @@ def compute_basket_index(lsoa: pd.DataFrame, schema: pd.DataFrame) -> pd.DataFra
         out["basket_trip_extra_travel_hh_est"] = out[trip_extra_cols].sum(axis=1)
         out["basket_trip_residual_hh_est"] = out[trip_residual_cols].sum(axis=1)
         # Backward-compatibility aliases.
-        out["basket_trip_accessible_hh_est"] = out["basket_trip_local_accessible_hh_est"]
+        out["basket_trip_accessible_hh_est"] = out[
+            "basket_trip_local_accessible_hh_est"
+        ]
         out["basket_trip_unmet_hh_est"] = out["basket_trip_extra_travel_hh_est"]
-        out["basket_trip_coverage_rate_est"] = (
-            out["basket_trip_local_accessible_hh_est"] / out["basket_trip_budget_hh_est"].replace(0, np.nan)
-        )
-        out["basket_trip_coverage_rate_local_est"] = out["basket_trip_coverage_rate_est"]
-        out["basket_trip_coverage_rate_wider_est"] = (
-            out["basket_trip_wider_accessible_hh_est"] / out["basket_trip_budget_hh_est"].replace(0, np.nan)
-        )
+        out["basket_trip_coverage_rate_est"] = out[
+            "basket_trip_local_accessible_hh_est"
+        ] / out["basket_trip_budget_hh_est"].replace(0, np.nan)
+        out["basket_trip_coverage_rate_local_est"] = out[
+            "basket_trip_coverage_rate_est"
+        ]
+        out["basket_trip_coverage_rate_wider_est"] = out[
+            "basket_trip_wider_accessible_hh_est"
+        ] / out["basket_trip_budget_hh_est"].replace(0, np.nan)
     else:
         out["basket_trip_budget_hh_est"] = np.nan
         out["basket_trip_local_accessible_hh_est"] = np.nan
@@ -623,86 +678,109 @@ def compute_basket_index(lsoa: pd.DataFrame, schema: pd.DataFrame) -> pd.DataFra
     total_trips_hh = (_NTS_TOTAL_TRIPS_PER_PERSON * hh_size).replace(0, np.nan)
     if "transport_kwh_per_hh_est" in out.columns:
         out["transport_kwh_per_trip_commute_est"] = (
-            pd.to_numeric(out["transport_kwh_per_hh_est"], errors="coerce") / commute_trips_hh
+            pd.to_numeric(out["transport_kwh_per_hh_est"], errors="coerce")
+            / commute_trips_hh
         )
         out["basket_trip_budget_kwh_hh_commute_est"] = (
             out["basket_trip_budget_hh_est"] * out["transport_kwh_per_trip_commute_est"]
         )
         out["basket_trip_local_accessible_kwh_hh_commute_est"] = (
-            out["basket_trip_local_accessible_hh_est"] * out["transport_kwh_per_trip_commute_est"]
+            out["basket_trip_local_accessible_hh_est"]
+            * out["transport_kwh_per_trip_commute_est"]
         )
         out["basket_trip_wider_accessible_kwh_hh_commute_est"] = (
-            out["basket_trip_wider_accessible_hh_est"] * out["transport_kwh_per_trip_commute_est"]
+            out["basket_trip_wider_accessible_hh_est"]
+            * out["transport_kwh_per_trip_commute_est"]
         )
         out["basket_trip_extra_travel_kwh_hh_commute_est"] = (
-            out["basket_trip_extra_travel_hh_est"] * out["transport_kwh_per_trip_commute_est"]
+            out["basket_trip_extra_travel_hh_est"]
+            * out["transport_kwh_per_trip_commute_est"]
         )
         out["basket_trip_residual_kwh_hh_commute_est"] = (
-            out["basket_trip_residual_hh_est"] * out["transport_kwh_per_trip_commute_est"]
+            out["basket_trip_residual_hh_est"]
+            * out["transport_kwh_per_trip_commute_est"]
         )
-        out["basket_trip_accessible_kwh_hh_commute_est"] = out["basket_trip_local_accessible_kwh_hh_commute_est"]
+        out["basket_trip_accessible_kwh_hh_commute_est"] = out[
+            "basket_trip_local_accessible_kwh_hh_commute_est"
+        ]
         out["basket_unmet_access_kwh_hh_commute_est"] = (
-            out["basket_trip_extra_travel_hh_est"] * out["transport_kwh_per_trip_commute_est"]
+            out["basket_trip_extra_travel_hh_est"]
+            * out["transport_kwh_per_trip_commute_est"]
         )
-        out["land_use_access_penalty_kwh_hh_commute_est"] = out["basket_unmet_access_kwh_hh_commute_est"]
+        out["land_use_access_penalty_kwh_hh_commute_est"] = out[
+            "basket_unmet_access_kwh_hh_commute_est"
+        ]
     if "transport_kwh_per_hh_total_est" in out.columns:
         out["transport_kwh_per_trip_total_est"] = (
-            pd.to_numeric(out["transport_kwh_per_hh_total_est"], errors="coerce") / total_trips_hh
+            pd.to_numeric(out["transport_kwh_per_hh_total_est"], errors="coerce")
+            / total_trips_hh
         )
         out["basket_trip_budget_kwh_hh_total_est"] = (
             out["basket_trip_budget_hh_est"] * out["transport_kwh_per_trip_total_est"]
         )
         out["basket_trip_local_accessible_kwh_hh_total_est"] = (
-            out["basket_trip_local_accessible_hh_est"] * out["transport_kwh_per_trip_total_est"]
+            out["basket_trip_local_accessible_hh_est"]
+            * out["transport_kwh_per_trip_total_est"]
         )
         out["basket_trip_wider_accessible_kwh_hh_total_est"] = (
-            out["basket_trip_wider_accessible_hh_est"] * out["transport_kwh_per_trip_total_est"]
+            out["basket_trip_wider_accessible_hh_est"]
+            * out["transport_kwh_per_trip_total_est"]
         )
         out["basket_trip_extra_travel_kwh_hh_total_est"] = (
-            out["basket_trip_extra_travel_hh_est"] * out["transport_kwh_per_trip_total_est"]
+            out["basket_trip_extra_travel_hh_est"]
+            * out["transport_kwh_per_trip_total_est"]
         )
         out["basket_trip_residual_kwh_hh_total_est"] = (
             out["basket_trip_residual_hh_est"] * out["transport_kwh_per_trip_total_est"]
         )
-        out["basket_trip_accessible_kwh_hh_total_est"] = out["basket_trip_local_accessible_kwh_hh_total_est"]
+        out["basket_trip_accessible_kwh_hh_total_est"] = out[
+            "basket_trip_local_accessible_kwh_hh_total_est"
+        ]
         out["basket_unmet_access_kwh_hh_total_est"] = (
-            out["basket_trip_extra_travel_hh_est"] * out["transport_kwh_per_trip_total_est"]
+            out["basket_trip_extra_travel_hh_est"]
+            * out["transport_kwh_per_trip_total_est"]
         )
-        out["land_use_access_penalty_kwh_hh_total_est"] = out["basket_unmet_access_kwh_hh_total_est"]
-        out["transport_kwh_per_local_accessible_trip_total_est"] = (
-            pd.to_numeric(out["transport_kwh_per_hh_total_est"], errors="coerce")
-            / out["basket_trip_local_accessible_hh_est"].replace(0, np.nan)
-        )
-        out["transport_kwh_per_accessible_trip_total_est"] = (
-            out["transport_kwh_per_local_accessible_trip_total_est"]
-        )
-        out["kwh_per_local_accessible_trip_total_est"] = (
-            pd.to_numeric(out["total_kwh_per_hh_total_est"], errors="coerce")
-            / out["basket_trip_local_accessible_hh_est"].replace(0, np.nan)
-        )
-        out["kwh_per_wider_accessible_trip_total_est"] = (
-            pd.to_numeric(out["total_kwh_per_hh_total_est"], errors="coerce")
-            / out["basket_trip_wider_accessible_hh_est"].replace(0, np.nan)
-        )
-        out["kwh_per_accessible_trip_total_est"] = out["kwh_per_local_accessible_trip_total_est"]
-    out["kwh_per_local_accessible_trip_commute_base"] = (
-        pd.to_numeric(out["total_kwh_per_hh"], errors="coerce")
-        / out["basket_trip_local_accessible_hh_est"].replace(0, np.nan)
-    )
-    out["kwh_per_accessible_trip_commute_base"] = out["kwh_per_local_accessible_trip_commute_base"]
+        out["land_use_access_penalty_kwh_hh_total_est"] = out[
+            "basket_unmet_access_kwh_hh_total_est"
+        ]
+        out["transport_kwh_per_local_accessible_trip_total_est"] = pd.to_numeric(
+            out["transport_kwh_per_hh_total_est"], errors="coerce"
+        ) / out["basket_trip_local_accessible_hh_est"].replace(0, np.nan)
+        out["transport_kwh_per_accessible_trip_total_est"] = out[
+            "transport_kwh_per_local_accessible_trip_total_est"
+        ]
+        out["kwh_per_local_accessible_trip_total_est"] = pd.to_numeric(
+            out["total_kwh_per_hh_total_est"], errors="coerce"
+        ) / out["basket_trip_local_accessible_hh_est"].replace(0, np.nan)
+        out["kwh_per_wider_accessible_trip_total_est"] = pd.to_numeric(
+            out["total_kwh_per_hh_total_est"], errors="coerce"
+        ) / out["basket_trip_wider_accessible_hh_est"].replace(0, np.nan)
+        out["kwh_per_accessible_trip_total_est"] = out[
+            "kwh_per_local_accessible_trip_total_est"
+        ]
+    out["kwh_per_local_accessible_trip_commute_base"] = pd.to_numeric(
+        out["total_kwh_per_hh"], errors="coerce"
+    ) / out["basket_trip_local_accessible_hh_est"].replace(0, np.nan)
+    out["kwh_per_accessible_trip_commute_base"] = out[
+        "kwh_per_local_accessible_trip_commute_base"
+    ]
 
     # Energy-cost-of-access metrics (primary = household denominator for continuity with PoC)
     basket = out["basket_score"].replace(0, np.nan)
     out["kwh_per_basket_point_hh"] = out["total_kwh_per_hh"] / basket
     out["basket_points_per_10mwh_hh"] = basket / (out["total_kwh_per_hh"] / 10_000)
     if "total_kwh_per_hh_total_est" in out.columns:
-        out["kwh_per_basket_point_hh_total_est"] = out["total_kwh_per_hh_total_est"] / basket
+        out["kwh_per_basket_point_hh_total_est"] = (
+            out["total_kwh_per_hh_total_est"] / basket
+        )
         out["basket_points_per_10mwh_hh_total_est"] = basket / (
             out["total_kwh_per_hh_total_est"] / 10_000
         )
     if "total_kwh_per_person" in out.columns:
         out["kwh_per_basket_point_person"] = out["total_kwh_per_person"] / basket
-        out["basket_points_per_mwh_person"] = basket / (out["total_kwh_per_person"] / 1_000)
+        out["basket_points_per_mwh_person"] = basket / (
+            out["total_kwh_per_person"] / 1_000
+        )
 
     # Deprivation quintiles for summary figure/table
     if "pct_not_deprived" in out.columns:
@@ -758,7 +836,9 @@ def summarise_by_type(lsoa: pd.DataFrame, schema: pd.DataFrame) -> pd.DataFrame:
             "type": t,
             "type_label": TYPE_LABELS.get(t, t),
             "n_lsoas": int(len(sub)),
-            "people_per_ha_median": float(sub["people_per_ha"].median()) if "people_per_ha" in sub else np.nan,
+            "people_per_ha_median": float(sub["people_per_ha"].median())
+            if "people_per_ha" in sub
+            else np.nan,
             "total_kwh_per_hh_median": float(sub["total_kwh_per_hh"].median()),
             "total_kwh_per_person_median": float(sub["total_kwh_per_person"].median()),
             "basket_score_median": float(sub["basket_score"].median()),
@@ -768,50 +848,84 @@ def summarise_by_type(lsoa: pd.DataFrame, schema: pd.DataFrame) -> pd.DataFrame:
             "basket_score_wider_median": float(sub["basket_score_wider"].median())
             if "basket_score_wider" in sub
             else np.nan,
-            "basket_score_travel_gap_median": float(sub["basket_score_travel_gap"].median())
+            "basket_score_travel_gap_median": float(
+                sub["basket_score_travel_gap"].median()
+            )
             if "basket_score_travel_gap" in sub
             else np.nan,
             "basket_raw_score_median": float(sub["basket_raw_score"].median()),
-            "basket_core_coverage_rate_median": float(sub["basket_core_coverage_rate"].median()),
-            "basket_core_coverage_rate_local_median": float(sub["basket_core_coverage_rate_local"].median())
+            "basket_core_coverage_rate_median": float(
+                sub["basket_core_coverage_rate"].median()
+            ),
+            "basket_core_coverage_rate_local_median": float(
+                sub["basket_core_coverage_rate_local"].median()
+            )
             if "basket_core_coverage_rate_local" in sub
             else np.nan,
-            "basket_core_coverage_rate_wider_median": float(sub["basket_core_coverage_rate_wider"].median())
+            "basket_core_coverage_rate_wider_median": float(
+                sub["basket_core_coverage_rate_wider"].median()
+            )
             if "basket_core_coverage_rate_wider" in sub
             else np.nan,
-            "kwh_per_basket_point_hh_median": float(sub["kwh_per_basket_point_hh"].median()),
-            "basket_points_per_10mwh_hh_median": float(sub["basket_points_per_10mwh_hh"].median()),
-            "basket_trip_weighted_score_median": float(sub["basket_trip_weighted_score"].median())
+            "kwh_per_basket_point_hh_median": float(
+                sub["kwh_per_basket_point_hh"].median()
+            ),
+            "basket_points_per_10mwh_hh_median": float(
+                sub["basket_points_per_10mwh_hh"].median()
+            ),
+            "basket_trip_weighted_score_median": float(
+                sub["basket_trip_weighted_score"].median()
+            )
             if "basket_trip_weighted_score" in sub
             else np.nan,
-            "basket_trip_budget_hh_est_median": float(sub["basket_trip_budget_hh_est"].median())
+            "basket_trip_budget_hh_est_median": float(
+                sub["basket_trip_budget_hh_est"].median()
+            )
             if "basket_trip_budget_hh_est" in sub
             else np.nan,
-            "basket_trip_local_accessible_hh_est_median": float(sub["basket_trip_local_accessible_hh_est"].median())
+            "basket_trip_local_accessible_hh_est_median": float(
+                sub["basket_trip_local_accessible_hh_est"].median()
+            )
             if "basket_trip_local_accessible_hh_est" in sub
             else np.nan,
-            "basket_trip_wider_accessible_hh_est_median": float(sub["basket_trip_wider_accessible_hh_est"].median())
+            "basket_trip_wider_accessible_hh_est_median": float(
+                sub["basket_trip_wider_accessible_hh_est"].median()
+            )
             if "basket_trip_wider_accessible_hh_est" in sub
             else np.nan,
-            "basket_trip_extra_travel_hh_est_median": float(sub["basket_trip_extra_travel_hh_est"].median())
+            "basket_trip_extra_travel_hh_est_median": float(
+                sub["basket_trip_extra_travel_hh_est"].median()
+            )
             if "basket_trip_extra_travel_hh_est" in sub
             else np.nan,
-            "basket_trip_residual_hh_est_median": float(sub["basket_trip_residual_hh_est"].median())
+            "basket_trip_residual_hh_est_median": float(
+                sub["basket_trip_residual_hh_est"].median()
+            )
             if "basket_trip_residual_hh_est" in sub
             else np.nan,
-            "basket_trip_accessible_hh_est_median": float(sub["basket_trip_accessible_hh_est"].median())
+            "basket_trip_accessible_hh_est_median": float(
+                sub["basket_trip_accessible_hh_est"].median()
+            )
             if "basket_trip_accessible_hh_est" in sub
             else np.nan,
-            "basket_trip_unmet_hh_est_median": float(sub["basket_trip_unmet_hh_est"].median())
+            "basket_trip_unmet_hh_est_median": float(
+                sub["basket_trip_unmet_hh_est"].median()
+            )
             if "basket_trip_unmet_hh_est" in sub
             else np.nan,
-            "basket_trip_coverage_rate_est_median": float(sub["basket_trip_coverage_rate_est"].median())
+            "basket_trip_coverage_rate_est_median": float(
+                sub["basket_trip_coverage_rate_est"].median()
+            )
             if "basket_trip_coverage_rate_est" in sub
             else np.nan,
-            "basket_trip_coverage_rate_local_est_median": float(sub["basket_trip_coverage_rate_local_est"].median())
+            "basket_trip_coverage_rate_local_est_median": float(
+                sub["basket_trip_coverage_rate_local_est"].median()
+            )
             if "basket_trip_coverage_rate_local_est" in sub
             else np.nan,
-            "basket_trip_coverage_rate_wider_est_median": float(sub["basket_trip_coverage_rate_wider_est"].median())
+            "basket_trip_coverage_rate_wider_est_median": float(
+                sub["basket_trip_coverage_rate_wider_est"].median()
+            )
             if "basket_trip_coverage_rate_wider_est" in sub
             else np.nan,
             "basket_trip_budget_kwh_hh_commute_est_median": float(
@@ -844,8 +958,12 @@ def summarise_by_type(lsoa: pd.DataFrame, schema: pd.DataFrame) -> pd.DataFrame:
             )
             if "kwh_per_accessible_trip_commute_base" in sub
             else np.nan,
-            "cc_density_800_median": float(sub["cc_density_800"].median()) if "cc_density_800" in sub else np.nan,
-            "cc_harmonic_800_median": float(sub["cc_harmonic_800"].median()) if "cc_harmonic_800" in sub else np.nan,
+            "cc_density_800_median": float(sub["cc_density_800"].median())
+            if "cc_density_800" in sub
+            else np.nan,
+            "cc_harmonic_800_median": float(sub["cc_harmonic_800"].median())
+            if "cc_harmonic_800" in sub
+            else np.nan,
         }
         if "total_kwh_per_hh_total_est" in sub.columns:
             row["total_kwh_per_hh_total_est_median"] = float(
@@ -900,11 +1018,19 @@ def summarise_by_type(lsoa: pd.DataFrame, schema: pd.DataFrame) -> pd.DataFrame:
         for r in schema.to_dict("records"):
             cid = r["id"]
             row[f"{cid}_score_median"] = float(sub[f"basket_{cid}_score"].median())
-            row[f"{cid}_score_local_median"] = float(sub[f"basket_{cid}_score_local"].median())
-            row[f"{cid}_score_wider_median"] = float(sub[f"basket_{cid}_score_wider"].median())
+            row[f"{cid}_score_local_median"] = float(
+                sub[f"basket_{cid}_score_local"].median()
+            )
+            row[f"{cid}_score_wider_median"] = float(
+                sub[f"basket_{cid}_score_wider"].median()
+            )
             row[f"{cid}_value_median"] = float(sub[f"basket_{cid}_value"].median())
-            row[f"{cid}_value_local_median"] = float(sub[f"basket_{cid}_value_local"].median())
-            row[f"{cid}_value_wider_median"] = float(sub[f"basket_{cid}_value_wider"].median())
+            row[f"{cid}_value_local_median"] = float(
+                sub[f"basket_{cid}_value_local"].median()
+            )
+            row[f"{cid}_value_wider_median"] = float(
+                sub[f"basket_{cid}_value_wider"].median()
+            )
         rows.append(row)
     return pd.DataFrame(rows)
 
@@ -926,9 +1052,15 @@ def save_summary_tables(lsoa: pd.DataFrame, schema: pd.DataFrame) -> tuple[Path,
                     "n_lsoas": int(len(sub)),
                     "total_kwh_per_hh_median": float(sub["total_kwh_per_hh"].median()),
                     "basket_score_median": float(sub["basket_score"].median()),
-                    "kwh_per_basket_point_hh_median": float(sub["kwh_per_basket_point_hh"].median()),
-                    "core_coverage_rate_median": float(sub["basket_core_coverage_rate"].median()),
-                    "basket_trip_coverage_rate_est_median": float(sub["basket_trip_coverage_rate_est"].median())
+                    "kwh_per_basket_point_hh_median": float(
+                        sub["kwh_per_basket_point_hh"].median()
+                    ),
+                    "core_coverage_rate_median": float(
+                        sub["basket_core_coverage_rate"].median()
+                    ),
+                    "basket_trip_coverage_rate_est_median": float(
+                        sub["basket_trip_coverage_rate_est"].median()
+                    )
                     if "basket_trip_coverage_rate_est" in sub
                     else np.nan,
                     "basket_trip_coverage_rate_wider_est_median": float(
@@ -946,8 +1078,8 @@ def save_summary_tables(lsoa: pd.DataFrame, schema: pd.DataFrame) -> tuple[Path,
                     sub["kwh_per_basket_point_hh_total_est"].median()
                 )
                 if "basket_trip_extra_travel_kwh_hh_total_est" in sub.columns:
-                    dep_rows[-1]["basket_trip_extra_travel_kwh_hh_total_est_median"] = float(
-                        sub["basket_trip_extra_travel_kwh_hh_total_est"].median()
+                    dep_rows[-1]["basket_trip_extra_travel_kwh_hh_total_est_median"] = (
+                        float(sub["basket_trip_extra_travel_kwh_hh_total_est"].median())
                     )
                 if "basket_unmet_access_kwh_hh_total_est" in sub.columns:
                     dep_rows[-1]["basket_unmet_access_kwh_hh_total_est_median"] = float(
@@ -1058,7 +1190,9 @@ def fig1_category_scores_heatmap(lsoa: pd.DataFrame, schema: pd.DataFrame) -> Pa
                 {
                     "type": TYPE_LABELS.get(t, t),
                     "category": r["label"],
-                    "score": float(sub[f"basket_{r['id']}_local_access_flag"].astype(float).mean()),
+                    "score": float(
+                        sub[f"basket_{r['id']}_local_access_flag"].astype(float).mean()
+                    ),
                     "group": r["group"],
                 }
             )
@@ -1079,7 +1213,9 @@ def fig1_category_scores_heatmap(lsoa: pd.DataFrame, schema: pd.DataFrame) -> Pa
         cbar_kws={"label": "Share of LSOAs with local access <= 800m"},
         ax=ax,
     )
-    ax.set_title("Basket v1: Local Access Presence by Dominant Housing Type", fontweight="bold")
+    ax.set_title(
+        "Basket v1: Local Access Presence by Dominant Housing Type", fontweight="bold"
+    )
     ax.set_xlabel("Dominant housing type (Census TS044)")
     ax.set_ylabel("Basket category")
     plt.tight_layout()
@@ -1097,11 +1233,15 @@ def fig2_basket_and_cost_bars(lsoa: pd.DataFrame) -> Path:
 
     local_cov_vals = [
         100
-        * lsoa.loc[lsoa["dominant_type"] == t, "basket_trip_coverage_rate_local_est"].mean()
+        * lsoa.loc[
+            lsoa["dominant_type"] == t, "basket_trip_coverage_rate_local_est"
+        ].mean()
         for t in TYPE_ORDER
     ]
     penalty_vals = [
-        lsoa.loc[lsoa["dominant_type"] == t, "land_use_access_penalty_kwh_hh_total_est"].mean()
+        lsoa.loc[
+            lsoa["dominant_type"] == t, "land_use_access_penalty_kwh_hh_total_est"
+        ].mean()
         for t in TYPE_ORDER
     ]
 
@@ -1111,9 +1251,18 @@ def fig2_basket_and_cost_bars(lsoa: pd.DataFrame) -> Path:
     ax.set_xticks(x)
     ax.set_xticklabels([TYPE_LABELS[t] for t in TYPE_ORDER], rotation=15, ha="right")
     ax.set_ylabel("Distance-weighted local trip coverage (%)")
-    ax.set_title("(A) Local access delivered with distance decay", fontweight="bold", fontsize=10)
+    ax.set_title(
+        "(A) Local access delivered with distance decay", fontweight="bold", fontsize=10
+    )
     for bar, v in zip(bars, local_cov_vals):
-        ax.text(bar.get_x() + bar.get_width() / 2, v + 0.8, f"{v:.1f}", ha="center", va="bottom", fontsize=8)
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            v + 0.8,
+            f"{v:.1f}",
+            ha="center",
+            va="bottom",
+            fontsize=8,
+        )
 
     # Panel B
     ax = axes[1]
@@ -1123,7 +1272,14 @@ def fig2_basket_and_cost_bars(lsoa: pd.DataFrame) -> Path:
     ax.set_ylabel("Additional access energy (kWh / household / year)")
     ax.set_title("(B) Land-use access penalty", fontweight="bold", fontsize=10)
     for bar, v in zip(bars, penalty_vals):
-        ax.text(bar.get_x() + bar.get_width() / 2, v + ax.get_ylim()[1] * 0.01, f"{v:.0f}", ha="center", va="bottom", fontsize=8)
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            v + ax.get_ylim()[1] * 0.01,
+            f"{v:.0f}",
+            ha="center",
+            va="bottom",
+            fontsize=8,
+        )
 
     # Headline ratio annotation
     flat_pen = penalty_vals[0]
@@ -1139,7 +1295,11 @@ def fig2_basket_and_cost_bars(lsoa: pd.DataFrame) -> Path:
             color="#c0392b",
         )
 
-    fig.suptitle("Basket v1: Local Access and Land-Use Travel Penalty by Housing Type", fontweight="bold", y=1.02)
+    fig.suptitle(
+        "Basket v1: Local Access and Land-Use Travel Penalty by Housing Type",
+        fontweight="bold",
+        y=1.02,
+    )
     plt.tight_layout()
     out_path = OUT_DIR / "fig_basket_v1_by_type.png"
     plt.savefig(out_path, bbox_inches="tight")
@@ -1202,7 +1362,13 @@ def _add_centroid_marker(ax: plt.Axes, x: float, y: float, color: str) -> None:
 
 def fig3_energy_vs_basket_scatter(lsoa: pd.DataFrame) -> Path:
     """KDE contours: total energy vs local trip coverage by dominant housing type."""
-    sub = lsoa[["total_kwh_per_hh", "basket_trip_coverage_rate_local_est", "dominant_type"]].dropna().copy()
+    sub = (
+        lsoa[
+            ["total_kwh_per_hh", "basket_trip_coverage_rate_local_est", "dominant_type"]
+        ]
+        .dropna()
+        .copy()
+    )
     sub = sub[
         (sub["basket_trip_coverage_rate_local_est"] >= 0)
         & (sub["basket_trip_coverage_rate_local_est"] <= 1)
@@ -1222,22 +1388,35 @@ def fig3_energy_vs_basket_scatter(lsoa: pd.DataFrame) -> Path:
             continue
         x_vals = pts["total_kwh_per_hh"].to_numpy()
         y_vals = (100 * pts["basket_trip_coverage_rate_local_est"]).to_numpy()
-        peak_xy = _kde_gradient_linear(ax, x_vals, y_vals, TYPE_COLORS[t], x_lo, x_hi, y_lo, y_hi)
+        peak_xy = _kde_gradient_linear(
+            ax, x_vals, y_vals, TYPE_COLORS[t], x_lo, x_hi, y_lo, y_hi
+        )
         if peak_xy is not None:
             _add_centroid_marker(ax, peak_xy[0], peak_xy[1], TYPE_COLORS[t])
-        ax.plot([], [], color=TYPE_COLORS[t], linewidth=8, alpha=0.35, label=TYPE_LABELS[t])
+        ax.plot(
+            [], [], color=TYPE_COLORS[t], linewidth=8, alpha=0.35, label=TYPE_LABELS[t]
+        )
 
     x_med = float(sub["total_kwh_per_hh"].median())
     y_med = float((100 * sub["basket_trip_coverage_rate_local_est"]).median())
     ax.axvline(x_med, color="#666", linestyle="--", linewidth=1)
     ax.axhline(y_med, color="#666", linestyle="--", linewidth=1)
-    ax.text(x_med + (x_hi - x_lo) * 0.01, y_med + (y_hi - y_lo) * 0.02, "Pilot medians", fontsize=8, color="#555")
+    ax.text(
+        x_med + (x_hi - x_lo) * 0.01,
+        y_med + (y_hi - y_lo) * 0.02,
+        "Pilot medians",
+        fontsize=8,
+        color="#555",
+    )
 
     ax.set_xlim(x_lo, x_hi)
     ax.set_ylim(y_lo, y_hi)
     ax.set_xlabel("Total energy (kWh / household)")
     ax.set_ylabel("Local trip coverage (0-100)")
-    ax.set_title("Basket v1: Energy vs Local Access Coverage (KDE by Housing Type)", fontweight="bold")
+    ax.set_title(
+        "Basket v1: Energy vs Local Access Coverage (KDE by Housing Type)",
+        fontweight="bold",
+    )
     ax.legend(title="Dominant type", fontsize=8)
     plt.tight_layout()
     out_path = OUT_DIR / "fig_basket_v1_scatter_energy_vs_basket.png"
@@ -1254,7 +1433,9 @@ def fig4_deprivation_gradient(lsoa: pd.DataFrame) -> Path | None:
     rows = []
     for dep in dep_order:
         for t in TYPE_ORDER:
-            sub = lsoa[(lsoa["basket_dep_quintile"] == dep) & (lsoa["dominant_type"] == t)]
+            sub = lsoa[
+                (lsoa["basket_dep_quintile"] == dep) & (lsoa["dominant_type"] == t)
+            ]
             if len(sub) < 10:
                 continue
             rows.append(
@@ -1304,7 +1485,9 @@ def fig4_deprivation_gradient(lsoa: pd.DataFrame) -> Path | None:
         ax.set_xlabel("Deprivation quintile (% households not deprived)")
         ax.tick_params(axis="x", rotation=20)
     axes[1].legend(title="Dominant type", fontsize=8)
-    fig.suptitle("Basket v1: Deprivation Gradient of Access Burden", fontweight="bold", y=1.03)
+    fig.suptitle(
+        "Basket v1: Deprivation Gradient of Access Burden", fontweight="bold", y=1.03
+    )
     plt.tight_layout()
     out_path = OUT_DIR / "fig_basket_v1_deprivation_gradient.png"
     plt.savefig(out_path, bbox_inches="tight")
@@ -1325,8 +1508,7 @@ def _markdown_table(df: pd.DataFrame) -> str:
     headers = [str(c) for c in df.columns]
     rows = [[_fmt(v) for v in row] for row in df.to_numpy()]
     widths = [
-        max(len(headers[i]), *(len(r[i]) for r in rows))
-        for i in range(len(headers))
+        max(len(headers[i]), *(len(r[i]) for r in rows)) for i in range(len(headers))
     ]
 
     def _line(vals: list[str]) -> str:
@@ -1338,7 +1520,9 @@ def _markdown_table(df: pd.DataFrame) -> str:
     return "\n".join(parts)
 
 
-def _round_table_for_markdown(df: pd.DataFrame, cols_map: list[tuple[str, str, int]]) -> str:
+def _round_table_for_markdown(
+    df: pd.DataFrame, cols_map: list[tuple[str, str, int]]
+) -> str:
     """Return a compact markdown table for selected columns."""
     out = df.copy()
     for src, _, decimals in cols_map:
@@ -1353,19 +1537,31 @@ def _round_table_for_markdown(df: pd.DataFrame, cols_map: list[tuple[str, str, i
     return _markdown_table(out)
 
 
-def write_summary_document(lsoa: pd.DataFrame, schema: pd.DataFrame, type_summary: pd.DataFrame, figure_paths: list[Path]) -> Path:
+def write_summary_document(
+    lsoa: pd.DataFrame,
+    schema: pd.DataFrame,
+    type_summary: pd.DataFrame,
+    figure_paths: list[Path],
+) -> Path:
     """Write a draft markdown summary of the basket v1 results."""
     total_n = len(lsoa)
     n_cities = lsoa["city"].nunique() if "city" in lsoa.columns else np.nan
 
     flat = type_summary[type_summary["type"] == "Flat"].iloc[0]
     det = type_summary[type_summary["type"] == "Detached"].iloc[0]
-    terr = type_summary[type_summary["type"] == "Terraced"].iloc[0]
-    semi = type_summary[type_summary["type"] == "Semi"].iloc[0]
+    _terr = type_summary[type_summary["type"] == "Terraced"].iloc[0]  # noqa: F841
+    _semi = type_summary[type_summary["type"] == "Semi"].iloc[0]  # noqa: F841
 
-    detached_vs_flat_cost = det["kwh_per_basket_point_hh_median"] / flat["kwh_per_basket_point_hh_median"]
-    flat_vs_det_yield = flat["basket_points_per_10mwh_hh_median"] / det["basket_points_per_10mwh_hh_median"]
-    detached_vs_flat_energy = det["total_kwh_per_hh_median"] / flat["total_kwh_per_hh_median"]
+    detached_vs_flat_cost = (
+        det["kwh_per_basket_point_hh_median"] / flat["kwh_per_basket_point_hh_median"]
+    )
+    flat_vs_det_yield = (
+        flat["basket_points_per_10mwh_hh_median"]
+        / det["basket_points_per_10mwh_hh_median"]
+    )
+    detached_vs_flat_energy = (
+        det["total_kwh_per_hh_median"] / flat["total_kwh_per_hh_median"]
+    )
     flat_vs_det_basket = flat["basket_score_median"] / det["basket_score_median"]
 
     schema_md = _round_table_for_markdown(
@@ -1398,8 +1594,16 @@ def write_summary_document(lsoa: pd.DataFrame, schema: pd.DataFrame, type_summar
             ("basket_trip_coverage_rate_local_est_median", "Local trip coverage", 2),
             ("basket_trip_coverage_rate_wider_est_median", "Wider trip coverage", 2),
             ("basket_trip_extra_travel_hh_est_median", "Extra-travel trips/hh/yr", 1),
-            ("basket_trip_extra_travel_kwh_hh_total_est_median", "Extra-travel kWh/hh/yr (overall est)", 0),
-            ("kwh_per_accessible_trip_total_est_median", "kWh / accessible trip (overall est)", 2),
+            (
+                "basket_trip_extra_travel_kwh_hh_total_est_median",
+                "Extra-travel kWh/hh/yr (overall est)",
+                0,
+            ),
+            (
+                "kwh_per_accessible_trip_total_est_median",
+                "kWh / accessible trip (overall est)",
+                2,
+            ),
         ],
     )
 
@@ -1416,8 +1620,12 @@ def write_summary_document(lsoa: pd.DataFrame, schema: pd.DataFrame, type_summar
                     "N": len(sub),
                     "Total kWh/hh": round(float(sub["total_kwh_per_hh"].median())),
                     "Basket score": round(float(sub["basket_score"].median()), 1),
-                    "kWh / basket pt": round(float(sub["kwh_per_basket_point_hh"].median())),
-                    "Trip coverage": round(float(sub["basket_trip_coverage_rate_est"].median()), 2)
+                    "kWh / basket pt": round(
+                        float(sub["kwh_per_basket_point_hh"].median())
+                    ),
+                    "Trip coverage": round(
+                        float(sub["basket_trip_coverage_rate_est"].median()), 2
+                    )
                     if "basket_trip_coverage_rate_est" in sub
                     else np.nan,
                 }
@@ -1636,8 +1844,6 @@ def main(cities: list[str] | None = None) -> None:
     schema_path = save_schema_table(schema)
     type_path, dep_path = save_summary_tables(lsoa, schema)
     lsoa_scores_path = save_lsoa_scores(lsoa, schema)
-    type_summary = pd.read_csv(type_path)
-
     fig_paths: list[Path] = []
     fig_paths.append(fig1_category_scores_heatmap(lsoa, schema))
     fig_paths.append(fig2_basket_and_cost_bars(lsoa))
