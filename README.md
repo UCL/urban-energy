@@ -6,7 +6,7 @@ Investigating the relationship between urban form and per-capita energy consumpt
 
 Cities are conduits that capture energy and recycle it through layers of human interaction. The measure of urban efficiency is not how much energy a neighbourhood consumes, but how many transactions, connections, and transformations that energy enables before it dissipates. Sprawling morphologies consume more energy per capita and deliver less city per unit of energy consumed.
 
-**Key result:** 3.5x land-use access penalty between detached-dominant and flat-dominant LSOAs. The efficiency gap widens at each normalisation level (building -> transport -> accessibility).
+**Key result:** For selected land-use categories (food, health, education, greenspace, transit) at observed trip rates, a 3.5x access penalty emerges between detached-dominant and flat-dominant LSOAs. The efficiency gap widens at each normalisation level (building -> transport -> accessibility). The basket is illustrative — it covers particular land uses, not all travel purposes.
 
 ## Project Structure
 

@@ -15,7 +15,7 @@ The LSOA-level "three energy surfaces" proof of concept is complete for 18 Engli
 - [x] Network analysis: cityseer centrality + gravity-weighted accessibility at 800m
 - [x] LSOA aggregation: 3-stage pipeline (morphology, network, integration) across 18 cities
 - [x] Three energy surfaces: building (DESNZ metered), transport (Census commute), accessibility (network + land use)
-- [x] Basket index v1: TCPA-aligned trip-demand model with distance-decay and land-use penalty
+- [x] Basket index v1: illustrative trip-demand case for selected land uses (food, health, education, greenspace, transit) showing the access penalty at observed rates
 - [x] Publication figures: 7 main figures + basket subfolder + summary tables
 - [x] Case narrative: `paper/case_v1.md` with full 9-step analytical structure
 
@@ -25,13 +25,13 @@ The LSOA-level "three energy surfaces" proof of concept is complete for 18 Engli
 |--------|---------|
 | `stats/build_case.py` | Regenerate all case-one figures |
 | `stats/lsoa_figures.py` | Three-surfaces publication figures |
-| `stats/basket_index_v1.py` | Basket index and land-use penalty |
+| `stats/basket_index_v1.py` | Illustrative basket case: access penalty for selected land uses |
 | `stats/proof_of_concept_lsoa.py` | Core LSOA analysis and data loading |
 | `stats/diagnostic_fig1b.py` | Confounder diagnostics |
 
 ### Key Result
 
-3.5x land-use access penalty between detached-dominant and flat-dominant LSOAs. The compounding widens at each normalisation level (kWh/m2 -> kWh/capita -> kWh/capita/accessibility).
+For the selected land-use categories at observed trip rates, a 3.5x access penalty emerges between detached-dominant and flat-dominant LSOAs. The compounding widens at each normalisation level (kWh/m2 -> kWh/capita -> kWh/capita/accessibility). This is illustrative — the basket covers a particular set of land uses, not all travel purposes.
 
 ---
 
