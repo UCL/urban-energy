@@ -12,11 +12,10 @@ landscape into three surfaces:
        household sizes: per capita, flats are higher than terraced/semi.
 
     2. THE MOBILITY SURFACE (transport cost)
-       How far you drive. Transport energy estimated from Census-reported
-       commute distances (ts058) and car mode share (ts061), scaled to
-       total car travel via NTS commute-to-total ratio (22%). Transport
-       energy roughly doubles from compact to sprawl (~2.3k → ~4.5k
-       kWh/hh). Combined with building energy, sprawl costs ~1.4x more.
+       Commute energy estimated from Census-reported commute distances
+       (ts058) and mode counts (ts061), split into private and public
+       transport with mode-specific energy intensities. Combined with
+       building energy, sprawl costs materially more.
 
     3. THE ACCESSIBILITY SURFACE (the return)
        What you can reach on foot without spending energy. Two metrics:
@@ -43,6 +42,7 @@ Usage:
     uv run python stats/proof_of_concept_lsoa.py manchester york
 """
 
+import json
 import sys
 
 import geopandas as gpd
@@ -53,6 +53,7 @@ import statsmodels.api as sm
 from urban_energy.paths import TEMP_DIR
 
 DATA_PATH = TEMP_DIR / "processing" / "combined" / "lsoa_integrated.gpkg"
+RESULTS_PATH = TEMP_DIR / "stats" / "results" / "poc_lsoa.json"
 
 # ---------------------------------------------------------------------------
 # Census column names
@@ -66,8 +67,8 @@ _TS011_NOT_DEP = (
 )
 _TS011_TOTAL = "ts011_Household deprivation: Total: All households; measures: Value"
 
-# Commute distance bands — midpoint km
-_COMMUTE_BANDS: dict[str, float] = {
+# Commute distance bands — midpoint km (travelling commuters only)
+_COMMUTE_DISTANCE_BANDS: dict[str, float] = {
     "ts058_Distance travelled to work: Less than 2km": 1.0,
     "ts058_Distance travelled to work: 2km to less than 5km": 3.5,
     "ts058_Distance travelled to work: 5km to less than 10km": 7.5,
@@ -76,14 +77,24 @@ _COMMUTE_BANDS: dict[str, float] = {
     "ts058_Distance travelled to work: 30km to less than 40km": 35.0,
     "ts058_Distance travelled to work: 40km to less than 60km": 50.0,
     "ts058_Distance travelled to work: 60km and over": 80.0,
-    "ts058_Distance travelled to work: Works mainly from home": 0.0,
 }
+_TS058_HOME = "ts058_Distance travelled to work: Works mainly from home"
+_TS058_OFFSHORE = (
+    "ts058_Distance travelled to work: "
+    "Works mainly at an offshore installation, in no fixed place, or outside the UK"
+)
 _COMMUTE_TOTAL = (
     "ts058_Distance travelled to work: "
     "Total: All usual residents aged 16 years and over "
     "in employment the week before the census"
 )
 _TS061_CAR = "ts061_Method of travel to workplace: Driving a car or van"
+_TS061_PASSENGER = "ts061_Method of travel to workplace: Passenger in a car or van"
+_TS061_TAXI = "ts061_Method of travel to workplace: Taxi"
+_TS061_MOTORCYCLE = "ts061_Method of travel to workplace: Motorcycle, scooter or moped"
+_TS061_BUS = "ts061_Method of travel to workplace: Bus, minibus or coach"
+_TS061_TRAIN = "ts061_Method of travel to workplace: Train"
+_TS061_METRO = "ts061_Method of travel to workplace: Underground, metro, light rail, tram"
 _TS061_TOTAL = (
     "ts061_Method of travel to workplace: "
     "Total: All usual residents aged 16 years and over "
@@ -91,6 +102,8 @@ _TS061_TOTAL = (
 )
 _TS061_WALK = "ts061_Method of travel to workplace: On foot"
 _TS061_CYCLE = "ts061_Method of travel to workplace: Bicycle"
+_TS061_HOME = "ts061_Method of travel to workplace: Work mainly at or from home"
+_TS061_OTHER = "ts061_Method of travel to workplace: Other method of travel to work"
 _TS006_DENSITY = (
     "ts006_Population Density: Persons per square kilometre; measures: Value"
 )
@@ -112,6 +125,17 @@ _TS044_COMMERCIAL = (
     "ts044_Accommodation type: In a commercial building, "
     "for example, in an office building, hotel or over a shop"
 )
+
+# Mode energy intensities for commute-energy decomposition (kWh/passenger-km):
+# Best available national passenger-energy intensities (ECUK 2025):
+# - Road passenger: 34.3 ktoe / billion passenger-km (2023)
+# - Rail passenger: 15.3 ktoe / billion passenger-km (2024)
+# Conversion: 1 ktoe = 11.63 GWh, so kWh/pkm = ktoe_per_billion_pkm * 0.01163
+_KWH_PER_PKM_ROAD = 34.3 * 0.01163  # ≈ 0.399
+_KWH_PER_PKM_RAIL = 15.3 * 0.01163  # ≈ 0.178
+# NTS 2024 distance ratio (England): total miles / commuting miles per person.
+# Used only for a secondary "overall travel" scenario estimate.
+_NTS_TOTAL_TO_COMMUTE_DISTANCE_FACTOR = 6082 / 1007  # ≈ 6.04
 
 # ---------------------------------------------------------------------------
 # Cityseer accessibility — only the columns we use
@@ -153,10 +177,20 @@ _CENSUS_REQUIRED = [
     _TS011_NOT_DEP,
     _TS011_TOTAL,
     _COMMUTE_TOTAL,
+    _TS058_HOME,
+    _TS058_OFFSHORE,
     _TS061_CAR,
+    _TS061_PASSENGER,
+    _TS061_TAXI,
+    _TS061_MOTORCYCLE,
+    _TS061_BUS,
+    _TS061_TRAIN,
+    _TS061_METRO,
     _TS061_TOTAL,
     _TS061_WALK,
     _TS061_CYCLE,
+    _TS061_HOME,
+    _TS061_OTHER,
     _TS006_DENSITY,
     _TS045_TOTAL,
     _TS045_NONE,
@@ -169,7 +203,7 @@ _CENSUS_REQUIRED = [
     _TS044_TERRACED,
     _TS044_FLAT,
     _TS044_COMMERCIAL,
-    *_COMMUTE_BANDS.keys(),
+    *_COMMUTE_DISTANCE_BANDS.keys(),
 ]
 
 # Every column the script requires — missing any of these is a hard error
@@ -318,54 +352,91 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
     )
 
     # --- Transport energy from Census ts058 + ts061 ---
-    # Step 1: Commute-km by car from Census-reported distances and mode shares.
-    #   ts058 gives distance-band counts → weighted average commute km per person.
-    #   ts061 gives car-commute count → total car-commute-km per LSOA.
-    # Step 2: Scale commute to total car travel.
-    #   NTS 2019 Table NTS0409: commuting accounts for ~22% of total car-km.
-    #   Scaling factor = 1/0.22 ≈ 4.5 (covers shopping, school, leisure, etc.)
-    # Step 3: Convert km to kWh.
-    #   0.73 kWh/km (petrol avg: ~8 L/100km × 9.1 kWh/L).
-    kwh_per_km_car = 0.73
-    commute_share_of_total_car_km = 0.22  # NTS 2019 Table NTS0409
+    # Private vs public commute energy from mode counts (ts061),
+    # with distance from ts058 bands (excluding WFH/offshore).
+    # Energy conversion uses national passenger intensities:
+    #   road modes: _KWH_PER_PKM_ROAD
+    #   rail/metro: _KWH_PER_PKM_RAIL
 
-    # ts058: total commuters and weighted commute distance
+    # ts058: total employed, home-working, offshore/no-fixed-place, and travelling commuters
     total_commuters = pd.to_numeric(lsoa[_COMMUTE_TOTAL], errors="coerce")
+    home_commuters_ts058 = pd.to_numeric(lsoa[_TS058_HOME], errors="coerce")
+    offshore_commuters = pd.to_numeric(lsoa[_TS058_OFFSHORE], errors="coerce")
+    travelling_commuters = total_commuters - home_commuters_ts058 - offshore_commuters
+    travelling_commuters = travelling_commuters.clip(lower=0)
+
     weighted_km = sum(
         km * pd.to_numeric(lsoa[col], errors="coerce")
-        for col, km in _COMMUTE_BANDS.items()
+        for col, km in _COMMUTE_DISTANCE_BANDS.items()
     )
+    # Backward-compatible average distance (includes WFH/offshore in denominator).
     lsoa["avg_commute_km"] = weighted_km / total_commuters.replace(0, np.nan)
+    # More exact travelling-commuter average distance for mode-energy decomposition.
+    lsoa["avg_commute_km_travelling"] = weighted_km / travelling_commuters.replace(0, np.nan)
+    lsoa["work_from_home_share"] = home_commuters_ts058 / total_commuters.replace(0, np.nan)
+    lsoa["offshore_or_no_fixed_share"] = offshore_commuters / total_commuters.replace(
+        0, np.nan
+    )
 
-    # ts061: car mode share and car-commuter count
+    # ts061: mode shares and counts
     car_commuters = pd.to_numeric(lsoa[_TS061_CAR], errors="coerce")
+    passenger_commuters = pd.to_numeric(lsoa[_TS061_PASSENGER], errors="coerce")
+    taxi_commuters = pd.to_numeric(lsoa[_TS061_TAXI], errors="coerce")
+    motorcycle_commuters = pd.to_numeric(lsoa[_TS061_MOTORCYCLE], errors="coerce")
+    bus_commuters = pd.to_numeric(lsoa[_TS061_BUS], errors="coerce")
+    train_commuters = pd.to_numeric(lsoa[_TS061_TRAIN], errors="coerce")
+    metro_commuters = pd.to_numeric(lsoa[_TS061_METRO], errors="coerce")
+    home_commuters_ts061 = pd.to_numeric(lsoa[_TS061_HOME], errors="coerce")
+    other_commuters = pd.to_numeric(lsoa[_TS061_OTHER], errors="coerce")
+    walk_commuters = pd.to_numeric(lsoa[_TS061_WALK], errors="coerce")
+    cycle_commuters = pd.to_numeric(lsoa[_TS061_CYCLE], errors="coerce")
+
     total_w = pd.to_numeric(lsoa[_TS061_TOTAL], errors="coerce")
     lsoa["car_commute_share"] = car_commuters / total_w.replace(0, np.nan)
-    lsoa["walk_share"] = pd.to_numeric(
-        lsoa[_TS061_WALK], errors="coerce"
-    ) / total_w.replace(0, np.nan)
-    lsoa["cycle_share"] = pd.to_numeric(
-        lsoa[_TS061_CYCLE], errors="coerce"
-    ) / total_w.replace(0, np.nan)
+    lsoa["walk_share"] = walk_commuters / total_w.replace(0, np.nan)
+    lsoa["cycle_share"] = cycle_commuters / total_w.replace(0, np.nan)
     lsoa["active_share"] = lsoa["walk_share"].fillna(0) + lsoa["cycle_share"].fillna(0)
+    lsoa["bus_share"] = bus_commuters / total_w.replace(0, np.nan)
+    lsoa["rail_share"] = (train_commuters + metro_commuters) / total_w.replace(0, np.nan)
+    lsoa["work_from_home_share_ts061"] = home_commuters_ts061 / total_w.replace(0, np.nan)
 
-    # Car commute-km: avg_commute_km × car_commuters × 2 (return) × 220 workdays
-    # ts058 distances are one-way, Census-week basis. Annualise with 220 workdays.
-    car_commute_km_annual = (
-        lsoa["avg_commute_km"]
-        * car_commuters
-        * 2  # return trip
-        * 220  # workdays per year
+    private_commuters = (
+        car_commuters + passenger_commuters + taxi_commuters + motorcycle_commuters
     )
-    # Scale commute to total car travel (NTS: commuting ≈ 22% of total car-km)
-    total_car_km_annual = car_commute_km_annual / commute_share_of_total_car_km
-    # Convert to kWh per household
+    public_commuters = bus_commuters + train_commuters + metro_commuters
+    lsoa["private_commute_share"] = private_commuters / total_w.replace(0, np.nan)
+    lsoa["public_commute_share"] = public_commuters / total_w.replace(0, np.nan)
+    lsoa["other_mode_share"] = other_commuters / total_w.replace(0, np.nan)
+
+    # Convert commute energy to kWh per household.
     total_hh_for_transport = pd.to_numeric(lsoa[_TS045_TOTAL], errors="coerce").replace(
         0, np.nan
     )
-    lsoa["transport_kwh_per_hh"] = (
-        total_car_km_annual * kwh_per_km_car
-    ) / total_hh_for_transport
+
+    # Mode-specific commute energy decomposition (kWh/hh), from ts061 shares and ts058 distance.
+    mode_distance_annual = lsoa["avg_commute_km_travelling"] * 2 * 220
+
+    private_commute_kwh_annual = (
+        mode_distance_annual * private_commuters * _KWH_PER_PKM_ROAD
+    )
+    public_commute_kwh_annual = (
+        mode_distance_annual * bus_commuters * _KWH_PER_PKM_ROAD
+        + mode_distance_annual * train_commuters * _KWH_PER_PKM_RAIL
+        + mode_distance_annual * metro_commuters * _KWH_PER_PKM_RAIL
+    )
+    lsoa["private_transport_kwh_per_hh_est"] = (
+        private_commute_kwh_annual / total_hh_for_transport
+    )
+    lsoa["public_transport_kwh_per_hh_est"] = (
+        public_commute_kwh_annual / total_hh_for_transport
+    )
+    lsoa["motorised_commute_kwh_per_hh_est"] = (
+        lsoa["private_transport_kwh_per_hh_est"] + lsoa["public_transport_kwh_per_hh_est"]
+    )
+    lsoa["transport_kwh_per_hh_est"] = lsoa["motorised_commute_kwh_per_hh_est"]
+    lsoa["transport_kwh_per_hh_total_est"] = (
+        lsoa["transport_kwh_per_hh_est"] * _NTS_TOTAL_TO_COMMUTE_DISTANCE_FACTOR
+    )
 
     # Car ownership — kept as a secondary metric
     one_car = pd.to_numeric(lsoa[_TS045_ONE], errors="coerce")
@@ -378,7 +449,10 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
 
     # Total energy cost per household
     lsoa["total_kwh_per_hh"] = lsoa["building_kwh_per_hh"] + lsoa[
-        "transport_kwh_per_hh"
+        "transport_kwh_per_hh_est"
+    ].fillna(0)
+    lsoa["total_kwh_per_hh_total_est"] = lsoa["building_kwh_per_hh"] + lsoa[
+        "transport_kwh_per_hh_total_est"
     ].fillna(0)
 
     lsoa["log_total_kwh_per_hh"] = np.log(lsoa["total_kwh_per_hh"].clip(lower=1))
@@ -423,6 +497,12 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
             q=5,
             labels=["Q1 most", "Q2", "Q3", "Q4", "Q5 least"],
         )
+
+    # --- GVA per household (ONS Small Area GVA) ---
+    if "lsoa_gva_millions" in lsoa.columns:
+        lsoa["gva_per_hh"] = (
+            lsoa["lsoa_gva_millions"] * 1_000_000
+        ) / lsoa["total_hh"].replace(0, np.nan)
 
     # --- Accommodation type (Census ts044, complete coverage) ---
     ts044_total = pd.to_numeric(lsoa[_TS044_TOTAL], errors="coerce")
@@ -482,12 +562,25 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
         print(f"    Height: median={lsoa['height_mean'].dropna().median():.1f}m")
     print("\n  Cost (kWh/household):")
     print(f"    Building: median={lsoa['building_kwh_per_hh'].median():.0f}")
-    t = lsoa["transport_kwh_per_hh"].dropna()
+    t = lsoa["transport_kwh_per_hh_est"].dropna()
     print(
-        f"    Transport: median={t.median():,.0f}  "
+        f"    Transport (est.): median={t.median():,.0f}  "
         f"(cars/hh={lsoa['cars_per_hh'].median():.2f})"
     )
+    t_total = lsoa["transport_kwh_per_hh_total_est"].dropna()
+    print(
+        "    Transport (overall scenario, est.): "
+        f"median={t_total.median():,.0f}  "
+        f"(factor={_NTS_TOTAL_TO_COMMUTE_DISTANCE_FACTOR:.2f}x)"
+    )
+    if "private_transport_kwh_per_hh_est" in lsoa.columns:
+        print(
+            "    Commute mode energy (est., kWh/hh): "
+            f"private={lsoa['private_transport_kwh_per_hh_est'].median():,.0f}, "
+            f"public={lsoa['public_transport_kwh_per_hh_est'].median():,.0f}"
+        )
     print(f"    Total: median={lsoa['total_kwh_per_hh'].median():,.0f}")
+    print(f"    Total (overall scenario): median={lsoa['total_kwh_per_hh_total_est'].median():,.0f}")
     if "median_build_year" in lsoa.columns:
         yr = lsoa["median_build_year"].dropna()
         print(f"\n  Stock: median build year={yr.median():.0f}")
@@ -610,6 +703,7 @@ def compute_access_per_kwh(lsoa: pd.DataFrame) -> pd.DataFrame:
     acc_pos = acc - acc.min() + 1
     lsoa["access_per_kwh"] = acc_pos / lsoa["total_kwh_per_hh"]
     lsoa["log_access_per_kwh"] = np.log(lsoa["access_per_kwh"].clip(lower=1e-10))
+    lsoa["kwh_per_access"] = lsoa["total_kwh_per_hh"] / acc_pos
 
     # Population density quartiles
     lsoa["density_quartile"] = pd.qcut(
@@ -695,8 +789,10 @@ def print_systematic_summary(lsoa: pd.DataFrame) -> None:
         ("1:THERMAL", "kWh/hh (bldg)", "building_kwh_per_hh", ",.0f"),
         ("1:THERMAL", "kWh/person (bldg)", "kwh_per_person", ",.0f"),
         ("2:MOBILITY", "Cars/hh", "cars_per_hh", ".2f"),
-        ("2:MOBILITY", "kWh/hh (trans)", "transport_kwh_per_hh", ",.0f"),
+        ("2:MOBILITY", "kWh/hh (trans)", "transport_kwh_per_hh_est", ",.0f"),
+        ("2:MOBILITY", "kWh/hh (trans total est)", "transport_kwh_per_hh_total_est", ",.0f"),
         ("2:MOBILITY", "kWh/hh (total)", "total_kwh_per_hh", ",.0f"),
+        ("2:MOBILITY", "kWh/hh (total est)", "total_kwh_per_hh_total_est", ",.0f"),
         ("2:MOBILITY", "kWh/person+trans", "total_kwh_per_person", ",.0f"),
         ("3:ACCESS", "Street frontage", "street_frontage", ".0f"),
         ("3:ACCESS", "FSA count", "fsa_count", ".1f"),
@@ -760,8 +856,8 @@ def print_systematic_summary(lsoa: pd.DataFrame) -> None:
 
     r_cars = flat["cars_per_hh"].median()
     r_cars /= det["cars_per_hh"].median()
-    r_trans = flat["transport_kwh_per_hh"].median()
-    r_trans /= det["transport_kwh_per_hh"].median()
+    r_trans = flat["transport_kwh_per_hh_est"].median()
+    r_trans /= det["transport_kwh_per_hh_est"].median()
     r_total = flat["total_kwh_per_hh"].median()
     r_total /= det["total_kwh_per_hh"].median()
     print("    2. MOBILITY SURFACE")
@@ -794,20 +890,27 @@ def print_energy_decomposition(lsoa: pd.DataFrame) -> None:
     print("ENERGY COST DECOMPOSITION")
     print("=" * 70)
 
-    valid = lsoa["transport_kwh_per_hh"].notna()
+    valid = lsoa["transport_kwh_per_hh_est"].notna()
     sub = lsoa[valid]
 
     print(f"\n  {'Metric':<25s} {'Median':>8s} {'Mean':>8s}")
     print(f"  {'-' * 44}")
     for label, col in [
         ("Building kWh/hh", "building_kwh_per_hh"),
-        ("Transport kWh/hh", "transport_kwh_per_hh"),
+        ("Transport kWh/hh (est)", "transport_kwh_per_hh_est"),
+        ("Transport kWh/hh (overall est)", "transport_kwh_per_hh_total_est"),
         ("Total kWh/hh", "total_kwh_per_hh"),
+        ("Total kWh/hh (overall est)", "total_kwh_per_hh_total_est"),
     ]:
         s = sub[col]
         print(f"  {label:<25s} {s.median():>8.0f} {s.mean():>8.0f}")
-    t_share = sub["transport_kwh_per_hh"] / sub["total_kwh_per_hh"]
+    t_share = sub["transport_kwh_per_hh_est"] / sub["total_kwh_per_hh"]
     print(f"  {'Transport share':<25s} {t_share.median():>7.0%} {t_share.mean():>7.0%}")
+    t_total_share = sub["transport_kwh_per_hh_total_est"] / sub["total_kwh_per_hh_total_est"]
+    print(
+        f"  {'Transport share (overall)':<25s} "
+        f"{t_total_share.median():>7.0%} {t_total_share.mean():>7.0%}"
+    )
 
     if "dominant_type" not in sub.columns:
         return
@@ -823,15 +926,24 @@ def print_energy_decomposition(lsoa: pd.DataFrame) -> None:
         if len(s) == 0:
             continue
         b = s["building_kwh_per_hh"].median()
-        t = s["transport_kwh_per_hh"].median()
+        t = s["transport_kwh_per_hh_est"].median()
         tot = s["total_kwh_per_hh"].median()
-        tpct = (s["transport_kwh_per_hh"] / s["total_kwh_per_hh"]).median()
+        tpct = (s["transport_kwh_per_hh_est"] / s["total_kwh_per_hh"]).median()
+        t_total = s["transport_kwh_per_hh_total_est"].median()
+        tot_total = s["total_kwh_per_hh_total_est"].median()
+        tpct_total = (
+            s["transport_kwh_per_hh_total_est"] / s["total_kwh_per_hh_total_est"]
+        ).median()
         car = s["car_commute_share"].median()
         km = s["avg_commute_km"].median()
         act = s["active_share"].median()
         print(
             f"  {dtype:<14s} {b:>7.0f} {t:>7.0f} {tot:>7.0f} "
             f"{tpct:>4.0%} {car:>4.0%} {km:>7.1f}km {act:>5.0%}"
+        )
+        print(
+            f"  {'':<14s} {'':>7s} {t_total:>7.0f} {tot_total:>7.0f} "
+            f"{tpct_total:>4.0%} {'':>4s} {'':>8s} {'':>7s}  (overall scenario)"
         )
 
 
@@ -1133,8 +1245,197 @@ def run_per_city(lsoa: pd.DataFrame) -> None:
 
 
 # ---------------------------------------------------------------------------
+# 8. GVA within-city stratification
+# ---------------------------------------------------------------------------
+
+
+def run_gva_stratified(lsoa: pd.DataFrame) -> None:
+    """
+    GVA per household stratified by dwelling type within cities.
+
+    The unstratified comparison is confounded by city size: flat-dominated
+    LSOAs concentrate in London and other large cities where GVA is higher
+    regardless of dwelling type. This computes within-city medians and a
+    pooled within-city ratio.
+    """
+    print(f"\n{'=' * 70}")
+    print("GVA PER HOUSEHOLD — WITHIN-CITY STRATIFICATION")
+    print("=" * 70)
+
+    if "gva_per_hh" not in lsoa.columns or "city" not in lsoa.columns:
+        print("  Skipped: gva_per_hh or city column missing")
+        return
+
+    gva = lsoa[lsoa["gva_per_hh"].notna() & lsoa["dominant_type"].notna()].copy()
+    print(f"  N = {len(gva):,} LSOAs with GVA data")
+
+    types = ["Flat", "Terraced", "Semi", "Detached"]
+
+    # Unstratified (for comparison)
+    print("\n  UNSTRATIFIED (confounded by city composition):")
+    print(f"    {'Type':<12s} {'GVA/hh':>10s} {'N':>6s}")
+    for t in types:
+        sub = gva[gva["dominant_type"] == t]
+        if len(sub) > 0:
+            print(f"    {t:<12s} £{sub['gva_per_hh'].median():>8,.0f} {len(sub):>6,d}")
+
+    # Within-city: for each city, compute median GVA/hh by type
+    print("\n  WITHIN-CITY (median GVA/hh by dominant type, per city):")
+    print(
+        f"    {'City':<16s} {'Flat':>10s} {'Terraced':>10s} "
+        f"{'Semi':>10s} {'Detached':>10s} {'F/D':>6s}"
+    )
+    print(f"    {'-' * 64}")
+
+    within_ratios = []
+    for city in sorted(gva["city"].unique()):
+        csub = gva[gva["city"] == city]
+        vals = {}
+        for t in types:
+            tsub = csub[csub["dominant_type"] == t]
+            vals[t] = tsub["gva_per_hh"].median() if len(tsub) >= 5 else np.nan
+
+        line = f"    {city:<16s}"
+        for t in types:
+            v = vals[t]
+            line += f" {'—':>10s}" if np.isnan(v) else f" £{v:>8,.0f}"
+
+        if not np.isnan(vals["Flat"]) and not np.isnan(vals["Detached"]):
+            ratio = vals["Flat"] / vals["Detached"]
+            within_ratios.append(ratio)
+            line += f" {ratio:>5.2f}x"
+        print(line)
+
+    if within_ratios:
+        print(f"\n  Within-city Flat/Detached GVA ratio:")
+        print(f"    Median across cities: {np.median(within_ratios):.2f}x")
+        print(f"    Range: {min(within_ratios):.2f}x – {max(within_ratios):.2f}x")
+        print(f"    Cities with both types: {len(within_ratios)}")
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
+
+def _collect_results(lsoa: pd.DataFrame) -> dict:
+    """
+    Collect all key metrics into a JSON-serialisable dict.
+
+    This is the single source of truth for numbers cited in the paper.
+    """
+    types = ["Flat", "Terraced", "Semi", "Detached"]
+    results: dict = {"n_lsoas": len(lsoa)}
+    if "city" in lsoa.columns:
+        results["n_cities"] = int(lsoa["city"].nunique())
+
+    # --- Per dwelling type medians ---
+    by_type: dict = {}
+    for t in types:
+        sub = lsoa[lsoa["dominant_type"] == t]
+        if len(sub) == 0:
+            continue
+        entry: dict = {"n": len(sub)}
+        for col, key in [
+            ("building_kwh_per_hh", "building_kwh_per_hh"),
+            ("kwh_per_person", "kwh_per_person"),
+            ("transport_kwh_per_hh_est", "transport_kwh_per_hh_est"),
+            ("transport_kwh_per_hh_total_est", "transport_kwh_per_hh_total_est"),
+            ("total_kwh_per_hh", "total_kwh_per_hh"),
+            ("total_kwh_per_hh_total_est", "total_kwh_per_hh_total_est"),
+            ("total_kwh_per_person", "total_kwh_per_person"),
+            ("cars_per_hh", "cars_per_hh"),
+            ("car_commute_share", "car_commute_share"),
+            ("avg_hh_size", "avg_hh_size"),
+            ("people_per_ha", "people_per_ha"),
+            ("street_frontage", "street_frontage"),
+            ("fsa_count", "fsa_count"),
+            ("accessibility", "accessibility"),
+            ("access_per_kwh", "access_per_kwh"),
+            ("kwh_per_access", "kwh_per_access"),
+        ]:
+            if col in sub.columns:
+                v = sub[col].median()
+                entry[key] = round(float(v), 4) if not np.isnan(v) else None
+        # Unweighted accessibility counts
+        for col in _CC_ACCESSIBILITY + _CC_CENTRALITY:
+            if col in sub.columns:
+                v = sub[col].median()
+                short = col.replace("cc_", "")
+                entry[short] = round(float(v), 2) if not np.isnan(v) else None
+        by_type[t] = entry
+    results["by_type"] = by_type
+
+    # --- Flat/Detached ratios ---
+    flat = lsoa[lsoa["dominant_type"] == "Flat"]
+    det = lsoa[lsoa["dominant_type"] == "Detached"]
+    if len(flat) > 0 and len(det) > 0:
+        ratios: dict = {}
+        for col, key in [
+            ("building_kwh_per_hh", "building_kwh_per_hh"),
+            ("total_kwh_per_hh", "total_kwh_per_hh"),
+            ("transport_kwh_per_hh_est", "transport_kwh_per_hh_est"),
+            ("total_kwh_per_hh_total_est", "total_kwh_per_hh_total_est"),
+            ("transport_kwh_per_hh_total_est", "transport_kwh_per_hh_total_est"),
+            ("access_per_kwh", "access_per_kwh"),
+            ("kwh_per_access", "kwh_per_access"),
+            ("cars_per_hh", "cars_per_hh"),
+        ]:
+            if col in flat.columns:
+                f_v = flat[col].median()
+                d_v = det[col].median()
+                if d_v != 0 and not np.isnan(f_v) and not np.isnan(d_v):
+                    ratios[key] = round(float(f_v / d_v), 4)
+        results["flat_detached_ratios"] = ratios
+
+    # --- GVA within-city ---
+    if "gva_per_hh" in lsoa.columns and "city" in lsoa.columns:
+        gva = lsoa[lsoa["gva_per_hh"].notna() & lsoa["dominant_type"].notna()]
+        gva_results: dict = {"n_lsoas_with_gva": len(gva)}
+
+        # Unstratified
+        unstrat: dict = {}
+        for t in types:
+            sub = gva[gva["dominant_type"] == t]
+            if len(sub) > 0:
+                unstrat[t] = {
+                    "median_gva_per_hh": round(float(sub["gva_per_hh"].median()), 0),
+                    "n": len(sub),
+                }
+        gva_results["unstratified"] = unstrat
+
+        # Within-city
+        within_city: dict = {}
+        within_ratios: list[float] = []
+        for city in sorted(gva["city"].unique()):
+            csub = gva[gva["city"] == city]
+            city_entry: dict = {}
+            for t in types:
+                tsub = csub[csub["dominant_type"] == t]
+                if len(tsub) >= 5:
+                    city_entry[t] = {
+                        "median_gva_per_hh": round(float(tsub["gva_per_hh"].median()), 0),
+                        "n": len(tsub),
+                    }
+            if "Flat" in city_entry and "Detached" in city_entry:
+                ratio = (
+                    city_entry["Flat"]["median_gva_per_hh"]
+                    / city_entry["Detached"]["median_gva_per_hh"]
+                )
+                city_entry["flat_detached_ratio"] = round(ratio, 4)
+                within_ratios.append(ratio)
+            within_city[city] = city_entry
+        gva_results["within_city"] = within_city
+        if within_ratios:
+            gva_results["within_city_summary"] = {
+                "median_ratio": round(float(np.median(within_ratios)), 4),
+                "min_ratio": round(float(min(within_ratios)), 4),
+                "max_ratio": round(float(max(within_ratios)), 4),
+                "n_cities": len(within_ratios),
+            }
+        results["gva"] = gva_results
+
+    return results
 
 
 def main(cities: list[str] | None = None) -> None:
@@ -1152,6 +1453,13 @@ def main(cities: list[str] | None = None) -> None:
     run_regressions(lsoa)
     run_deprivation_control(lsoa)
     run_per_city(lsoa)
+    run_gva_stratified(lsoa)
+
+    # Save machine-readable results
+    results = _collect_results(lsoa)
+    RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    RESULTS_PATH.write_text(json.dumps(results, indent=2))
+    print(f"\n  Results saved to {RESULTS_PATH}")
 
     print(f"\n{'=' * 70}")
     print("DONE")

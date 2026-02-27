@@ -16,6 +16,9 @@ Download and initial processing scripts for raw data sources.
 8. **Process LiDAR building heights:** Run `uv run python data/process_lidar.py`
 9. **Download FSA establishments:** Run `uv run python data/download_fsa.py`
 10. **Download NaPTAN transport stops:** Run `uv run python data/download_naptan.py`
+11. **Prepare GIAS schools:** Go to [GIAS Downloads](https://get-information-schools.service.gov.uk/Downloads), download **edubasealldata** CSV, save to `cache/gias/`, then run `uv run python data/prepare_gias.py`
+12. **Prepare NHS health facilities:** Go to [NHS ODS CSV Downloads](https://digital.nhs.uk/services/organisation-data-service/data-search-and-export/csv-downloads), download `ets.csv`, `epraccur.csv`, and `edispensary.csv`, save to `cache/nhs_ods/`, then run `uv run python data/prepare_nhs.py`
+13. **Download scaling data (BRES + GVA):** Run `uv run python data/download_scaling.py`
 
 ## Pipeline Outputs
 
@@ -29,6 +32,9 @@ Download and initial processing scripts for raw data sources.
 | `process_lidar.py`      | `temp/lidar/building_heights.gpkg`           | Building polygons with LiDAR-derived height statistics |
 | `download_fsa.py`       | `temp/fsa/fsa_establishments.gpkg`           | Eating/drinking establishments as walkability proxy    |
 | `download_naptan.py`    | `temp/transport/naptan_england.gpkg`         | Public transport access points (bus, rail, metro, etc) |
+| `prepare_gias.py`       | `temp/education/gias_schools.gpkg`           | Open schools and colleges (DfE GIAS register)          |
+| `prepare_nhs.py`        | `temp/health/nhs_facilities.gpkg`            | NHS hospitals, GP practices, pharmacies (ODS)          |
+| `download_scaling.py`   | `temp/statistics/lsoa_scaling.parquet`       | BRES workplace employment + small area GVA per LSOA    |
 
 ---
 
@@ -264,6 +270,89 @@ uv run python data/download_naptan.py
 - [NaPTAN User Guide](https://www.gov.uk/government/publications/national-public-transport-access-node-schema/html-version-of-schema)
 - [ATCO Codes Reference](https://beta-naptan.dft.gov.uk/article/atco-codes-in-use)
 - [data.gov.uk NaPTAN](https://www.data.gov.uk/dataset/ff93ffc1-6656-47d8-9155-85ea0b8f2251/naptan)
+
+---
+
+## GIAS (Get Information About Schools)
+
+| Dataset                       | Source                                                                     | Records | Update  |
+| ----------------------------- | -------------------------------------------------------------------------- | ------- | ------- |
+| All open establishments (DfE) | [GIAS Downloads](https://get-information-schools.service.gov.uk/Downloads) | ~25k    | Monthly |
+
+Schools and colleges as a **civic accessibility** layer. Proximity to education is a distinguishing feature of compact residential neighbourhoods that the FSA commercial layer does not capture.
+
+| Field                    | Description                                       |
+| ------------------------ | ------------------------------------------------- |
+| `urn`                    | Unique Reference Number (DfE identifier)          |
+| `establishment_name`     | School or college name                            |
+| `type_of_establishment`  | Academy, free school, LA maintained, independent  |
+| `phase_of_education`     | Nursery, primary, secondary, 16 plus, all-through |
+| `statutory_low_age`      | Lower age of intake                               |
+| `statutory_high_age`     | Upper age of intake                               |
+| `easting`                | OS National Grid easting (EPSG:27700)             |
+| `northing`               | OS National Grid northing (EPSG:27700)            |
+| `geometry`               | Point geometry (EPSG:27700)                       |
+
+**Manual download** (preferred — the API endpoint requires a browser session):
+
+1. Go to [get-information-schools.service.gov.uk/Downloads](https://get-information-schools.service.gov.uk/Downloads)
+2. Under *All establishment data*, select **edubasealldata** → Download CSV
+3. Save to `cache/gias/` — the script accepts the dated filename (`edubasealldata20260226.csv`) directly
+
+Then run:
+
+```bash
+uv run python data/prepare_gias.py
+```
+
+- Coordinates are native OSGB36 easting/northing — no geocoding step required.
+- Open status filtered to codes 1 (Open) and 4 (Open, proposed to close).
+- Non-school entries (online providers, LA services) are removed by filtering for valid coordinates.
+
+---
+
+## NHS Facilities (Organisation Data Service)
+
+| Dataset | Source | Records | Update |
+| --- | --- | --- | --- |
+| NHS Trusts/sites | [Other NHS organisations](https://digital.nhs.uk/services/organisation-data-service/data-search-and-export/csv-downloads/other-nhs-organisations) (`ets.csv`) | ~6k hospitals | Monthly |
+| GP Practices | [GP and GP practice related data](https://digital.nhs.uk/services/organisation-data-service/data-search-and-export/csv-downloads/gp-and-gp-practice-related-data) (`epraccur.csv`) | ~6k | Monthly |
+| Pharmacies | [GP and GP practice related data](https://digital.nhs.uk/services/organisation-data-service/data-search-and-export/csv-downloads/gp-and-gp-practice-related-data) (`edispensary.csv`) | ~12k | Monthly |
+
+Hospitals, GP practices, and pharmacies as a **health accessibility** layer, capturing civic infrastructure that differentiates compact from sprawling neighbourhoods independently of commercial activity.
+
+| Field           | Description                                 |
+| --------------- | ------------------------------------------- |
+| `ods_code`      | NHS ODS organisation code                   |
+| `name`          | Organisation name                           |
+| `facility_type` | hospitals / gp_practices / pharmacies       |
+| `postcode`      | UK postcode                                 |
+| `easting`       | OS National Grid easting (from Code-Point)  |
+| `northing`      | OS National Grid northing (from Code-Point) |
+| `geometry`      | Point geometry (EPSG:27700)                 |
+
+ODS records carry postcodes but not grid references. Easting/northing are derived by joining to OS Code-Point Open postcode centroids, which must already be present at `temp/codepo_gpkg_gb/`.
+
+**Manual download:**
+
+1. Go to [NHS ODS CSV Downloads](https://digital.nhs.uk/services/organisation-data-service/data-search-and-export/csv-downloads)
+2. Download each of the following:
+   - **Trusts and sites** (`ets.csv`) — from [Other NHS organisations](https://digital.nhs.uk/services/organisation-data-service/data-search-and-export/csv-downloads/other-nhs-organisations)
+   - **GP practices** (`epraccur.csv`) — from [GP and GP practice related data](https://digital.nhs.uk/services/organisation-data-service/data-search-and-export/csv-downloads/gp-and-gp-practice-related-data)
+   - **Dispensing pharmacies** (`edispensary.csv`) — from [GP and GP practice related data](https://digital.nhs.uk/services/organisation-data-service/data-search-and-export/csv-downloads/gp-and-gp-practice-related-data)
+3. Save each file to `cache/nhs_ods/` using the exact filenames above
+
+Then run:
+
+```bash
+uv run python data/prepare_nhs.py
+```
+
+| ODS file       | `landuse` value |
+| -------------- | --------------- |
+| `hospitals`    | `hospital`      |
+| `gp_practices` | `gp_practice`   |
+| `pharmacies`   | `pharmacy`      |
 
 ---
 

@@ -77,6 +77,9 @@ PATHS = {
     "greenspace": TEMP_DIR / "opgrsp_gpkg_gb" / "Data" / "opgrsp_gb.gpkg",
     "transport": TEMP_DIR / "transport" / "naptan_england.gpkg",
     "energy_stats": TEMP_DIR / "statistics" / "lsoa_energy_consumption.parquet",
+    "scaling": TEMP_DIR / "statistics" / "lsoa_scaling.parquet",
+    "schools": TEMP_DIR / "education" / "gias_schools.gpkg",
+    "health": TEMP_DIR / "health" / "nhs_facilities.gpkg",
 }
 
 # Building physics columns needed for LSOA aggregation
@@ -300,8 +303,20 @@ def run_stage2_network(
         f"{nx_graph.number_of_edges()} edges"
     )
 
+    # Mark nodes live=True (within study boundary) or live=False (buffer only).
+    # Cityseer computes metrics only for live nodes; buffer nodes provide network
+    # context for accurate catchment computation at the boundary edge.
+    from shapely.geometry import Point as _Point
+    for node_key, node_data in nx_graph.nodes(data=True):
+        x, y = node_data["x"], node_data["y"]
+        node_data["live"] = combined_bounds.contains(_Point(x, y))
+
     nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(nx_graph)
-    print(f"    Network structure built: {len(nodes_gdf)} nodes")
+    n_live = nodes_gdf["live"].sum()
+    print(
+        f"    Network structure built: {len(nodes_gdf)} nodes "
+        f"({n_live} live / {len(nodes_gdf) - n_live} buffer)"
+    )
 
     # Compute centrality
     print(f"\n  Computing centrality (distances={CENTRALITY_DISTANCES})...")
@@ -494,6 +509,57 @@ def run_stage2_network(
         )
         print(f"    ✓ Transport accessibility computed ({transport_keys})")
 
+    # Schools (GIAS)
+    schools_path = PATHS.get("schools")
+    if schools_path and schools_path.exists():
+        schools = gpd.read_file(schools_path, bbox=buffered_bounds.bounds)
+        schools = schools.to_crs(boundaries.crs)
+        schools_in_buffer = schools[schools.intersects(buffered_bounds)].copy()
+        schools_in_buffer["landuse"] = "school"
+        print(f"    Schools: {len(schools_in_buffer)} establishments")
+        if len(schools_in_buffer) > 0:
+            nodes_gdf, _data_gdf = layers.compute_accessibilities(
+                schools_in_buffer,
+                landuse_column_label="landuse",
+                accessibility_keys=["school"],
+                nodes_gdf=nodes_gdf,
+                network_structure=network_structure,
+                distances=ACCESSIBILITY_DISTANCES,
+            )
+            print("    ✓ Schools accessibility computed")
+    else:
+        print("    Schools data not available — skipping")
+
+    # Health facilities (NHS ODS)
+    health_path = PATHS.get("health")
+    if health_path and health_path.exists():
+        health = gpd.read_file(health_path, bbox=buffered_bounds.bounds)
+        health = health.to_crs(boundaries.crs)
+        health_in_buffer = health[health.intersects(buffered_bounds)].copy()
+        # Map facility types to landuse labels
+        type_map = {
+            "hospitals": "hospital",
+            "gp_practices": "gp_practice",
+            "pharmacies": "pharmacy",
+        }
+        health_in_buffer["landuse"] = (
+            health_in_buffer["facility_type"].map(type_map).fillna("health_other")
+        )
+        health_keys = list(health_in_buffer["landuse"].unique())
+        print(f"    Health facilities: {len(health_in_buffer)} ({health_keys})")
+        if len(health_in_buffer) > 0:
+            nodes_gdf, _data_gdf = layers.compute_accessibilities(
+                health_in_buffer,
+                landuse_column_label="landuse",
+                accessibility_keys=health_keys,
+                nodes_gdf=nodes_gdf,
+                network_structure=network_structure,
+                distances=ACCESSIBILITY_DISTANCES,
+            )
+            print(f"    ✓ Health accessibility computed ({health_keys})")
+    else:
+        print("    Health data not available — skipping")
+
     # Drop redundant columns to keep output manageable
     all_cc = [c for c in nodes_gdf.columns if c.startswith("cc_")]
     keep_cc: set[str] = set()
@@ -508,7 +574,7 @@ def run_stage2_network(
             if c.startswith(prefix):
                 keep_cc.add(c)
     for c in all_cc:
-        if c.endswith("_wt") or "_nearest_" in c:
+        if c.endswith("_wt") or c.endswith("_nw") or "_nearest_" in c:
             keep_cc.add(c)
     for c in all_cc:
         if c.startswith("cc_gross_floor_area_m2_sum_"):
@@ -525,18 +591,18 @@ def run_stage2_network(
             f" (dropped {len(drop_cc)} redundant stats)"
         )
 
-    # Filter to nodes within study area (not just buffer)
-    nodes_in_bounds = nodes_gdf[nodes_gdf.intersects(combined_bounds)]
+    # Discard buffer nodes — keep only live nodes (those within the study boundary)
+    live_nodes = nodes_gdf[nodes_gdf["live"]].copy()
 
-    cc_cols = [c for c in nodes_in_bounds.columns if c.startswith("cc_")]
+    cc_cols = [c for c in live_nodes.columns if c.startswith("cc_")]
     if not cc_cols:
         raise RuntimeError(
-            f"Stage 2 produced no cc_ columns. Columns: {list(nodes_in_bounds.columns)}"
+            f"Stage 2 produced no cc_ columns. Columns: {list(live_nodes.columns)}"
         )
     print(f"  Cityseer metric columns: {len(cc_cols)}")
-    print(f"  Nodes in study area: {len(nodes_in_bounds)}")
+    print(f"  Live nodes saved: {len(live_nodes)}")
 
-    return nodes_in_bounds
+    return live_nodes
 
 
 # ---------------------------------------------------------------------------
@@ -866,6 +932,16 @@ def run_stage3_lsoa_aggregation(
         lsoa = lsoa.merge(energy_df, on="LSOA21CD", how="left")
         matched = lsoa[energy_cols[0]].notna().sum() if energy_cols else 0
         print(f"    {matched:,}/{len(lsoa):,} LSOAs matched to metered energy")
+
+    # Scaling data (GVA) — direct join on LSOA code
+    scaling_path = PATHS.get("scaling")
+    if scaling_path and scaling_path.exists():
+        print("  Joining scaling data (GVA)...")
+        scaling_df = pd.read_parquet(scaling_path)
+        scaling_df = scaling_df.rename(columns={"LSOA_CODE": "LSOA21CD"})
+        lsoa = lsoa.merge(scaling_df, on="LSOA21CD", how="left")
+        matched = lsoa["lsoa_gva_millions"].notna().sum() if "lsoa_gva_millions" in lsoa.columns else 0
+        print(f"    {matched:,}/{len(lsoa):,} LSOAs matched to GVA")
 
     lsoa["city"] = city_name
     lsoa = gpd.GeoDataFrame(lsoa, geometry="geometry", crs=boundaries.crs)

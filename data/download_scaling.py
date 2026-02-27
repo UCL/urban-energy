@@ -1,27 +1,24 @@
 """
-Download ONS Small Area GVA and BRES employment data at LSOA level.
+Download ONS Small Area GVA data at LSOA level.
 
-Downloads economic output and employment data to test the productivity side
-of Bettencourt urban scaling: dense, connected urban form generates more
-economic value per person, not just less energy per person.
+Downloads economic output data to test the productivity side of Bettencourt
+urban scaling: dense, connected urban form generates more economic value per
+person, not just less energy per person.
 
 Sources:
     - ONS Small Area GVA Estimates (NOMIS NM_2400_1)
       GVA(B) in £ million at LSOA level, 1998-2023
-    - BRES Employee Counts (NOMIS NM_189_1, open access)
-      Workplace-based employment at LSOA level, 2015-2024
 
-Note: GVA data uses 2011 LSOA boundaries; BRES may use 2011 or 2021.
-Most LSOA codes (~95%) are unchanged between censuses, so a direct join
-on LSOA21CD captures the vast majority. LSOAs that were split or merged
-between 2011 and 2021 will be unmatched — acceptable for a PoC.
+Note: GVA data uses 2011 LSOA boundaries. Most LSOA codes (~95%) are
+unchanged between censuses, so a direct join on LSOA21CD captures the vast
+majority. LSOAs that were split or merged between 2011 and 2021 will be
+unmatched — acceptable for a PoC.
 
 License: UK Open Government Licence (OGL)
 
 Output:
     - temp/statistics/lsoa_scaling.parquet
-        Columns: LSOA_CODE, gva_year, lsoa_gva_millions,
-                 bres_year, lsoa_employment
+        Columns: LSOA_CODE, gva_year, lsoa_gva_millions
 """
 
 from io import BytesIO
@@ -48,21 +45,6 @@ GVA_URL = (
     "&recordlimit=100000"
 )
 
-# NOMIS API: BRES open access (NM_189_1)
-# industry=37748736: All industries
-# employment_status=4: Employment (employees + working owners)
-# measure=1: Count
-BRES_URL = (
-    "https://www.nomisweb.co.uk/api/v01/dataset/NM_189_1.data.csv"
-    "?geography=TYPE298"
-    "&date=latest"
-    "&industry=37748736"
-    "&employment_status=4"
-    "&measure=1"
-    "&measures=20100"
-    "&select=date_name,geography_code,obs_value"
-    "&recordlimit=100000"
-)
 
 
 def download_csv(url: str, desc: str, cache_name: str) -> pd.DataFrame:
@@ -158,76 +140,25 @@ def process_gva(df: pd.DataFrame) -> pd.DataFrame:
     return df[["LSOA_CODE", "gva_year", "lsoa_gva_millions"]]
 
 
-def process_bres(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Process raw BRES download into clean LSOA-level data.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Raw NOMIS CSV output.
-
-    Returns
-    -------
-    pd.DataFrame
-        Clean data with columns: LSOA_CODE, bres_year, lsoa_employment.
-    """
-    df = _normalise_columns(df)
-
-    # Filter to England LSOAs only
-    df = df[df["GEOGRAPHY_CODE"].astype(str).str.startswith("E")].copy()
-
-    df = df.rename(
-        columns={
-            "GEOGRAPHY_CODE": "LSOA_CODE",
-            "OBS_VALUE": "lsoa_employment",
-            "DATE_NAME": "bres_year",
-        }
-    )
-    df["lsoa_employment"] = pd.to_numeric(df["lsoa_employment"], errors="coerce")
-
-    print(f"  England LSOAs with BRES: {len(df):,}")
-    if len(df) > 0:
-        valid = df["lsoa_employment"].notna()
-        print(f"  BRES year: {df['bres_year'].iloc[0]}")
-        print(f"  With valid employment: {valid.sum():,}")
-        mean_emp = df.loc[valid, "lsoa_employment"].mean()
-        print(f"  Mean employment per LSOA: {mean_emp:.0f}")
-    else:
-        print("  WARNING: No England LSOAs returned — check NOMIS API")
-
-    return df[["LSOA_CODE", "bres_year", "lsoa_employment"]]
-
-
 def main() -> None:
-    """Download and process ONS scaling data (GVA + BRES)."""
+    """Download and process ONS Small Area GVA data."""
     print("=" * 60)
-    print("ONS Scaling Data Download (GVA + BRES)")
+    print("ONS Scaling Data Download (GVA)")
     print("=" * 60)
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # 1. Download GVA
-    print("\n[1/3] Small Area GVA estimates...")
+    print("\n[1/2] Small Area GVA estimates...")
     gva_raw = download_csv(GVA_URL, "Small Area GVA", "gva_lsoa.csv")
     gva_df = process_gva(gva_raw)
 
-    # 2. Download BRES
-    print("\n[2/3] BRES employment data...")
-    bres_raw = download_csv(BRES_URL, "BRES Employment", "bres_lsoa.csv")
-    bres_df = process_bres(bres_raw)
-
-    # 3. Join and save
-    print("\n[3/3] Joining and saving...")
-    merged = gva_df.merge(bres_df, on="LSOA_CODE", how="outer")
-
-    both = merged["lsoa_gva_millions"].notna() & merged["lsoa_employment"].notna()
-    print(f"  Total LSOAs: {len(merged):,}")
-    print(f"  With both GVA and BRES: {both.sum():,}")
-
+    # 2. Save
+    print("\n[2/2] Saving...")
     output_path = OUTPUT_DIR / "lsoa_scaling.parquet"
-    merged.to_parquet(output_path, index=False)
+    gva_df.to_parquet(output_path, index=False)
     print(f"  Saved to {output_path}")
+    print(f"  {len(gva_df):,} LSOAs with GVA data")
 
     print("\n" + "=" * 60)
     print("Download complete!")

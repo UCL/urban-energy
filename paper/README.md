@@ -11,6 +11,20 @@ Sprawling development locks in higher energy demand through three structural mec
 | [literature_review.md](literature_review.md) | Detailed literature review                  |
 | [methodology_notes.md](methodology_notes.md) | Working notes on metrics and data decisions |
 
+## Pilot Case (Current Canonical File)
+
+Use this file for the current morphology/energy/access pilot narrative:
+
+| File                                                                                         | Description                                             |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| [case_v1.md](case_v1.md) | **Canonical case note** (single narrative document) |
+
+Single regeneration command:
+
+```bash
+uv run python stats/build_case.py
+```
+
 ## Building
 
 ```bash

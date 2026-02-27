@@ -30,7 +30,7 @@ its native spatial scale, and how it is brought to LSOA.
 | Variable                                                | What it measures                                                                       | Source                                                                                       | Native scale          | Derivation to LSOA                                                                                                                                                                                                                                            |
 | ------------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Building energy** (kWh/household)                     | Mean total domestic energy consumption — metered gas (weather-corrected) + electricity | DESNZ Sub-national Energy Statistics, consumption year 2023 (2010–2024 release, Dec 2025)    | LSOA (native)         | Direct join on LSOA21CD                                                                                                                                                                                                                                       |
-| **Transport energy** (kWh/household)                    | Estimated total car travel energy per household                                        | Derived from Census 2021 TS058 + TS061 + NTS scaling                                         | OA (Census inputs)    | OA commuter counts summed to LSOA; transport energy computed at LSOA from derived commute-km — see note                                                                                                                                                       |
+| **Transport energy** (kWh/household)                    | Estimated **commute** transport energy per household                                   | Derived from Census 2021 TS058 + TS061, mode-based (private/public), with ECUK intensities  | OA (Census inputs)    | OA commuter counts summed to LSOA; commute-energy computed at LSOA from derived commute-km and mode counts — see note                                                                                                                                          |
 | **Average commute distance** (km)                       | Weighted mean one-way commute distance                                                 | Census 2021, TS058                                                                           | OA                    | Each distance band assigned a midpoint km; weighted mean computed from OA counts summed to LSOA                                                                                                                                                               |
 | **Car commute share** (%)                               | Proportion of employed residents commuting by car or van                               | Census 2021, TS061                                                                           | OA                    | Car commuter count / total employed commuters; OA counts summed to LSOA before division                                                                                                                                                                       |
 | **Walk share** (%)                                      | Proportion commuting on foot                                                           | Census 2021, TS061                                                                           | OA                    | As above                                                                                                                                                                                                                                                      |
@@ -74,29 +74,36 @@ EPC data is retained for two secondary uses only: `CONSTRUCTION_AGE_BAND` to der
 
 ## Transport Energy Derivation
 
-Transport energy is not measured directly. It is estimated from three Census tables and one
-National Travel Survey scaling factor:
+Transport energy is not measured directly. It is estimated as **commute energy** from Census
+tables TS058 and TS061:
 
-1. **Commute distance distribution** (TS058): each distance band is assigned a midpoint
-   in kilometres (e.g., "2km to less than 5km" → 3.5 km). The weighted sum across bands,
-   divided by total employed commuters, gives mean one-way commute distance per LSOA.
+1. **Commute distance distribution** (TS058): distance bands are mapped to midpoint km
+   (e.g., "2km to less than 5km" → 3.5 km). Work-from-home and offshore/no-fixed-place
+   categories are excluded from travelling-commuter distance.
 
-2. **Car mode share** (TS061): car and van commuters divided by total employed commuters
-   gives the proportion travelling by car.
+2. **Mode counts** (TS061): commuters are split into:
+   private modes = drive + passenger + taxi + motorcycle,
+   public modes = bus + train + metro/tram.
 
-3. **Car-commute kilometres per LSOA**: mean commute distance × car commuter count × 2
-   (return trip).
+3. **Annual commute distance**: travelling-commuter one-way distance × 2 (return) × 220
+   workdays.
 
-4. **Scaling to total car travel**: commuting accounts for approximately 22% of all
-   car-kilometres travelled (NTS 2019, Table NTS0409). Total car-km = commute-km ÷ 0.22.
+4. **Energy conversion (mode-specific)**:
+   road passenger intensity = 34.3 ktoe / billion pkm,
+   rail passenger intensity = 15.3 ktoe / billion pkm
+   (ECUK 2025; converted to 0.399 and 0.178 kWh/pkm).
 
-5. **Energy conversion**: 0.73 kWh/km (petrol average: ~8 litres/100 km × 9.1 kWh/litre).
-   Transport energy per household = total car-km × 0.73 ÷ household count.
+5. **Per-household transport energy**:
+   `(private commute energy + public commute energy) / household count`.
 
 **Limitation:** Census 2021 was conducted during residual COVID-19 disruption. Approximately
 31% of respondents recorded "works mainly from home" (zero commute kilometres). To the
 extent that home-working is concentrated in knowledge-economy occupations more prevalent in
 central, compact areas, this would understate the transport energy penalty of sprawl.
+
+This metric represents commute energy only; it does not include non-commute trip purposes.
+For sensitivity, a secondary overall-travel scenario is reported by scaling commute energy
+with the NTS 2024 total-to-commute distance ratio (`6082/1007 = 6.04x`).
 
 ---
 
@@ -131,9 +138,9 @@ and represents the canonical pedestrian catchment used in walkability research.
 
 ## Key Limitations
 
-| Limitation            | Nature                                                                                      | Direction of effect                                                                |
-| --------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| Transport energy modelled | Transport energy is estimated from Census commute data, not measured directly               | Uncertainty is likely greater in sprawling areas where trip purposes are more varied; any underestimate of total car travel would understate the sprawl penalty |
-| COVID-19 commute data     | Census 2021 recorded unusually high home-working rates (31% works mainly from home)         | Understates the transport energy penalty of sprawl; bias favours the null         |
-| LiDAR vintage         | Composite survey 2000–2022; some buildings may have changed                                 | Affects S/V robustness check only; not a primary variable                          |
-| Temporal alignment    | Energy consumption year 2023; Census 2021; EPC certificates from 2021 onward                | Two-year gap between Census and energy data; structural patterns assumed stable    |
+| Limitation                | Nature                                                                              | Direction of effect                                                                                                                                             |
+| ------------------------- | ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Transport energy modelled | Transport energy is estimated from Census commute data, not measured directly       | Uncertainty is likely greater in sprawling areas where trip purposes are more varied; any underestimate of total car travel would understate the sprawl penalty |
+| COVID-19 commute data     | Census 2021 recorded unusually high home-working rates (31% works mainly from home) | Understates the transport energy penalty of sprawl; bias favours the null                                                                                       |
+| LiDAR vintage             | Composite survey 2000–2022; some buildings may have changed                         | Affects S/V robustness check only; not a primary variable                                                                                                       |
+| Temporal alignment        | Energy consumption year 2023; Census 2021; EPC certificates from 2021 onward        | Two-year gap between Census and energy data; structural patterns assumed stable                                                                                 |

@@ -12,9 +12,9 @@ Narrative arc:
     HYPOTHESIS → EVIDENCE (3 surfaces) → INTEGRATION (access/kWh) → ROBUSTNESS
 
 Data loaded via proof_of_concept_lsoa functions (reads pre-aggregated
-LSOA GeoPackage from processing/pipeline_lsoa.py). Transport energy
-derived from Census ts058 (commute distance) and ts061 (car mode share),
-scaled to total car travel via NTS commute-to-total ratio.
+LSOA GeoPackage from processing/pipeline_lsoa.py). Transport energy is
+an estimated commute-energy metric from Census ts058 (distance bands)
+and ts061 (mode counts), using mode-specific energy intensities.
 
 Usage:
     uv run python stats/lsoa_figures.py
@@ -34,7 +34,7 @@ from scipy import stats as sp_stats
 # Import data pipeline from the PoC script (same directory)
 sys.path.insert(0, str(Path(__file__).parent))
 from proof_of_concept_lsoa import (  # noqa: E402
-    _run_ols,
+    _NTS_TOTAL_TO_COMMUTE_DISTANCE_FACTOR,
     build_accessibility,
     compute_access_per_kwh,
     load_and_aggregate,
@@ -59,15 +59,35 @@ TYPE_ORDER = ["Flat", "Terraced", "Semi", "Detached"]
 COST_COLORS = {"building": "#3498db", "transport": "#e67e22"}
 
 
-def _sigstars(p: float) -> str:
-    """Return significance stars for a p-value."""
-    if p < 0.001:
-        return "***"
-    if p < 0.01:
-        return "**"
-    if p < 0.05:
-        return "*"
-    return "ns"
+def _add_centroid_marker(
+    ax: plt.Axes,
+    x: float,
+    y: float,
+    color: str,
+    *,
+    x_is_log10: bool = False,
+) -> None:
+    """Draw a small centroid marker for a contour cluster."""
+    if pd.isna(x) or pd.isna(y):
+        return
+    x_plot = 10 ** x if x_is_log10 else x
+    ax.scatter(
+        [x_plot],
+        [y],
+        s=26,
+        color=color,
+        edgecolors="black",
+        linewidths=0.5,
+        zorder=6,
+    )
+
+
+def _kde_peak_xy(X: np.ndarray, Y: np.ndarray, Z: np.ndarray) -> tuple[float, float] | None:
+    """Return the peak-density coordinate from a KDE surface grid."""
+    if Z.size == 0 or not np.isfinite(Z).any():
+        return None
+    idx = np.unravel_index(np.nanargmax(Z), Z.shape)
+    return float(X[idx]), float(Y[idx])
 
 
 def _add_footnote(fig: plt.Figure, text: str) -> None:
@@ -104,22 +124,28 @@ _SRC_TYPE = (
     " not individual building energy."
 )
 _SRC_TRANSPORT = (
-    "Transport energy: Census 2021 ts058 gives commute distance"
-    " in bands (midpoints assigned: <2 km = 1, 2-5 = 3.5,"
-    " 5-10 = 7.5, etc.). ts061 gives car-commuter count."
-    " Formula: avg_commute_km x car_commuters x 2 (return)"
-    " x 220 days / 0.22 (NTS commute-to-total ratio)"
-    " x 0.73 kWh/km, per household."
+    "Transport energy estimate (commute only): ts061 mode counts"
+    " (private = drive+passenger+taxi+motorcycle; public = bus+train+metro),"
+    " multiplied by ts058 travelling-commuter distance and annualised"
+    " (x2 x 220 days). Energy intensities: road passenger 34.3 ktoe/billion pkm"
+    " and rail passenger 15.3 ktoe/billion pkm (ECUK 2025), converted to"
+    " 0.399 and 0.178 kWh/pkm."
+)
+_SRC_TRANSPORT_TOTAL_EST = (
+    "Overall-travel scenario: commute-energy estimate scaled by "
+    f"{_NTS_TOTAL_TO_COMMUTE_DISTANCE_FACTOR:.2f}x "
+    "(NTS 2024 total miles / commuting miles per person: 6,082 / 1,007)."
+)
+_SRC_TRANSPORT_MODE = (
+    "Mode decomposition uses the same commute-energy method:"
+    f" {_SRC_TRANSPORT}"
 )
 _SRC_DENSITY = "Population density: Census 2021 population / OA area (people/ha)."
 _SRC_ACCESS = (
-    "Accessibility: cityseer street-frontage density at 800 m"
-    " (metres of walkable street per network node) + sum of"
-    " gravity-weighted FSA establishment counts at 800 m"
-    " (restaurants, pubs, takeaways, cafes). Both z-scored"
-    " and summed."
+    "Accessibility: cityseer gravity-weighted counts at 800 m"
+    " pedestrian catchment, per trophic layer (commercial,"
+    " transport, green space, education, health)."
 )
-_SRC_IMD = "Deprivation: English IMD 2019, mapped to LSOA quintiles."
 
 
 # ---------------------------------------------------------------------------
@@ -137,8 +163,9 @@ def save_summary_tables(lsoa: pd.DataFrame) -> None:
         LSOA data with dominant_type, energy, and accessibility columns.
     """
     types = TYPE_ORDER
-    valid = lsoa["transport_kwh_per_hh"].notna()
+    valid = lsoa["transport_kwh_per_hh_est"].notna()
     sub = lsoa[valid]
+    transport_summary = _transport_type_summary(lsoa)
 
     # Table 1: Three surfaces by housing type
     rows = []
@@ -150,10 +177,14 @@ def save_summary_tables(lsoa: pd.DataFrame) -> None:
         ("Building kWh/hh", "building_kwh_per_hh", lsoa),
         ("kWh/person (bldg)", "kwh_per_person", lsoa),
         ("Cars/hh", "cars_per_hh", sub),
-        ("Transport kWh/hh", "transport_kwh_per_hh", sub),
-        ("Total kWh/hh", "total_kwh_per_hh", sub),
+        ("Transport kWh/hh (commute est)", "transport_kwh_per_hh_est", sub),
+        ("Transport kWh/hh (overall est)", "transport_kwh_per_hh_total_est", sub),
+        ("Private commute kWh/hh (est)", "private_transport_kwh_per_hh_est", sub),
+        ("Public commute kWh/hh (est)", "public_transport_kwh_per_hh_est", sub),
+        ("Total kWh/hh (commute base)", "total_kwh_per_hh", sub),
+        ("Total kWh/hh (overall est)", "total_kwh_per_hh_total_est", sub),
         ("Accessibility", "accessibility", lsoa),
-        ("Access / kWh", "access_per_kwh", sub),
+        ("kWh / Access", "kwh_per_access", sub),
     ]
     for label, col, src in metrics:
         row: dict[str, object] = {"metric": label}
@@ -162,7 +193,16 @@ def save_summary_tables(lsoa: pd.DataFrame) -> None:
                 row[t] = int((lsoa["dominant_type"] == t).sum())
         else:
             for t in types:
-                row[t] = src.loc[src["dominant_type"] == t, col].median()
+                if col == "transport_kwh_per_hh_est":
+                    row[t] = transport_summary.loc[t, "transport_kwh_hh_commute_est"]
+                elif col == "transport_kwh_per_hh_total_est":
+                    row[t] = transport_summary.loc[t, "transport_kwh_hh_total_est"]
+                elif col == "total_kwh_per_hh":
+                    row[t] = transport_summary.loc[t, "total_kwh_hh_commute_base"]
+                elif col == "total_kwh_per_hh_total_est":
+                    row[t] = transport_summary.loc[t, "total_kwh_hh_total_est"]
+                else:
+                    row[t] = src.loc[src["dominant_type"] == t, col].median()
         rows.append(row)
     df1 = pd.DataFrame(rows)
     df1.to_csv(FIGURE_DIR / "table1_three_surfaces.csv", index=False)
@@ -178,14 +218,36 @@ def save_summary_tables(lsoa: pd.DataFrame) -> None:
             {
                 "type": t,
                 "n": len(s),
-                "building_kwh_hh": s["building_kwh_per_hh"].median(),
-                "transport_kwh_hh": s["transport_kwh_per_hh"].median(),
-                "total_kwh_hh": s["total_kwh_per_hh"].median(),
-                "transport_share": (
-                    s["transport_kwh_per_hh"] / s["total_kwh_per_hh"]
-                ).median(),
+                "building_kwh_hh": transport_summary.loc[t, "building_kwh_hh"],
+                "transport_kwh_hh_commute_est": transport_summary.loc[
+                    t, "transport_kwh_hh_commute_est"
+                ],
+                "transport_kwh_hh_total_est": transport_summary.loc[
+                    t, "transport_kwh_hh_total_est"
+                ],
+                "total_kwh_hh_commute_base": transport_summary.loc[
+                    t, "total_kwh_hh_commute_base"
+                ],
+                "total_kwh_hh_total_est": transport_summary.loc[t, "total_kwh_hh_total_est"],
+                "transport_share_commute_est": transport_summary.loc[
+                    t, "transport_kwh_hh_commute_est"
+                ]
+                / transport_summary.loc[t, "total_kwh_hh_commute_base"],
+                "transport_share_total_est": transport_summary.loc[
+                    t, "transport_kwh_hh_total_est"
+                ]
+                / transport_summary.loc[t, "total_kwh_hh_total_est"],
                 "car_commute_share": s["car_commute_share"].median(),
+                "private_commute_share": s["private_commute_share"].median(),
+                "public_commute_share": s["public_commute_share"].median(),
                 "avg_commute_km": s["avg_commute_km"].median(),
+                "avg_commute_km_travelling": s["avg_commute_km_travelling"].median(),
+                "private_transport_kwh_hh_est": s[
+                    "private_transport_kwh_per_hh_est"
+                ].median(),
+                "public_transport_kwh_hh_est": s[
+                    "public_transport_kwh_per_hh_est"
+                ].median(),
                 "active_share": s["active_share"].median(),
             }
         )
@@ -295,90 +357,226 @@ def fig1_building_energy(lsoa: pd.DataFrame) -> None:
 # ---------------------------------------------------------------------------
 
 
-def fig2_mobility_penalty(lsoa: pd.DataFrame) -> None:
-    """Stacked bar: building + transport energy by housing type."""
-    sub = lsoa[lsoa["transport_kwh_per_hh"].notna()]
-    fig, ax = plt.subplots(figsize=(10, 6))
+def _transport_type_summary(lsoa: pd.DataFrame) -> pd.DataFrame:
+    """
+    Shared type-level medians for transport figures.
 
-    bldg = [
-        sub.loc[sub["dominant_type"] == t, "building_kwh_per_hh"].median()
-        for t in TYPE_ORDER
-    ]
-    trans = [
-        sub.loc[sub["dominant_type"] == t, "transport_kwh_per_hh"].median()
-        for t in TYPE_ORDER
-    ]
+    Uses one common subset and one aggregation rule so fig2 and fig2b
+    stay numerically consistent.
+    """
+    needed = {
+        "dominant_type",
+        "building_kwh_per_hh",
+        "private_transport_kwh_per_hh_est",
+        "public_transport_kwh_per_hh_est",
+    }
+    sub = lsoa.dropna(subset=sorted(needed)).copy()
+    rows: list[dict[str, float | str]] = []
+    for t in TYPE_ORDER:
+        s = sub[sub["dominant_type"] == t]
+        rows.append(
+            {
+                "type": t,
+                "building_kwh_hh": float(s["building_kwh_per_hh"].median()),
+                "private_kwh_hh_est": float(s["private_transport_kwh_per_hh_est"].median()),
+                "public_kwh_hh_est": float(s["public_transport_kwh_per_hh_est"].median()),
+            }
+        )
+    out = pd.DataFrame(rows).set_index("type")
+    out["transport_kwh_hh_commute_est"] = out["private_kwh_hh_est"] + out["public_kwh_hh_est"]
+    out["transport_kwh_hh_total_est"] = (
+        out["transport_kwh_hh_commute_est"] * _NTS_TOTAL_TO_COMMUTE_DISTANCE_FACTOR
+    )
+    out["total_kwh_hh_commute_base"] = (
+        out["building_kwh_hh"] + out["transport_kwh_hh_commute_est"]
+    )
+    out["total_kwh_hh_total_est"] = out["building_kwh_hh"] + out["transport_kwh_hh_total_est"]
+    return out
+
+
+def fig2_mobility_penalty(lsoa: pd.DataFrame) -> None:
+    """Stacked bars: commute-based and overall-scenario transport energy by housing type."""
+    summary = _transport_type_summary(lsoa)
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6), sharey=True)
+
+    bldg = [summary.loc[t, "building_kwh_hh"] for t in TYPE_ORDER]
+    trans_commute = [summary.loc[t, "transport_kwh_hh_commute_est"] for t in TYPE_ORDER]
+    trans_total = [summary.loc[t, "transport_kwh_hh_total_est"] for t in TYPE_ORDER]
     x = np.arange(len(TYPE_ORDER))
     w = 0.6
 
-    ax.bar(x, bldg, w, label="Building", color=COST_COLORS["building"])
-    ax.bar(
-        x,
-        trans,
-        w,
-        bottom=bldg,
-        label="Transport",
-        color=COST_COLORS["transport"],
+    def _draw_panel(
+        ax: plt.Axes,
+        transport_vals: list[float],
+        panel_title: str,
+        transport_label: str,
+    ) -> None:
+        ax.bar(x, bldg, w, label="Building", color=COST_COLORS["building"])
+        ax.bar(
+            x,
+            transport_vals,
+            w,
+            bottom=bldg,
+            label=transport_label,
+            color=COST_COLORS["transport"],
+        )
+
+        for i, (b, t) in enumerate(zip(bldg, transport_vals)):
+            total = b + t
+            tpct = t / total * 100
+            ax.text(
+                i, total + 200, f"{total:,.0f}", ha="center", fontsize=10, fontweight="bold"
+            )
+            ax.text(
+                i,
+                b + t / 2,
+                f"{tpct:.0f}%",
+                ha="center",
+                va="center",
+                fontsize=9,
+                color="white",
+                fontweight="bold",
+            )
+
+        total_flat = bldg[0] + transport_vals[0]
+        total_det = bldg[-1] + transport_vals[-1]
+        if total_det > 0:
+            ratio = total_flat / total_det
+            ax.annotate(
+                f"Flat/Detached = {ratio:.2f}x",
+                xy=(0.5, 0.95),
+                xycoords="axes fraction",
+                ha="center",
+                fontsize=11,
+                fontweight="bold",
+                color="#c0392b",
+            )
+        ax.set_xticks(x)
+        ax.set_xticklabels(TYPE_ORDER)
+        ax.set_title(panel_title, fontsize=12, fontweight="bold")
+        ax.set_xlabel("Housing type", labelpad=6)
+
+    _draw_panel(
+        axes[0],
+        trans_commute,
+        "(A) Commute-based transport estimate",
+        "Transport (commute est.)",
+    )
+    _draw_panel(
+        axes[1],
+        trans_total,
+        "(B) Overall-travel scenario estimate",
+        "Transport (overall est.)",
     )
 
-    # Annotate totals and transport %
-    for i, (b, t) in enumerate(zip(bldg, trans)):
-        total = b + t
-        tpct = t / total * 100
-        ax.text(
-            i, total + 200, f"{total:,.0f}", ha="center", fontsize=10, fontweight="bold"
-        )
-        ax.text(
-            i,
-            b + t / 2,
-            f"{tpct:.0f}%",
-            ha="center",
-            va="center",
-            fontsize=9,
-            color="white",
-            fontweight="bold",
-        )
-
-    # Flat/Detached ratio
-    total_flat = bldg[0] + trans[0]
-    total_det = bldg[-1] + trans[-1]
-    if total_det > 0:
-        ratio = total_flat / total_det
-        ax.annotate(
-            f"Flat/Detached = {ratio:.2f}x",
-            xy=(0.5, 0.95),
-            xycoords="axes fraction",
-            ha="center",
-            fontsize=11,
-            fontweight="bold",
-            color="#c0392b",
-        )
-
-    ax.set_xticks(x)
-    ax.set_xticklabels(TYPE_ORDER)
-    ax.set_ylabel("Median kWh / household")
-    ax.set_title(
+    axes[0].set_ylabel("Median kWh / household")
+    axes[0].legend(loc="upper left")
+    axes[1].legend(loc="upper left")
+    fig.suptitle(
         "Surface 2: The Transport Cost Gradient",
         fontsize=13,
         fontweight="bold",
     )
-    ax.legend(loc="upper left")
-    ax.set_xlabel("Housing type", labelpad=6)
     _add_footnote(
         fig,
         "LSOAs binned by dominant Census accommodation type (ts044). "
         "Building: DESNZ metered gas + electricity per household. "
-        "Transport: Census commute distance bands (ts058) and car mode share (ts061) "
-        "summed across all LSOA commuters, annualised (\u00d72 \u00d7 220 workdays), "
-        "scaled \u00d74.5 (commuting \u2248 22% of total car travel, NTS 2019), "
-        "converted at 0.73 kWh/km per household. "
-        "Bar totals = median building kWh/hh + median transport kWh/hh "
-        "(sum of independent medians, not median of the sum).",
+        f"Commute transport: {_SRC_TRANSPORT} "
+        f"Overall scenario: {_SRC_TRANSPORT_TOTAL_EST} "
+        "For consistency with Figure 2b, commute transport bars are "
+        "median(private) + median(public) within each type. "
+        "Stack totals are sums of component medians.",
     )
     plt.tight_layout()
     plt.savefig(FIGURE_DIR / "fig2_mobility_penalty.png", bbox_inches="tight")
     plt.close()
     print("  Saved fig2_mobility_penalty.png")
+
+
+# ---------------------------------------------------------------------------
+# Figure 2b: Private vs Public commute energy estimate
+# ---------------------------------------------------------------------------
+
+
+def fig2b_private_public_transport(lsoa: pd.DataFrame) -> None:
+    """Grouped bars: estimated private vs public commute energy by housing type."""
+    needed = {"private_transport_kwh_per_hh_est", "public_transport_kwh_per_hh_est"}
+    if not needed.issubset(lsoa.columns):
+        print("  Skipping fig2b — private/public mode-energy columns not found")
+        return
+
+    summary = _transport_type_summary(lsoa)
+    fig, ax = plt.subplots(figsize=(10, 6))
+    x = np.arange(len(TYPE_ORDER))
+    w = 0.36
+
+    priv = [summary.loc[t, "private_kwh_hh_est"] for t in TYPE_ORDER]
+    pub = [summary.loc[t, "public_kwh_hh_est"] for t in TYPE_ORDER]
+
+    b1 = ax.bar(
+        x - w / 2,
+        priv,
+        w,
+        label="Private transport (est.)",
+        color="#c0392b",
+        edgecolor="black",
+        linewidth=0.5,
+    )
+    b2 = ax.bar(
+        x + w / 2,
+        pub,
+        w,
+        label="Public transport (est.)",
+        color="#2980b9",
+        edgecolor="black",
+        linewidth=0.5,
+    )
+    for bars in (b1, b2):
+        for bar in bars:
+            v = bar.get_height()
+            if pd.notna(v):
+                ax.text(
+                    bar.get_x() + bar.get_width() / 2,
+                    v + max(5, ax.get_ylim()[1] * 0.01),
+                    f"{v:,.0f}",
+                    ha="center",
+                    va="bottom",
+                    fontsize=8,
+                )
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(TYPE_ORDER)
+    ax.set_ylabel("Estimated commute energy (kWh / household / year)")
+    ax.set_title(
+        "Surface 2 Extension: Private vs Public Transport Energy",
+        fontsize=13,
+        fontweight="bold",
+    )
+    ax.set_xlabel("Housing type", labelpad=8)
+    ax.legend()
+
+    # Add pair totals to match fig2 commute panel exactly.
+    for i, (p1, p2) in enumerate(zip(priv, pub)):
+        ax.text(
+            i,
+            p1 + p2 + max(10, ax.get_ylim()[1] * 0.015),
+            f"{p1 + p2:,.0f}",
+            ha="center",
+            va="bottom",
+            fontsize=8,
+            fontweight="bold",
+            color="#444444",
+        )
+
+    _add_footnote(
+        fig,
+        f"{_SRC_TRANSPORT_MODE} Values are commute-energy estimates (not total annual travel"
+        " across all trip purposes). Private+public totals use the same median rule as Figure 2.",
+    )
+    plt.tight_layout()
+    plt.savefig(FIGURE_DIR / "fig2b_private_public_transport.png", bbox_inches="tight")
+    plt.close()
+    print("  Saved fig2b_private_public_transport.png")
 
 
 # ---------------------------------------------------------------------------
@@ -390,15 +588,15 @@ def fig3_density_transport_scatter(lsoa: pd.DataFrame) -> None:
     """KDE contours: population density vs transport energy, per housing type."""
     from scipy.stats import gaussian_kde  # noqa: E402
 
-    sub = lsoa[lsoa["transport_kwh_per_hh"].notna()].copy()
+    sub = lsoa[lsoa["transport_kwh_per_hh_est"].notna()].copy()
     sub = sub[sub["people_per_ha"] > 0].copy()
 
-    valid = sub[["people_per_ha", "transport_kwh_per_hh", "dominant_type"]].dropna()
+    valid = sub[["people_per_ha", "transport_kwh_per_hh_est", "dominant_type"]].dropna()
     log_dens_all = np.log10(valid["people_per_ha"])
 
     # Grid: wide enough to cover all types including low-density Detached
     X_LIM = (1.0, 1000.0)
-    Y_LIM = (0.0, valid["transport_kwh_per_hh"].quantile(0.99))
+    Y_LIM = (0.0, valid["transport_kwh_per_hh_est"].quantile(0.99))
     xmin_log, xmax_log = np.log10(X_LIM[0]), np.log10(X_LIM[1])
     xi = np.linspace(xmin_log, xmax_log, 300)
     yi = np.linspace(Y_LIM[0], Y_LIM[1], 300)
@@ -412,8 +610,9 @@ def fig3_density_transport_scatter(lsoa: pd.DataFrame) -> None:
         pts = valid.loc[mask]
         if len(pts) < 20:
             continue
-        xy = np.vstack([np.log10(pts["people_per_ha"]),
-                        pts["transport_kwh_per_hh"]])
+        log_x = np.log10(pts["people_per_ha"])
+        y_vals = pts["transport_kwh_per_hh_est"]
+        xy = np.vstack([log_x, y_vals])
         kde = gaussian_kde(xy, bw_method=0.5)
         Z = kde(grid_pts).reshape(Xi.shape)
         # Normalise to [0,1] per type so contour levels are comparable
@@ -439,15 +638,18 @@ def fig3_density_transport_scatter(lsoa: pd.DataFrame) -> None:
         )
         # Thick semi-transparent proxy for legend
         ax.plot([], [], color=color, linewidth=8, alpha=0.35, label=t)
+        peak_xy = _kde_peak_xy(Xi, Yi, Z)
+        if peak_xy is not None:
+            _add_centroid_marker(ax, peak_xy[0], peak_xy[1], color, x_is_log10=True)
 
     _, _, r, *_ = sp_stats.linregress(
-        log_dens_all, valid["transport_kwh_per_hh"]
+        log_dens_all, valid["transport_kwh_per_hh_est"]
     )
 
     ax.set_xscale("log")
     ax.set_xlim(*X_LIM)
     ax.set_ylim(*Y_LIM)
-    ax.set_ylabel("Transport kWh / household")
+    ax.set_ylabel("Transport kWh / household (est.)")
     ax.set_title(
         "Neighbourhood density is associated with transport energy",
         fontsize=13, fontweight="bold",
@@ -457,7 +659,7 @@ def fig3_density_transport_scatter(lsoa: pd.DataFrame) -> None:
     _add_footnote(
         fig,
         "Filled KDE bands: shading intensifies toward each type's peak."
-        " Denser neighbourhoods are associated with lower car travel."
+        " Denser neighbourhoods are associated with lower transport energy."
         " Contours normalised within type. "
         f"{_SRC_DENSITY}  {_SRC_TRANSPORT}",
     )
@@ -481,8 +683,8 @@ def _kde_gradient(
     xmax_log: float,
     ymin: float,
     ymax: float,
-) -> None:
-    """Draw gradient-filled KDE contours (same style as fig3)."""
+) -> tuple[float, float] | None:
+    """Draw gradient-filled KDE contours and return peak density location."""
     from scipy.stats import gaussian_kde  # noqa: E402
 
     xy = np.vstack([log_x, y])
@@ -499,79 +701,57 @@ def _kde_gradient(
     # Crisp outer boundary line
     ax.contour(10 ** Xi, Yi, Z, levels=[0.35], colors=[color],
                linewidths=[1.0], alpha=0.7)
+    return _kde_peak_xy(Xi, Yi, Z)
 
 
 def fig4_accessibility_dividend(lsoa: pd.DataFrame) -> None:
-    """
-    Two KDE panels: population density vs street frontage and FSA destinations.
-
-    Panel A: density → street frontage (cc_density_800).
-    Panel B: density → FSA food establishments (gravity-weighted, 800m).
-    Both use log x-axis, clipped to 10–500 ppl/ha.
-    """
+    """KDE panel: population density vs street frontage by dwelling type."""
     sub = lsoa[lsoa["people_per_ha"] > 0].copy()
 
     X_LIM = (10.0, 500.0)
     xmin_log, xmax_log = np.log10(X_LIM[0]), np.log10(X_LIM[1])
+    ycol, ylabel = "street_frontage", "Street network node density (800 m catchment)"
+    ymin, ymax = 0.0, 275.0
 
-    panels = [
-        (
-            "street_frontage",
-            "Street network node density (800 m catchment)",
-            "Denser neighbourhoods tend to have more walkable street frontage",
-            0.0, 275.0,
-        ),
-        (
-            "fsa_count",
-            "FSA food establishments, gravity-weighted count (800 m catchment)",
-            "Denser neighbourhoods tend to have more food destinations",
-            0.0, 6.0,
-        ),
+    valid = sub[["people_per_ha", ycol, "dominant_type"]].dropna()
+    valid = valid[
+        (valid["people_per_ha"] >= X_LIM[0])
+        & (valid["people_per_ha"] <= X_LIM[1])
+        & (valid[ycol] >= ymin)
+        & (valid[ycol] <= ymax)
     ]
 
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig, ax = plt.subplots(figsize=(7, 5))
 
-    for ax, (ycol, ylabel, title, ymin, ymax) in zip(axes, panels):
-        valid = sub[
-            ["people_per_ha", ycol, "dominant_type"]
-        ].dropna()
-        valid = valid[
-            (valid["people_per_ha"] >= X_LIM[0])
-            & (valid["people_per_ha"] <= X_LIM[1])
-            & (valid[ycol] >= ymin)
-            & (valid[ycol] <= ymax)
-        ]
+    for t in TYPE_ORDER:
+        pts = valid[valid["dominant_type"] == t]
+        if len(pts) < 20:
+            continue
+        x_vals = pts["people_per_ha"].values
+        y_vals = pts[ycol].values
+        peak_xy = _kde_gradient(
+            ax,
+            np.log10(x_vals),
+            y_vals,
+            TYPE_COLORS[t],
+            xmin_log, xmax_log,
+            ymin, ymax,
+        )
+        if peak_xy is not None:
+            _add_centroid_marker(ax, peak_xy[0], peak_xy[1], TYPE_COLORS[t], x_is_log10=True)
+        ax.plot([], [], color=TYPE_COLORS[t], linewidth=8, alpha=0.35, label=t)
 
-        for t in TYPE_ORDER:
-            pts = valid[valid["dominant_type"] == t]
-            if len(pts) < 20:
-                continue
-            _kde_gradient(
-                ax,
-                np.log10(pts["people_per_ha"].values),
-                pts[ycol].values,
-                TYPE_COLORS[t],
-                xmin_log, xmax_log,
-                ymin, ymax,
-            )
-            ax.plot([], [], color=TYPE_COLORS[t],
-                    linewidth=8, alpha=0.35, label=t)
-
-        ax.set_xscale("log")
-        ax.set_xlim(*X_LIM)
-        ax.set_ylim(ymin, ymax)
-        ax.set_xlabel("Population density (people / ha, log scale)", labelpad=10)
-        ax.set_ylabel(ylabel)
-        ax.set_title(title, fontsize=10)
-        ax.legend(fontsize=7, title="Type")
-
-    fig.suptitle(
-        "Surface 3: What Does the Energy Buy?",
-        fontsize=14,
-        fontweight="bold",
-        y=1.02,
+    ax.set_xscale("log")
+    ax.set_xlim(*X_LIM)
+    ax.set_ylim(ymin, ymax)
+    ax.set_xlabel("Population density (people / ha, log scale)", labelpad=10)
+    ax.set_ylabel(ylabel)
+    ax.set_title(
+        "Denser neighbourhoods offer greater access to urban frontage",
+        fontsize=10,
     )
-    _add_footnote(fig, f"{_SRC_ACCESS}  {_SRC_DENSITY}  {_SRC_BLDG}  {_SRC_TRANSPORT}")
+    ax.legend(fontsize=7, title="Type")
+    _add_footnote(fig, f"{_SRC_ACCESS}  {_SRC_DENSITY}")
     plt.tight_layout()
     plt.savefig(FIGURE_DIR / "fig4_accessibility_dividend.png", bbox_inches="tight")
     plt.close()
@@ -579,89 +759,104 @@ def fig4_accessibility_dividend(lsoa: pd.DataFrame) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Figure 5: Access per kWh (bar chart)
+# Figure 5: Trophic layers — per-category accessibility by housing type
 # ---------------------------------------------------------------------------
+
+# Each trophic layer: (column, short label, panel title)
+# Uses _wt (gravity-weighted) columns at 800m pedestrian catchment.
+# Falls back gracefully if school/health columns are not yet computed.
+TROPHIC_LAYERS: list[tuple[str, str, str]] = [
+    ("cc_density_800", "Street nodes", "Street network"),
+    ("cc_fsa_restaurant_800_wt", "Restaurants (wt)", "Restaurants & cafes"),
+    ("cc_fsa_pub_800_wt", "Pubs (wt)", "Pubs & bars"),
+    ("cc_fsa_takeaway_800_wt", "Takeaways (wt)", "Takeaways"),
+    ("cc_bus_800_wt", "Bus stops (wt)", "Bus"),
+    ("cc_greenspace_800_wt", "Green spaces (wt)", "Green space"),
+    ("cc_school_800_wt", "Schools (wt)", "Education"),
+    ("cc_gp_practice_800_wt", "GP practices (wt)", "Health (GP)"),
+    ("cc_pharmacy_800_wt", "Pharmacies (wt)", "Health (pharmacy)"),
+]
 
 
 def fig5_access_bar(lsoa: pd.DataFrame) -> None:
-    """Bar chart: walkable destinations per kWh by type and density."""
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-    colors = [TYPE_COLORS[t] for t in TYPE_ORDER]
-
-    ylabel = "Walkable destinations per kWh"
-
-    # Panel A: by housing type
-    ax = axes[0]
-    vals = [
-        lsoa.loc[lsoa["dominant_type"] == t, "access_per_kwh"].median()
-        for t in TYPE_ORDER
+    """Small multiples: each trophic layer by housing type, plus energy cost."""
+    # Filter to layers present in the data
+    available = [
+        (col, label, title)
+        for col, label, title in TROPHIC_LAYERS
+        if col in lsoa.columns
     ]
-    iqr_lo = [
-        lsoa.loc[lsoa["dominant_type"] == t, "access_per_kwh"].quantile(0.25)
-        for t in TYPE_ORDER
-    ]
-    iqr_hi = [
-        lsoa.loc[lsoa["dominant_type"] == t, "access_per_kwh"].quantile(0.75)
-        for t in TYPE_ORDER
-    ]
-    x = np.arange(len(TYPE_ORDER))
-    yerr_lo = [v - lo for v, lo in zip(vals, iqr_lo)]
-    yerr_hi = [hi - v for v, hi in zip(vals, iqr_hi)]
-    ax.bar(x, vals, color=colors, edgecolor="black", linewidth=0.5)
-    ax.errorbar(x, vals, yerr=[yerr_lo, yerr_hi], fmt="none", color="black", capsize=4)
+    if not available:
+        print("  Skipping fig5 — no trophic layer columns found")
+        return
 
-    if vals[-1] > 0:
-        ratio = vals[0] / vals[-1]
-        ax.annotate(
-            f"Flat/Detached = {ratio:.1f}x",
-            xy=(0.5, 0.92),
-            xycoords="axes fraction",
-            ha="center",
-            fontsize=11,
-            fontweight="bold",
-            color="#c0392b",
-        )
-    ax.set_xticks(x)
-    ax.set_xticklabels(TYPE_ORDER)
-    ax.set_ylabel(ylabel)
-    ax.set_title("By dominant housing type", fontsize=10)
+    n_panels = len(available)
+    # Arrange in rows of 3
+    ncols = 3
+    nrows = -(-n_panels // ncols)  # ceiling division
+    fig, axes = plt.subplots(nrows, ncols, figsize=(4.5 * ncols, 4 * nrows))
+    axes_flat = axes.flatten() if n_panels > 1 else [axes]
 
-    # Panel B: by density quartile
-    ax = axes[1]
-    qs = ["Q1 dense", "Q2", "Q3", "Q4 sparse"]
-    q_colors = ["#3498db", "#2ecc71", "#f39c12", "#e74c3c"]
-    vals_q = [
-        lsoa.loc[lsoa["density_quartile"] == q, "access_per_kwh"].median() for q in qs
-    ]
-    x = np.arange(len(qs))
-    ax.bar(x, vals_q, color=q_colors, edgecolor="black", linewidth=0.5)
-    if vals_q[-1] > 0:
-        ratio = vals_q[0] / vals_q[-1]
-        ax.annotate(
-            f"Q1/Q4 = {ratio:.1f}x",
-            xy=(0.5, 0.92),
-            xycoords="axes fraction",
-            ha="center",
-            fontsize=11,
-            fontweight="bold",
-            color="#c0392b",
-        )
-    ax.set_xticks(x)
-    ax.set_xticklabels(qs, fontsize=9)
-    ax.set_ylabel(ylabel)
-    ax.set_title("By population density quartile", fontsize=10)
+    for idx, (col, label, title) in enumerate(available):
+        ax = axes_flat[idx]
+        medians = []
+        for t in TYPE_ORDER:
+            vals = lsoa.loc[lsoa["dominant_type"] == t, col].dropna()
+            medians.append(vals.median() if len(vals) > 0 else np.nan)
+
+        x = np.arange(len(TYPE_ORDER))
+        colors = [TYPE_COLORS[t] for t in TYPE_ORDER]
+        ax.bar(x, medians, color=colors, edgecolor="black", linewidth=0.5)
+
+        # IQR error bars
+        for i, t in enumerate(TYPE_ORDER):
+            vals = lsoa.loc[lsoa["dominant_type"] == t, col].dropna()
+            if len(vals) > 0:
+                q25, q75 = vals.quantile(0.25), vals.quantile(0.75)
+                ax.errorbar(
+                    i, medians[i],
+                    yerr=[[medians[i] - q25], [q75 - medians[i]]],
+                    fmt="none", color="black", capsize=3, linewidth=1,
+                )
+
+        # Detached/Flat ratio annotation
+        m_flat = medians[0]  # Flat is first in TYPE_ORDER
+        m_det = medians[-1]  # Detached is last
+        if pd.notna(m_flat) and pd.notna(m_det) and m_flat > 0 and m_det > 0:
+            ratio = m_flat / m_det if m_det > 0 else np.nan
+            label_txt = f"Flat/Det = {ratio:.1f}x" if pd.notna(ratio) else ""
+            if label_txt:
+                ax.annotate(
+                    label_txt,
+                    xy=(0.5, 0.93),
+                    xycoords="axes fraction",
+                    ha="center",
+                    fontsize=9,
+                    fontweight="bold",
+                    color="#c0392b",
+                )
+
+        ax.set_xticks(x)
+        ax.set_xticklabels(TYPE_ORDER, fontsize=8)
+        ax.set_ylabel(label, fontsize=8)
+        ax.set_title(title, fontsize=10, fontweight="bold")
+        ax.tick_params(axis="y", labelsize=8)
+
+    # Hide unused axes
+    for idx in range(n_panels, len(axes_flat)):
+        axes_flat[idx].set_visible(False)
 
     fig.suptitle(
-        "Walkable Destinations per kWh of Household Energy",
+        "Trophic Layers: What Does the Energy Buy?",
         fontsize=14,
         fontweight="bold",
         y=1.02,
     )
     _add_footnote(
         fig,
-        "Walkable destinations = (street frontage + FSA count,"
-        " z-scored, shifted positive) / total kWh per household.  "
-        f"{_SRC_ACCESS}  {_SRC_BLDG}  {_SRC_TRANSPORT}",
+        "Each panel shows median LSOA-level metric by dominant Census housing type (ts044). "
+        "Error bars: IQR. Accessibility metrics: cityseer gravity-weighted counts "
+        "within 800 m pedestrian catchment.",
     )
     plt.tight_layout()
     plt.savefig(FIGURE_DIR / "fig5_access_bar.png", bbox_inches="tight")
@@ -682,10 +877,15 @@ def fig6_correlation_heatmap(lsoa: pd.DataFrame) -> None:
         "avg_hh_size",
         "building_kwh_per_hh",
         "cars_per_hh",
-        "transport_kwh_per_hh",
+        "transport_kwh_per_hh_est",
         "total_kwh_per_hh",
-        "accessibility",
-        "access_per_kwh",
+        "cc_density_800",
+        "fsa_count",
+        "cc_bus_800_wt",
+        "cc_rail_800_wt",
+        "cc_greenspace_800_wt",
+        "cc_school_800_wt",
+        "cc_gp_practice_800_wt",
     ]
 
     present = [c for c in cols if c in lsoa.columns]
@@ -698,10 +898,15 @@ def fig6_correlation_heatmap(lsoa: pd.DataFrame) -> None:
         "avg_hh_size": "HH size",
         "building_kwh_per_hh": "Bldg kWh",
         "cars_per_hh": "Cars/hh",
-        "transport_kwh_per_hh": "Trans kWh",
+        "transport_kwh_per_hh_est": "Trans kWh",
         "total_kwh_per_hh": "Total kWh",
-        "accessibility": "Frontage+FSA",
-        "access_per_kwh": "Dest/kWh",
+        "cc_density_800": "Streets",
+        "fsa_count": "FSA",
+        "cc_bus_800_wt": "Bus",
+        "cc_rail_800_wt": "Rail",
+        "cc_greenspace_800_wt": "Green",
+        "cc_school_800_wt": "Schools",
+        "cc_gp_practice_800_wt": "GPs",
     }
     labels = [short.get(c, c) for c in present]
 
@@ -736,166 +941,6 @@ def fig6_correlation_heatmap(lsoa: pd.DataFrame) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Figure 7: Deprivation control (forest plot)
-# ---------------------------------------------------------------------------
-
-
-def fig7_deprivation_forest(lsoa: pd.DataFrame) -> None:
-    """Forest plot: density coefficient within each deprivation quintile."""
-    if "deprivation_quintile" not in lsoa.columns:
-        print("  Skipping fig7 — no deprivation quintiles")
-        return
-
-    quintiles = ["Q1 most", "Q2", "Q3", "Q4", "Q5 least"]
-    predictors = ["people_per_ha", "height_mean"]
-    results: list[dict[str, object]] = []
-
-    for q in quintiles:
-        sub = lsoa[lsoa["deprivation_quintile"] == q].copy()
-        if len(sub) < 20:
-            continue
-        m = _run_ols(sub, "log_access_per_kwh", predictors, f"dep-{q}")
-        if m is None or "people_per_ha" not in m.params:
-            continue
-        beta = m.params["people_per_ha"]
-        se = m.bse["people_per_ha"]
-        p = m.pvalues["people_per_ha"]
-        results.append(
-            {
-                "quintile": q,
-                "beta": beta,
-                "ci_lo": beta - 1.96 * se,
-                "ci_hi": beta + 1.96 * se,
-                "p": p,
-                "n": int(m.nobs),
-            }
-        )
-
-    if not results:
-        print("  Skipping fig7 — no valid regressions")
-        return
-
-    fig, ax = plt.subplots(figsize=(8, 4))
-    y_pos = np.arange(len(results))
-
-    import matplotlib.transforms as mtransforms
-
-    for i, r in enumerate(results):
-        color = "#e74c3c" if r["p"] < 0.05 else "#95a5a6"
-        ax.barh(i, r["beta"], color=color, height=0.5, alpha=0.7)
-        ax.plot([r["ci_lo"], r["ci_hi"]], [i, i], "k-", linewidth=1.5)
-        sig = _sigstars(r["p"])
-        trans = mtransforms.blended_transform_factory(ax.transAxes, ax.transData)
-        ax.text(
-            1.01, i,
-            f"{sig}  (N={r['n']})",
-            transform=trans,
-            va="center",
-            fontsize=9,
-        )
-
-    ax.axvline(0, color="black", linewidth=0.8, linestyle="--")
-    ax.set_yticks(y_pos)
-    ax.set_yticklabels([r["quintile"] for r in results])
-    ax.set_xlabel("Density coefficient (\u03b2) on log(walkable destinations / kWh)", labelpad=10)
-    ax.set_title(
-        "Density \u2192 Destinations/kWh Within Each Deprivation Quintile",
-        fontsize=12,
-        fontweight="bold",
-    )
-    ax.invert_yaxis()
-
-    _add_footnote(
-        fig,
-        "OLS: log(destinations/kWh) ~ people/ha + height,"
-        f" within quintile.  95% CI.  {_SRC_IMD}  {_SRC_DENSITY}",
-    )
-    plt.tight_layout()
-    plt.savefig(FIGURE_DIR / "fig7_deprivation_forest.png", bbox_inches="tight")
-    plt.close()
-    print("  Saved fig7_deprivation_forest.png")
-
-
-# ---------------------------------------------------------------------------
-# Figure 8: Per-city forest plot
-# ---------------------------------------------------------------------------
-
-
-def fig8_city_forest(lsoa: pd.DataFrame) -> None:
-    """Forest plot: density coefficient within each city."""
-    if "city" not in lsoa.columns or lsoa["city"].nunique() < 2:
-        print("  Skipping fig8 — single city")
-        return
-
-    predictors = ["people_per_ha", "height_mean"]
-    cities = sorted(lsoa["city"].unique())
-    results: list[dict[str, object]] = []
-
-    for city in cities:
-        sub = lsoa[lsoa["city"] == city].copy()
-        m = _run_ols(sub, "log_access_per_kwh", predictors, city)
-        if m is None or "people_per_ha" not in m.params:
-            continue
-        beta = m.params["people_per_ha"]
-        se = m.bse["people_per_ha"]
-        p = m.pvalues["people_per_ha"]
-        results.append(
-            {
-                "city": city,
-                "beta": beta,
-                "ci_lo": beta - 1.96 * se,
-                "ci_hi": beta + 1.96 * se,
-                "p": p,
-                "n": int(m.nobs),
-            }
-        )
-
-    if not results:
-        print("  Skipping fig8 — no valid regressions")
-        return
-
-    import matplotlib.transforms as mtransforms
-
-    fig, ax = plt.subplots(figsize=(8, max(3, len(results) * 0.5 + 1)))
-    y_pos = np.arange(len(results))
-
-    for i, r in enumerate(results):
-        color = "#e74c3c" if r["p"] < 0.05 else "#95a5a6"
-        ax.barh(i, r["beta"], color=color, height=0.5, alpha=0.7)
-        ax.plot([r["ci_lo"], r["ci_hi"]], [i, i], "k-", linewidth=1.5)
-        sig = _sigstars(r["p"])
-        trans = mtransforms.blended_transform_factory(ax.transAxes, ax.transData)
-        ax.text(
-            1.01, i,
-            f"{sig}  (N={r['n']})",
-            transform=trans,
-            va="center",
-            fontsize=9,
-        )
-
-    ax.axvline(0, color="black", linewidth=0.8, linestyle="--")
-    ax.set_yticks(y_pos)
-    ax.set_yticklabels([r["city"] for r in results])
-    ax.set_xlabel("Density coefficient (\u03b2) on log(walkable destinations / kWh)", labelpad=10)
-    ax.set_title(
-        "Density\u2013Efficiency Relationship Across Cities",
-        fontsize=12,
-        fontweight="bold",
-    )
-    ax.invert_yaxis()
-
-    _add_footnote(
-        fig,
-        "OLS: log(destinations/kWh) ~ people/ha + height,"
-        f" within city.  95% CI.  {_SRC_DENSITY}",
-    )
-    plt.tight_layout()
-    plt.savefig(FIGURE_DIR / "fig8_city_forest.png", bbox_inches="tight")
-    plt.close()
-    print("  Saved fig8_city_forest.png")
-
-
-# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -920,12 +965,11 @@ def main(cities: list[str] | None = None) -> None:
     save_summary_tables(lsoa)
     fig1_building_energy(lsoa)
     fig2_mobility_penalty(lsoa)
+    fig2b_private_public_transport(lsoa)
     fig3_density_transport_scatter(lsoa)
     fig4_accessibility_dividend(lsoa)
     fig5_access_bar(lsoa)
     fig6_correlation_heatmap(lsoa)
-    fig7_deprivation_forest(lsoa)
-    fig8_city_forest(lsoa)
 
     print(f"\n{'=' * 70}")
     print(f"All outputs saved to: {FIGURE_DIR}")
