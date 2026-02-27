@@ -193,7 +193,8 @@ def load_postcode_lookup() -> pd.DataFrame:
     )
     if pc_col is None:
         raise ValueError(
-            f"Cannot find postcode column in Code-Point Open. Columns: {list(gdf.columns)}"
+            f"Cannot find postcode column in Code-Point Open. "
+            f"Columns: {list(gdf.columns)}"
         )
 
     gdf["easting"] = gdf.geometry.x

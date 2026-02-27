@@ -41,7 +41,8 @@ INCLUDE_BUSINESS_TYPES = {
 }
 
 # England local authority XML files
-# Excludes Wales (FHRS550-571), Scotland (FHRS760-791), and Northern Ireland (FHRS801-816)
+# Excludes Wales (FHRS550-571), Scotland (FHRS760-791),
+# and Northern Ireland (FHRS801-816)
 AUTHORITY_FILES: dict[str, str] = {
     # East Counties
     "Babergh": "/api/open-data-files/FHRS297en-GB.xml",

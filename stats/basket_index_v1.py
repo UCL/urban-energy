@@ -10,9 +10,9 @@ existing LSOA energy-cost metrics, and exports:
 - a markdown summary document for review
 
 The current basket uses trip-type-specific distance-decay from nearest-network distance
-for local access, with a 4.8km wider-access bound. It is not yet a full 20-minute multimodal
-basket. The goal is to produce a clear end-to-end draft that can be iterated into the
-final index design.
+for local access, with a 4.8km wider-access bound. It is not yet a
+full 20-minute multimodal basket. The goal is to produce a clear
+end-to-end draft that can be iterated into the final index design.
 """
 
 from __future__ import annotations
@@ -98,7 +98,9 @@ TRIP_DEMAND_ASSUMPTIONS: dict[str, dict[str, object]] = {
         "annual_trips_per_household": np.nan,
         "include_in_trip_budget": True,
         "source": "NHS England GP appointments (Apr 2024-Mar 2025)",
-        "method_note": "Appointments converted to per-person with England population approx",
+        "method_note": (
+            "Appointments converted to per-person with England population approx"
+        ),
     },
     "pharmacy": {
         "annual_trips_per_person": (
@@ -119,8 +121,13 @@ TRIP_DEMAND_ASSUMPTIONS: dict[str, dict[str, object]] = {
         ),
         "annual_trips_per_household": np.nan,
         "include_in_trip_budget": True,
-        "source": "DfE Schools, pupils and their characteristics 2024/25 + ONS England population approx",
-        "method_note": "Pupil headcount x 2 school trips/day x 190 days, converted to per-person",
+        "source": (
+            "DfE Schools, pupils and their characteristics"
+            " 2024/25 + ONS England population approx"
+        ),
+        "method_note": (
+            "Pupil headcount x 2 school trips/day x 190 days, converted to per-person"
+        ),
     },
     "greenspace": {
         "annual_trips_per_person": 85.0,
@@ -134,14 +141,20 @@ TRIP_DEMAND_ASSUMPTIONS: dict[str, dict[str, object]] = {
         "annual_trips_per_household": np.nan,
         "include_in_trip_budget": False,
         "source": "DfT NTS 2024 public transport trends (local bus trips/person)",
-        "method_note": "Retained as mode-access enabler; excluded from summed destination trip budget",
+        "method_note": (
+            "Retained as mode-access enabler;"
+            " excluded from summed destination trip budget"
+        ),
     },
     "rail": {
         "annual_trips_per_person": _NTS_SURFACE_RAIL_TRIPS_PER_PERSON,
         "annual_trips_per_household": np.nan,
         "include_in_trip_budget": False,
         "source": "DfT NTS 2024 public transport trends (surface rail trips/person)",
-        "method_note": "Retained as mode-access enabler; excluded from summed destination trip budget",
+        "method_note": (
+            "Retained as mode-access enabler;"
+            " excluded from summed destination trip budget"
+        ),
     },
     "hospital": {
         "annual_trips_per_person": _OUTPATIENT_ATTENDED_ANNUAL
@@ -154,7 +167,8 @@ TRIP_DEMAND_ASSUMPTIONS: dict[str, dict[str, object]] = {
 }
 
 
-# Category schema. Quantiles are calibration points for this draft, not final normative thresholds.
+# Category schema. Quantiles are calibration points for this
+# draft, not final normative thresholds.
 BASKET_SCHEMA = [
     {
         "id": "food_services_proxy",
@@ -343,9 +357,9 @@ def prepare_lsoa(cities: list[str] | None = None) -> pd.DataFrame:
     _ensure_numeric(
         lsoa,
         [
-            c
+            str(c)
             for c in needed
-            if c in lsoa.columns and c != "dominant_type" and c != "city"
+            if str(c) in lsoa.columns and str(c) != "dominant_type" and str(c) != "city"
         ],
     )
     return lsoa
@@ -391,12 +405,15 @@ def calibrate_schema(lsoa: pd.DataFrame) -> pd.DataFrame:
             positive = s[s > 0]
             target_v = float(positive.quantile(0.75)) if len(positive) else 1.0
         if target_v <= floor_v:
-            # For sparse layers (notably rail), keep a strict floor but ensure target > floor.
+            # For sparse layers (notably rail), keep a strict
+            # floor but ensure target > floor.
             target_v = max(target_v, floor_v * 1.25, floor_v + 1e-6, 1e-6)
 
-        trip_meta = TRIP_DEMAND_ASSUMPTIONS.get(cid, {})
-        annual_trips_pp = float(trip_meta.get("annual_trips_per_person", np.nan))
-        annual_trips_hh = float(trip_meta.get("annual_trips_per_household", np.nan))
+        trip_meta: dict[str, object] = TRIP_DEMAND_ASSUMPTIONS.get(str(cid)) or {}
+        _trips_pp = trip_meta.get("annual_trips_per_person", np.nan)
+        annual_trips_pp = float(_trips_pp)  # type: ignore[arg-type]
+        _trips_hh = trip_meta.get("annual_trips_per_household", np.nan)
+        annual_trips_hh = float(_trips_hh)  # type: ignore[arg-type]
         include_trip_budget = bool(trip_meta.get("include_in_trip_budget", True))
         trip_equiv_pp = 0.0
         if include_trip_budget:
@@ -673,7 +690,8 @@ def compute_basket_index(lsoa: pd.DataFrame, schema: pd.DataFrame) -> pd.DataFra
         out["basket_trip_coverage_rate_local_est"] = np.nan
         out["basket_trip_coverage_rate_wider_est"] = np.nan
 
-    # Convert transport totals into trip-energy intensity to estimate access-energy budgets.
+    # Convert transport totals into trip-energy intensity to
+    # estimate access-energy budgets.
     commute_trips_hh = (_NTS_COMMUTE_TRIPS_PER_PERSON * hh_size).replace(0, np.nan)
     total_trips_hh = (_NTS_TOTAL_TRIPS_PER_PERSON * hh_size).replace(0, np.nan)
     if "transport_kwh_per_hh_est" in out.columns:
@@ -765,7 +783,8 @@ def compute_basket_index(lsoa: pd.DataFrame, schema: pd.DataFrame) -> pd.DataFra
         "kwh_per_local_accessible_trip_commute_base"
     ]
 
-    # Energy-cost-of-access metrics (primary = household denominator for continuity with PoC)
+    # Energy-cost-of-access metrics
+    # (primary = household denominator for continuity with PoC)
     basket = out["basket_score"].replace(0, np.nan)
     out["kwh_per_basket_point_hh"] = out["total_kwh_per_hh"] / basket
     out["basket_points_per_10mwh_hh"] = basket / (out["total_kwh_per_hh"] / 10_000)
@@ -1226,7 +1245,10 @@ def fig1_category_scores_heatmap(lsoa: pd.DataFrame, schema: pd.DataFrame) -> Pa
 
 
 def fig2_basket_and_cost_bars(lsoa: pd.DataFrame) -> Path:
-    """Two-panel bars: local trip coverage and land-use access penalty by housing type."""
+    """Two-panel bars: local trip coverage and access penalty.
+
+    Grouped by housing type.
+    """
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
     x = np.arange(len(TYPE_ORDER))
     colors = [TYPE_COLORS[t] for t in TYPE_ORDER]
@@ -1644,187 +1666,288 @@ def write_summary_document(
         return f"![{alt}](../{p.as_posix()})"
 
     figure_lines = "\n".join(f"- `../{p.as_posix()}`" for p in rel_figs)
+    fig_heatmap = _fig_md(
+        "fig_basket_v1_category_scores_heatmap.png",
+        "Basket v1 category scores heatmap",
+    )
+    fig_by_type = _fig_md(
+        "fig_basket_v1_by_type.png",
+        "Basket attainment and energy cost by housing type",
+    )
+    fig_scatter = _fig_md(
+        "fig_basket_v1_scatter_energy_vs_basket.png",
+        "KDE contours of energy vs local trip coverage by housing type",
+    )
+    fig_dep = _fig_md(
+        "fig_basket_v1_deprivation_gradient.png",
+        "Basket v1 deprivation gradient",
+    )
 
-    text = f"""# Morphology, Energy, and the Cost of Ordinary Access (Pilot): Data and Figures Appendix
-
-## Purpose
-
-This is the **generated data-and-figures appendix** for the pilot case note on morphology-
-linked energy cost of access at LSOA level.
-
-Use this alongside the canonical narrative case document:
-
-- `paper/case_v1.md`
-
-This appendix consolidates:
-
-- basket v1 schema and calibration
-- summary tables
-- generated figure inventory
-- headline pilot metrics
-- technical caveats and upgrade path
-
-## Status (What v1 Is)
-
-- **Pilot geography:** {total_n:,} LSOAs across {int(n_cities)} English cities
-- **Accessibility basis:** trip-type distance-decay local-access model from nearest-network distance, with wider-access bound at 4.8km (not yet full 20-minute multimodal)
-- **Energy basis (primary):** total household energy = metered building energy (DESNZ) + modelled commute transport energy (Census `TS058` + `TS061`, mode-based estimate)
-- **Energy basis (secondary scenario):** commute estimate scaled to overall travel using NTS 2024 distance ratio (6,082 / 1,007 = 6.04x)
-- **Basket type:** TCPA-aligned category draft using currently available cityseer layers
-
-## How To Use This Appendix
-
-This appendix is technical support for the main case note, not the primary narrative.
-
-Recommended reading order:
-
-1. Read the case note (`paper/case_v1.md`)
-2. Use this appendix to verify methods, thresholds, and exact summary values
-3. Use the CSV outputs in `stats/figures/basket_v1/` for further analysis or mapping
-
-## v1 Basket Design (Draft)
-
-### Structure
-
-- **Core categories (90% weight):** local food/services proxy, GP, pharmacy, school, green space, bus
-- **Support categories (10% weight):** rail/metro, hospital
-- **Category scores:** `min(1, value / target)`
-- **Core penalty:** raw weighted score is multiplied by `0.5 + 0.5 * core_coverage_rate`
-- **Final basket score:** `0-100`
-
-This gives a basket that is partly non-compensatory: high performance in optional or abundant
-categories cannot fully offset missing essentials.
-
-### Draft Calibration Table
-
-Thresholds are quantile-calibrated on the pilot dataset for this draft (not final normative
-thresholds for England-wide deployment).
-
-{schema_md}
-
-## Main Metrics
-
-- **Basket attainment:** `basket_score` (0-100)
-- **Energy cost of access (primary):** `kWh_per_basket_point_hh`
-- **Energy productivity (companion):** `basket_points_per_10mwh_hh`
-- **Trip-demand coverage (new):** `basket_trip_coverage_rate_est`
-- **Energy per accessible trip (overall scenario):** `kwh_per_accessible_trip_total_est`
-
-## Headline Pilot Result
-
-The pilot reproduces the core morphology lock-in pattern under a basket formulation:
-
-- Detached-dominated LSOAs have **{detached_vs_flat_energy:.2f}x** the median total household energy of flat-dominant LSOAs
-- Flat-dominant LSOAs have **{flat_vs_det_basket:.2f}x** the median basket attainment of detached-dominant LSOAs
-- Detached-dominated LSOAs face **{detached_vs_flat_cost:.2f}x** higher energy cost of access (`kWh / basket point`) than flat-dominant LSOAs
-- Equivalently, flat-dominant LSOAs deliver **{flat_vs_det_yield:.2f}x** more basket points per 10 MWh than detached-dominant LSOAs
-
-## Narrative Walkthrough (Figures + Interpretation)
-
-### 1. What counts as the basket?
-
-The v1 basket is a structured bundle of local-access functions using currently available
-cityseer layers (health, schools, green space, bus/rail, and an FSA-based local
-food/services proxy). Each category is scored separately before being combined, and missing
-core services reduce the final score via a core-coverage penalty.
-
-{_fig_md("fig_basket_v1_category_scores_heatmap.png", "Basket v1 category scores heatmap")}
-
-What this figure shows:
-
-- The morphology gradient is visible across multiple categories, not just one amenity type.
-- Compact forms (flat- and terraced-dominant LSOAs) perform strongly across more basket
-  categories.
-- Detached-dominant LSOAs score lower across most core categories, especially local
-  food/services and primary care access.
-- Rail is intentionally a low-weight support category and sparse in the pilot, so it should
-  not be overinterpreted.
-
-### 2. Why the basket framing matters
-
-The core claim of the project is not simply that some neighbourhoods use more energy. It is
-that neighbourhood morphology changes both sides of the fraction:
-
-- **Cost side:** total energy required for ordinary living (building + commute transport estimate)
-- **Return side:** local basket attainment (everyday functions reachable locally)
-
-{_fig_md("fig_basket_v1_by_type.png", "Basket attainment and energy cost by housing type")}
-
-This is the clearest summary figure in the draft:
-
-- The energy gap alone is meaningful but limited.
-- Once local basket attainment is included, the difference becomes much larger.
-- Detached-dominant LSOAs show both **higher total energy** and **lower basket attainment**,
-  so the **energy cost of access** rises sharply.
-
-### 3. Is this only an artifact of medians?
-
-No. The KDE contour plot shows the relationship across all pilot LSOAs and preserves the
-same visual language as the existing three-surfaces figures.
-
-{_fig_md("fig_basket_v1_scatter_energy_vs_basket.png", "KDE contours of energy vs local trip coverage by housing type")}
-
-What to look for:
-
-- The type-specific distributions occupy different regions of the energy/local-coverage plane.
-- Flat- and terraced-dominant LSOAs cluster toward **higher local trip coverage at lower energy**.
-- Semi- and detached-dominant LSOAs shift toward **lower local trip coverage and higher energy**.
-- The morphology pattern is distributed, not just a result of a few extreme outliers.
-
-### 4. Equity lens (pilot)
-
-The deprivation view is included as a diagnostic, not as the main framing. It helps confirm
-that the basket can support an equity analysis later, but the central story remains the
-morphology-linked energy dependency pattern.
-
-{_fig_md("fig_basket_v1_deprivation_gradient.png", "Basket v1 deprivation gradient")}
-
-## Results by Dominant Housing Type (Median LSOA)
-
-{type_md}
-
-## Deprivation Summary (All Types Combined)
-
-{dep_md}
-
-## Figures Generated
-
-{figure_lines}
-
-## Interpretation (Single-Sentence Version)
-
-Neighbourhood morphology changes the energy cost of ordinary access by shifting both
-household energy demand and the local availability of everyday services.
-
-## Interpretation (Working Narrative)
-
-This v1 basket draft makes the argument more legible than the prior z-scored access proxy:
-the index now reports a structured bundle of everyday functions, then expresses the energy
-cost of attaining that bundle.
-
-The pilot result remains the same in direction:
-
-- compact forms (especially flat-dominant and terraced-dominant areas) tend to have lower
-  energy cost and higher local basket attainment;
-- more sprawling forms (semi- and detached-dominant areas) tend to have higher energy cost
-  and lower local basket attainment.
-
-## Current Limitations (v1 Draft)
-
-1. The basket uses a **distance-decay walkability proxy** with trip-type half-distance assumptions, not a full 20-minute multimodal travel-time model.
-2. The FSA-based category is a **local food/services proxy**, not a clean grocery/essential retail layer.
-3. Category thresholds are **pilot-calibrated quantiles**, not yet normative TCPA/UK policy thresholds.
-4. Trip-demand mapping combines observed counts and explicit assumptions (notably pharmacy collection conversion).
-5. The primary denominator is **household energy**; a per-person version should be co-reported in the next iteration.
-
-## Next Upgrade Path (v2)
-
-1. Replace the FSA proxy with explicit grocery / daily retail classes.
-2. Add a true 20-minute multimodal accessibility definition (walk + public transport travel time).
-3. Set category targets from policy/literature rather than pilot quantiles.
-4. Test sensitivity to weights, thresholds, and catchment assumptions.
-5. Produce England-wide calibration and city-specific comparison profiles.
-"""
+    text = (
+        "# Morphology, Energy, and the Cost of Ordinary Access"
+        " (Pilot): Data and Figures Appendix\n"
+        "\n"
+        "## Purpose\n"
+        "\n"
+        "This is the **generated data-and-figures appendix** for the"
+        " pilot case note on morphology-\n"
+        "linked energy cost of access at LSOA level.\n"
+        "\n"
+        "Use this alongside the canonical narrative case document:\n"
+        "\n"
+        "- `paper/case_v1.md`\n"
+        "\n"
+        "This appendix consolidates:\n"
+        "\n"
+        "- basket v1 schema and calibration\n"
+        "- summary tables\n"
+        "- generated figure inventory\n"
+        "- headline pilot metrics\n"
+        "- technical caveats and upgrade path\n"
+        "\n"
+        "## Status (What v1 Is)\n"
+        "\n"
+        f"- **Pilot geography:** {total_n:,} LSOAs across"
+        f" {int(n_cities)} English cities\n"
+        "- **Accessibility basis:** trip-type distance-decay"
+        " local-access model from nearest-network distance,"
+        " with wider-access bound at 4.8km"
+        " (not yet full 20-minute multimodal)\n"
+        "- **Energy basis (primary):** total household energy ="
+        " metered building energy (DESNZ) + modelled commute"
+        " transport energy"
+        " (Census `TS058` + `TS061`, mode-based estimate)\n"
+        "- **Energy basis (secondary scenario):** commute"
+        " estimate scaled to overall travel using NTS 2024"
+        " distance ratio (6,082 / 1,007 = 6.04x)\n"
+        "- **Basket type:** TCPA-aligned category draft using"
+        " currently available cityseer layers\n"
+        "\n"
+        "## How To Use This Appendix\n"
+        "\n"
+        "This appendix is technical support for the main case"
+        " note, not the primary narrative.\n"
+        "\n"
+        "Recommended reading order:\n"
+        "\n"
+        "1. Read the case note (`paper/case_v1.md`)\n"
+        "2. Use this appendix to verify methods, thresholds,"
+        " and exact summary values\n"
+        "3. Use the CSV outputs in `stats/figures/basket_v1/`"
+        " for further analysis or mapping\n"
+        "\n"
+        "## v1 Basket Design (Draft)\n"
+        "\n"
+        "### Structure\n"
+        "\n"
+        "- **Core categories (90% weight):** local"
+        " food/services proxy, GP, pharmacy, school,"
+        " green space, bus\n"
+        "- **Support categories (10% weight):**"
+        " rail/metro, hospital\n"
+        "- **Category scores:** `min(1, value / target)`\n"
+        "- **Core penalty:** raw weighted score is multiplied"
+        " by `0.5 + 0.5 * core_coverage_rate`\n"
+        "- **Final basket score:** `0-100`\n"
+        "\n"
+        "This gives a basket that is partly"
+        " non-compensatory: high performance in optional"
+        " or abundant\n"
+        "categories cannot fully offset missing"
+        " essentials.\n"
+        "\n"
+        "### Draft Calibration Table\n"
+        "\n"
+        "Thresholds are quantile-calibrated on the pilot"
+        " dataset for this draft (not final normative\n"
+        "thresholds for England-wide deployment).\n"
+        "\n"
+        f"{schema_md}\n"
+        "\n"
+        "## Main Metrics\n"
+        "\n"
+        "- **Basket attainment:** `basket_score` (0-100)\n"
+        "- **Energy cost of access (primary):**"
+        " `kWh_per_basket_point_hh`\n"
+        "- **Energy productivity (companion):**"
+        " `basket_points_per_10mwh_hh`\n"
+        "- **Trip-demand coverage (new):**"
+        " `basket_trip_coverage_rate_est`\n"
+        "- **Energy per accessible trip (overall scenario):**"
+        " `kwh_per_accessible_trip_total_est`\n"
+        "\n"
+        "## Headline Pilot Result\n"
+        "\n"
+        "The pilot reproduces the core morphology lock-in"
+        " pattern under a basket formulation:\n"
+        "\n"
+        f"- Detached-dominated LSOAs have"
+        f" **{detached_vs_flat_energy:.2f}x** the median total"
+        f" household energy of flat-dominant LSOAs\n"
+        f"- Flat-dominant LSOAs have"
+        f" **{flat_vs_det_basket:.2f}x** the median basket"
+        f" attainment of detached-dominant LSOAs\n"
+        f"- Detached-dominated LSOAs face"
+        f" **{detached_vs_flat_cost:.2f}x** higher energy cost"
+        f" of access (`kWh / basket point`) than"
+        f" flat-dominant LSOAs\n"
+        f"- Equivalently, flat-dominant LSOAs deliver"
+        f" **{flat_vs_det_yield:.2f}x** more basket points"
+        f" per 10 MWh than detached-dominant LSOAs\n"
+        "\n"
+        "## Narrative Walkthrough"
+        " (Figures + Interpretation)\n"
+        "\n"
+        "### 1. What counts as the basket?\n"
+        "\n"
+        "The v1 basket is a structured bundle of local-access"
+        " functions using currently available\n"
+        "cityseer layers (health, schools, green space,"
+        " bus/rail, and an FSA-based local\n"
+        "food/services proxy). Each category is scored"
+        " separately before being combined, and missing\n"
+        "core services reduce the final score via a"
+        " core-coverage penalty.\n"
+        "\n"
+        f"{fig_heatmap}\n"
+        "\n"
+        "What this figure shows:\n"
+        "\n"
+        "- The morphology gradient is visible across multiple"
+        " categories, not just one amenity type.\n"
+        "- Compact forms (flat- and terraced-dominant LSOAs)"
+        " perform strongly across more basket\n"
+        "  categories.\n"
+        "- Detached-dominant LSOAs score lower across most"
+        " core categories, especially local\n"
+        "  food/services and primary care access.\n"
+        "- Rail is intentionally a low-weight support category"
+        " and sparse in the pilot, so it should\n"
+        "  not be overinterpreted.\n"
+        "\n"
+        "### 2. Why the basket framing matters\n"
+        "\n"
+        "The core claim of the project is not simply that some"
+        " neighbourhoods use more energy. It is\n"
+        "that neighbourhood morphology changes both sides of"
+        " the fraction:\n"
+        "\n"
+        "- **Cost side:** total energy required for ordinary"
+        " living (building + commute transport estimate)\n"
+        "- **Return side:** local basket attainment (everyday"
+        " functions reachable locally)\n"
+        "\n"
+        f"{fig_by_type}\n"
+        "\n"
+        "This is the clearest summary figure in the draft:\n"
+        "\n"
+        "- The energy gap alone is meaningful but limited.\n"
+        "- Once local basket attainment is included, the"
+        " difference becomes much larger.\n"
+        "- Detached-dominant LSOAs show both **higher total"
+        " energy** and **lower basket attainment**,\n"
+        "  so the **energy cost of access** rises sharply.\n"
+        "\n"
+        "### 3. Is this only an artifact of medians?\n"
+        "\n"
+        "No. The KDE contour plot shows the relationship"
+        " across all pilot LSOAs and preserves the\n"
+        "same visual language as the existing three-surfaces"
+        " figures.\n"
+        "\n"
+        f"{fig_scatter}\n"
+        "\n"
+        "What to look for:\n"
+        "\n"
+        "- The type-specific distributions occupy different"
+        " regions of the energy/local-coverage plane.\n"
+        "- Flat- and terraced-dominant LSOAs cluster toward"
+        " **higher local trip coverage at lower energy**.\n"
+        "- Semi- and detached-dominant LSOAs shift toward"
+        " **lower local trip coverage and higher energy**.\n"
+        "- The morphology pattern is distributed, not just"
+        " a result of a few extreme outliers.\n"
+        "\n"
+        "### 4. Equity lens (pilot)\n"
+        "\n"
+        "The deprivation view is included as a diagnostic,"
+        " not as the main framing. It helps confirm\n"
+        "that the basket can support an equity analysis later,"
+        " but the central story remains the\n"
+        "morphology-linked energy dependency pattern.\n"
+        "\n"
+        f"{fig_dep}\n"
+        "\n"
+        "## Results by Dominant Housing Type (Median LSOA)\n"
+        "\n"
+        f"{type_md}\n"
+        "\n"
+        "## Deprivation Summary (All Types Combined)\n"
+        "\n"
+        f"{dep_md}\n"
+        "\n"
+        "## Figures Generated\n"
+        "\n"
+        f"{figure_lines}\n"
+        "\n"
+        "## Interpretation (Single-Sentence Version)\n"
+        "\n"
+        "Neighbourhood morphology changes the energy cost of"
+        " ordinary access by shifting both\n"
+        "household energy demand and the local availability"
+        " of everyday services.\n"
+        "\n"
+        "## Interpretation (Working Narrative)\n"
+        "\n"
+        "This v1 basket draft makes the argument more legible"
+        " than the prior z-scored access proxy:\n"
+        "the index now reports a structured bundle of everyday"
+        " functions, then expresses the energy\n"
+        "cost of attaining that bundle.\n"
+        "\n"
+        "The pilot result remains the same in direction:\n"
+        "\n"
+        "- compact forms (especially flat-dominant and"
+        " terraced-dominant areas) tend to have lower\n"
+        "  energy cost and higher local basket attainment;\n"
+        "- more sprawling forms (semi- and"
+        " detached-dominant areas) tend to have higher"
+        " energy cost\n"
+        "  and lower local basket attainment.\n"
+        "\n"
+        "## Current Limitations (v1 Draft)\n"
+        "\n"
+        "1. The basket uses a **distance-decay walkability"
+        " proxy** with trip-type half-distance"
+        " assumptions, not a full 20-minute multimodal"
+        " travel-time model.\n"
+        "2. The FSA-based category is a **local food/services"
+        " proxy**, not a clean grocery/essential"
+        " retail layer.\n"
+        "3. Category thresholds are **pilot-calibrated"
+        " quantiles**, not yet normative TCPA/UK policy"
+        " thresholds.\n"
+        "4. Trip-demand mapping combines observed counts and"
+        " explicit assumptions (notably pharmacy"
+        " collection conversion).\n"
+        "5. The primary denominator is **household energy**;"
+        " a per-person version should be co-reported"
+        " in the next iteration.\n"
+        "\n"
+        "## Next Upgrade Path (v2)\n"
+        "\n"
+        "1. Replace the FSA proxy with explicit grocery /"
+        " daily retail classes.\n"
+        "2. Add a true 20-minute multimodal accessibility"
+        " definition (walk + public transport"
+        " travel time).\n"
+        "3. Set category targets from policy/literature"
+        " rather than pilot quantiles.\n"
+        "4. Test sensitivity to weights, thresholds, and"
+        " catchment assumptions.\n"
+        "5. Produce England-wide calibration and"
+        " city-specific comparison profiles.\n"
+    )
 
     DOC_PATH.write_text(text)
     return DOC_PATH

@@ -203,6 +203,7 @@ def save_summary_tables(lsoa: pd.DataFrame) -> None:
                 elif col == "total_kwh_per_hh_total_est":
                     row[t] = transport_summary.loc[t, "total_kwh_hh_total_est"]
                 else:
+                    assert src is not None
                     row[t] = src.loc[src["dominant_type"] == t, col].median()
         rows.append(row)
     df1 = pd.DataFrame(rows)
@@ -359,11 +360,18 @@ def fig1_building_energy(lsoa: pd.DataFrame) -> None:
     )
     _add_footnote(
         fig,
-        "(A) Each LSOA binned by dominant Census 2021 accommodation type (ts044, highest share). "
-        "Bars show median LSOA-level metered energy (DESNZ) divided by household count.  "
-        "(B) LSOAs split into thirds by % households not deprived (Census ts011). "
-        "Deprivation is the strongest confounder of building energy (R\u00b2=0.12 vs R\u00b2=0.08 for type): "
-        "deprived households use less energy. Within each deprivation band the compact\u2192sprawl gradient remains.",
+        "(A) Each LSOA binned by dominant Census 2021"
+        " accommodation type (ts044, highest share)."
+        " Bars show median LSOA-level metered energy"
+        " (DESNZ) divided by household count."
+        "  (B) LSOAs split into thirds by % households"
+        " not deprived (Census ts011)."
+        " Deprivation is the strongest confounder of"
+        " building energy"
+        " (R\u00b2=0.12 vs R\u00b2=0.08 for type):"
+        " deprived households use less energy."
+        " Within each deprivation band the"
+        " compact\u2192sprawl gradient remains.",
     )
     plt.tight_layout()
     plt.savefig(FIGURE_DIR / "fig1_building_energy.png", bbox_inches="tight")
@@ -422,7 +430,10 @@ def _transport_type_summary(lsoa: pd.DataFrame) -> pd.DataFrame:
 
 
 def fig2_mobility_penalty(lsoa: pd.DataFrame) -> None:
-    """Stacked bars: commute-based and overall-scenario transport energy by housing type."""
+    """Stacked bars: commute-based and overall-scenario transport energy.
+
+    Shows transport energy by housing type.
+    """
     summary = _transport_type_summary(lsoa)
     fig, axes = plt.subplots(1, 2, figsize=(14, 6), sharey=True)
 
@@ -602,8 +613,11 @@ def fig2b_private_public_transport(lsoa: pd.DataFrame) -> None:
 
     _add_footnote(
         fig,
-        f"{_SRC_TRANSPORT_MODE} Values are commute-energy estimates (not total annual travel"
-        " across all trip purposes). Private+public totals use the same median rule as Figure 2.",
+        f"{_SRC_TRANSPORT_MODE}"
+        " Values are commute-energy estimates"
+        " (not total annual travel across all"
+        " trip purposes). Private+public totals"
+        " use the same median rule as Figure 2.",
     )
     plt.tight_layout()
     plt.savefig(FIGURE_DIR / "fig2b_private_public_transport.png", bbox_inches="tight")
@@ -898,9 +912,11 @@ def fig5_access_bar(lsoa: pd.DataFrame) -> None:
     )
     _add_footnote(
         fig,
-        "Each panel shows median LSOA-level metric by dominant Census housing type (ts044). "
-        "Error bars: IQR. Accessibility metrics: cityseer gravity-weighted counts "
-        "within 800 m pedestrian catchment.",
+        "Each panel shows median LSOA-level metric"
+        " by dominant Census housing type (ts044)."
+        " Error bars: IQR. Accessibility metrics:"
+        " cityseer gravity-weighted counts"
+        " within 800 m pedestrian catchment.",
     )
     plt.tight_layout()
     plt.savefig(FIGURE_DIR / "fig5_access_bar.png", bbox_inches="tight")

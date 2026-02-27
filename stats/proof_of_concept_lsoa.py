@@ -360,7 +360,8 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
     #   road modes: _KWH_PER_PKM_ROAD
     #   rail/metro: _KWH_PER_PKM_RAIL
 
-    # ts058: total employed, home-working, offshore/no-fixed-place, and travelling commuters
+    # ts058: total employed, home-working,
+    # offshore/no-fixed-place, and travelling commuters
     total_commuters = pd.to_numeric(lsoa[_COMMUTE_TOTAL], errors="coerce")
     home_commuters_ts058 = pd.to_numeric(lsoa[_TS058_HOME], errors="coerce")
     offshore_commuters = pd.to_numeric(lsoa[_TS058_OFFSHORE], errors="coerce")
@@ -423,7 +424,8 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
         0, np.nan
     )
 
-    # Mode-specific commute energy decomposition (kWh/hh), from ts061 shares and ts058 distance.
+    # Mode-specific commute energy decomposition (kWh/hh),
+    # from ts061 shares and ts058 distance.
     mode_distance_annual = lsoa["avg_commute_km_travelling"] * 2 * 220
 
     private_commute_kwh_annual = (
@@ -592,7 +594,8 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
         )
     print(f"    Total: median={lsoa['total_kwh_per_hh'].median():,.0f}")
     print(
-        f"    Total (overall scenario): median={lsoa['total_kwh_per_hh_total_est'].median():,.0f}"
+        f"    Total (overall scenario): "
+        f"median={lsoa['total_kwh_per_hh_total_est'].median():,.0f}"
     )
     if "median_build_year" in lsoa.columns:
         yr = lsoa["median_build_year"].dropna()

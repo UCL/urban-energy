@@ -26,7 +26,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
-from scipy.spatial import cKDTree
+from scipy.spatial import cKDTree  # type: ignore[unresolved-import]
 
 warnings.filterwarnings("ignore", message="DataFrame is highly fragmented")
 
@@ -754,7 +754,7 @@ def run_stage3_lsoa_aggregation(
 
         uprn_keys = set(uprn_gdf[uprn_col].dropna().astype(int))
         uprn_arr = pa.array(list(uprn_keys), type=pa.int64())
-        epc_filter = pc.is_in(pc.field(uprn_col_epc), value_set=uprn_arr)
+        epc_filter = pc.is_in(pc.field(uprn_col_epc), value_set=uprn_arr)  # type: ignore[unresolved-attribute]
         epc_table = pq.read_table(epc_path, columns=epc_read_cols, filters=epc_filter)
         epc = epc_table.to_pandas()
         del epc_table
@@ -978,9 +978,10 @@ def save_city_lsoa(city_name: str, lsoa: gpd.GeoDataFrame | None) -> None:
         if c != "geometry" and (lsoa[c].dtype == "geometry" or c == "geom")
     ]
     if geom_cols:
-        lsoa = lsoa.drop(columns=geom_cols)
+        lsoa = lsoa.drop(columns=geom_cols)  # type: ignore[invalid-assignment]
 
     path = city_dir / "lsoa_integrated.gpkg"
+    assert lsoa is not None
     lsoa.to_file(path, driver="GPKG")
     print(f"  Saved: {path}")
 
