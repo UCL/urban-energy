@@ -1,65 +1,100 @@
 # Urban Energy: Development Status
 
-**Last updated:** 2026-02-27
+**Last updated:** 2026-03-18
 
 ---
 
-## Case One: Completed
+## Case Two: OA-Level National Analysis (in progress)
 
-The LSOA-level "three energy surfaces" proof of concept is complete for 18 English cities.
+The analysis has been overhauled from LSOA level (18 cities, 3,678 units) to OA level (national, all 7,147 English BUAs). The pipeline uses the new CityNetwork API (cityseer 4.25.0b3) with `from_geopandas`, consolidated land-use accessibility, and centroid-based sampling.
+
+### Current state
+
+- **94 BUAs processed** → 67,263 OAs (of ~178k total)
+- **National pipeline running** — processing largest BUAs first, skip-if-exists for restarts
+- Compounding confirmed at OA level: **1.55x** (thermal) → **1.83x** (mobility) → **2.69x** (access)
 
 ### Pipeline
 
-- [x] Data acquisition: Census, DESNZ energy, EPC, LiDAR, FSA, NaPTAN, GIAS, NHS ODS, OS boundaries, OS roads, OS greenspace, ONS scaling
-- [x] Building morphology: footprint, height, S/V ratio, form factor, shared walls, adjacency (via momepy + LiDAR)
-- [x] Network analysis: cityseer centrality + gravity-weighted accessibility at 800m
-- [x] LSOA aggregation: 3-stage pipeline (morphology, network, integration) across 18 cities
-- [x] Three energy surfaces: building (DESNZ metered), transport (Census commute), accessibility (network + land use)
-- [x] Basket index v1: illustrative trip-demand case for selected land uses (food, health, education, greenspace, transit) showing the access penalty at observed rates
-- [x] Publication figures: 7 main figures + basket subfolder + summary tables
-- [x] Case narrative: `paper/case_v1.md` with full 9-step analytical structure
+- [x] New data sources: IMD 2025, DESNZ postcode energy, DVLA vehicles
+- [x] Postcode → OA energy aggregation (178,355 OAs nationally)
+- [x] OA pipeline with CityNetwork API (`processing/pipeline_oa.py`)
+- [x] OA analysis scripts (`stats/proof_of_concept_oa.py`, `stats/oa_figures.py`, `stats/basket_index_oa.py`)
+- [x] Publication figures regenerated for 94-BUA sample
+- [ ] Complete national pipeline (7,147 BUAs — running)
+- [ ] Write case narrative (`paper/case_oa.md`)
+- [ ] Reconcile `paper/main.tex` with OA results
 
 ### Key Scripts
 
 | Script | Purpose |
 |--------|---------|
-| `stats/build_case.py` | Regenerate all case-one figures |
-| `stats/lsoa_figures.py` | Three-surfaces publication figures |
-| `stats/basket_index_v1.py` | Illustrative basket case: access penalty for selected land uses |
-| `stats/proof_of_concept_lsoa.py` | Core LSOA analysis and data loading |
-| `stats/diagnostic_fig1b.py` | Confounder diagnostics |
+| `processing/pipeline_oa.py` | National OA pipeline (CityNetwork API, all BUAs) |
+| `stats/build_case_oa.py` | Regenerate all OA figures |
+| `stats/proof_of_concept_oa.py` | Core OA analysis and data loading |
+| `stats/oa_figures.py` | Three-surfaces publication figures |
+| `stats/basket_index_oa.py` | Basket case: access penalty |
 
-### Key Result
+### Key Results (94 BUAs, 67,263 OAs)
 
-For the selected land-use categories at observed trip rates, a 3.5x access penalty emerges between detached-dominant and flat-dominant LSOAs. The compounding widens at each normalisation level (kWh/m2 -> kWh/capita -> kWh/capita/accessibility). This is illustrative — the basket covers a particular set of land uses, not all travel purposes.
+| Surface | Flat | Detached | Ratio |
+|---------|-----:|---------:|------:|
+| Building kWh/hh | 10,852 | 16,865 | 1.55x |
+| Transport kWh/hh (overall) | 4,131 | 7,556 | 1.83x |
+| kWh per unit access | 3,337 | 8,964 | **2.69x** |
+
+Dominant type: Flat 18,460 / Terraced 20,941 / Semi 21,304 / Detached 6,558
+
+### Running the national pipeline
+
+```bash
+uv run python processing/pipeline_oa.py    # all 7,147 BUAs (skip-if-exists)
+uv run python stats/build_case_oa.py       # regenerate figures from completed BUAs
+```
 
 ---
 
-## Forward: Case Two and Beyond
+## Case One: LSOA Reference (archived)
+
+The original LSOA-level proof of concept (18 cities, 3,678 LSOAs) is preserved as a reference.
+
+| Script | Purpose |
+|--------|---------|
+| `stats/build_case.py` | Regenerate LSOA case-one figures |
+| `stats/lsoa_figures.py` | LSOA three-surfaces figures |
+| `stats/basket_index_v1.py` | LSOA basket case |
+| `stats/proof_of_concept_lsoa.py` | LSOA analysis |
+| `processing/pipeline_lsoa.py` | LSOA pipeline (old cityseer API) |
+| `paper/case_v1.md` | LSOA case narrative |
+
+---
+
+## Forward Work
 
 ### Data and Methods
 
-- [ ] Dual DV validation: compare SAP-modelled (EPC) vs DESNZ metered energy at LSOA level
-- [ ] Climate stratification: add heating degree days as control or stratify by region
-- [ ] Sensitivity analysis: test basket weights, distance-decay parameters, trip-demand assumptions
-- [ ] Temporal validation: compare Census 2011 vs 2021 commute patterns (COVID effect)
+- [ ] Sensitivity analysis: basket weights, distance-decay parameters, trip-demand assumptions
+- [ ] Climate stratification: heating degree days as control
+- [ ] Temporal validation: Census 2011 vs 2021 commute patterns (COVID effect)
+- [ ] Dual DV validation: SAP-modelled (EPC) vs DESNZ metered at OA level
 
 ### Analysis Extensions
 
-- [ ] Scaling analysis: test Bettencourt superlinear/sublinear scaling with BRES employment + GVA data
-- [ ] Lock-in quantification: scenario modelling across insulation and EV technology levels
-- [ ] Distribution analysis: move beyond means to full distributional comparisons (quantile regression)
-- [ ] Deprivation deep-dive: interaction effects between IMD quintile and urban form
+- [ ] Scaling analysis: Bettencourt superlinear/sublinear with BRES + GVA
+- [ ] Lock-in quantification: DVLA fleet electrification scenarios
+- [ ] Distribution analysis: quantile regression beyond means
+- [ ] Deprivation deep-dive: IMD 2025 domain interactions with urban form
 
 ### Paper
 
-- [ ] Reconcile `paper/main.tex` with current `paper/case_v1.md` narrative
-- [ ] Write formal methods section for case-one approach
-- [ ] Finalise bibliography in `references.bib`
+- [ ] Write `paper/case_oa.md` (OA-level narrative)
+- [ ] Reconcile `paper/main.tex` with OA results
+- [ ] Formal methods section
+- [ ] Finalise `references.bib`
 
 ### Code Quality
 
-- [ ] Add pytest test suite (framework configured, no tests yet)
-- [ ] Complete docstrings for all public functions (NumPy style)
-- [ ] Run full type check pass (`uv run ty check`)
-- [ ] Consider environment variable for `STORAGE_DIR` path (currently hardcoded)
+- [ ] Add pytest test suite
+- [ ] Complete docstrings (NumPy style)
+- [ ] Run `uv run ty check`
+- [ ] Environment variable for `STORAGE_DIR`

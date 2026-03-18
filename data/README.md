@@ -356,14 +356,142 @@ uv run python data/prepare_nhs.py
 
 ---
 
+## English Indices of Deprivation 2025 (IoD25)
+
+| Dataset | Source | Records | Published |
+| --- | --- | --- | --- |
+| IoD25 File 7 (all ranks, scores, deciles) | [GOV.UK](https://www.gov.uk/government/statistics/english-indices-of-deprivation-2025) | 33,755 LSOAs | 2025-10-30 |
+
+Supersedes IoD 2019. Uses **2021 Census LSOA boundaries** and 2024 LAD codes. NOT directly comparable to IoD 2019 due to new indicators and methodology.
+
+### 7 Domains (with IMD composite weights)
+
+| Domain | Weight | Key Indicators |
+| --- | --- | --- |
+| Income | 22.5% | Universal Credit, Tax Credits, IS/JSA, Pension Credit, asylum seekers |
+| Employment | 22.5% | JSA, ESA, incapacity benefit, severe disablement allowance, UC |
+| Education, Skills and Training | 13.5% | Attainment, absence, skills, HE participation |
+| Health Deprivation and Disability | 13.5% | Mortality, disability, mood/anxiety, emergency admissions |
+| Crime | 9.3% | Violence, burglary, theft, criminal damage, anti-social behaviour |
+| Barriers to Housing and Services | 9.3% | Homelessness, housing affordability, distance to services, broadband |
+| Living Environment | 9.3% | Housing quality (EPCs), central heating, garden access, noise, air quality |
+
+### Sub-domains
+
+| Parent Domain | Sub-domain |
+| --- | --- |
+| Education | Children and Young People; Adult Skills |
+| Barriers | Geographical Barriers; Wider Barriers |
+| Living Environment | Indoors (housing quality); Outdoors (environmental quality) |
+
+### Processing
+
+```bash
+uv run python data/download_imd.py
+```
+
+**Output:** `temp/statistics/lsoa_imd2025.parquet` — 33,755 LSOAs × 56 columns (all scores, ranks, deciles, population denominators).
+
+---
+
+## DESNZ Postcode-Level Domestic Energy Consumption
+
+| Dataset | Source | Records | Published |
+| --- | --- | --- | --- |
+| Postcode electricity (all meters) | [GOV.UK](https://www.gov.uk/government/statistics/postcode-level-electricity-statistics-2024) | ~1.7M postcodes | 2025-12-18 |
+| Postcode gas | [GOV.UK](https://www.gov.uk/government/statistics/postcode-level-gas-statistics-2024) | ~1.7M postcodes | 2025-12-18 |
+
+Same underlying meter data as the LSOA-level statistics (`download_energy_stats.py`) but at full postcode granularity (~15-20 addresses per postcode on average).
+
+### Key Fields
+
+| Field | Description |
+| --- | --- |
+| `Postcode` | Full UK postcode (e.g., "AB10 1AU") |
+| `Num_meters` | Number of domestic meters |
+| `Total_cons_kwh` | Total annual consumption in kWh |
+| `Mean_cons_kwh` | Mean annual consumption per meter in kWh |
+| `Median_cons_kwh` | Median annual consumption per meter in kWh |
+
+### Suppression Rules
+
+- Postcodes with **fewer than 5 meters** are suppressed
+- Postcodes where **top-2 consumers exceed 90%** of total are suppressed
+- Meters consuming **< 100 kWh/year** are excluded
+- Gas is **weather-corrected**; electricity is NOT
+
+### Processing
+
+```bash
+uv run python data/download_energy_postcode.py
+```
+
+**Output:** `temp/statistics/postcode_energy_consumption.parquet` — Joined gas + electricity with derived total and gas share.
+
+---
+
+## DVLA Vehicle Licensing Statistics (LSOA)
+
+| Dataset | Source | Size | Update |
+| --- | --- | --- | --- |
+| VEH0125 (all vehicles) | [GOV.UK](https://www.gov.uk/government/statistical-data-sets/vehicle-licensing-statistics-data-files) | 224 MB | Quarterly |
+| VEH0135 (ULEVs) | Same | 57 MB | Quarterly |
+
+Vehicle counts by body type, fuel type, and keepership at LSOA level on **2021 Census boundaries**. Historical data retrospectively mapped.
+
+### Key Fields (output)
+
+| Field | Description |
+| --- | --- |
+| `LSOA21CD` | 2021 Census LSOA code |
+| `cars_total` | Total licensed cars |
+| `cars_private` | Private keeper cars |
+| `cars_company` | Company keeper cars |
+| `ulev_total` | Total ultra-low emission vehicles |
+| `ulev_battery_electric` | Battery electric vehicles |
+| `ulev_plug_in_hybrid` | Plug-in hybrid (petrol + diesel) |
+| `ulev_hybrid` | Non-plug-in hybrid (petrol + diesel) |
+| `ulev_share` | ULEV fraction of total cars |
+| `bev_share` | BEV fraction of total cars |
+
+### Suppression Rules
+
+- `[c]` marker = 1-4 vehicles (treated as NaN)
+- LSOAs with fewer than 5 vehicles ever are excluded entirely
+
+### Processing
+
+```bash
+uv run python data/download_vehicles.py
+```
+
+**Output:** `temp/statistics/lsoa_vehicles.parquet` — Licensed cars and ULEV breakdown per LSOA for target quarter.
+
+---
+
+## Pipeline Outputs (Updated)
+
+| Script | Output | Description |
+| --- | --- | --- |
+| `download_census.py` | `temp/census_oa_joined.gpkg` | OA boundaries with 8 Census topic tables joined |
+| `download_energy_stats.py` | `temp/statistics/lsoa_energy_consumption.parquet` | DESNZ metered gas + electricity per LSOA |
+| `download_energy_postcode.py` | `temp/statistics/postcode_energy_consumption.parquet` | DESNZ metered gas + electricity per postcode |
+| `download_imd.py` | `temp/statistics/lsoa_imd2025.parquet` | IoD 2025 all domains, ranks, deciles |
+| `download_vehicles.py` | `temp/statistics/lsoa_vehicles.parquet` | DVLA cars + ULEVs per LSOA |
+| `process_boundaries.py` | `temp/boundaries/built_up_areas.gpkg` | Cleaned individual built-up area polygons |
+| `process_epc.py` | `temp/epc_domestic_spatial.gpkg` | EPC records with UPRN point geometry |
+| `process_lidar.py` | `temp/lidar/building_heights.gpkg` | Building polygons with LiDAR-derived height statistics |
+| `download_fsa.py` | `temp/fsa/fsa_establishments.gpkg` | Eating/drinking establishments as walkability proxy |
+| `download_naptan.py` | `temp/transport/naptan_england.gpkg` | Public transport access points (bus, rail, metro, etc) |
+| `prepare_gias.py` | `temp/education/gias_schools.gpkg` | Open schools and colleges (DfE GIAS register) |
+| `prepare_nhs.py` | `temp/health/nhs_facilities.gpkg` | NHS hospitals, GP practices, pharmacies (ODS) |
+| `download_scaling.py` | `temp/statistics/lsoa_scaling.parquet` | BRES workplace employment + small area GVA per LSOA |
+
+---
+
 ## Next Steps
 
 Once all data sources have been downloaded and processed:
 
-1. **Proceed to [processing/README.md](../processing/README.md)** - Compute derived metrics:
-   - Building morphology (shape, compactness, shared walls)
-
-2. **Then to [stats/README.md](../stats/README.md)** - Lock-in analysis:
-   - Matched comparison of built forms
-   - Transport energy estimation
-   - Combined penalty quantification
+1. **Proceed to [processing/README.md](../processing/README.md)** — Compute derived metrics (building morphology, network accessibility)
+2. **Then to [stats/README.md](../stats/README.md)** — Statistical analysis (three surfaces, basket index, deprivation controls)

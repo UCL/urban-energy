@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This project investigates the relationship between urban form (morphology, density, accessibility) and per-capita energy consumption in England. It combines geospatial data processing with academic research on sustainable urban development.
+This project investigates the relationship between urban form (morphology, density, accessibility) and per-capita energy consumption in England. It combines geospatial data processing with academic research on sustainable urban development, targeting a research paper.
 
 **Author:** Gareth Simons
 **License:** GPL-3.0-only
@@ -11,12 +11,190 @@ This project investigates the relationship between urban form (morphology, densi
 
 ```
 urban-energy/
-├── src/urban_energy/    # Python package source code
-├── paper/               # Academic paper and literature
-├── tests/               # Test suite
-├── data/                # Data files (not in version control)
-└── .claude/             # Claude Code configuration
+├── src/urban_energy/          # Python package (paths.py centralises storage config)
+├── data/                      # Data acquisition and preprocessing scripts
+├── processing/                # Derived metric computation (morphology, network, LSOA pipeline)
+├── stats/                     # Statistical analysis and figure generation
+├── paper/                     # Academic paper, literature review, data methodology
+├── docs/                      # Archived working notes (v0 methodology, roadmap, log)
+├── tests/                     # Test suite (framework configured, tests pending)
+├── temp/                      # Processing outputs (on external storage, not in git)
+└── .claude/                   # Claude Code configuration
 ```
+
+### Key entry points
+
+| Script | Purpose |
+|--------|---------|
+| `stats/build_case.py` | Regenerate all case-one figures and tables |
+| `processing/pipeline_lsoa.py` | 3-stage LSOA integration pipeline |
+| `processing/process_morphology.py` | Building shape metrics from LiDAR + OS footprints |
+
+### Canonical documents
+
+| File | Status |
+|------|--------|
+| `paper/case_v1.md` | **Current** — 9-step proof-of-concept narrative |
+| `paper/data.md` | **Current** — data source methodology |
+| `paper/literature_review.md` | Current — thematic literature review |
+| `paper/main.tex` | **Stale** — not reconciled with case_v1.md |
+| `paper/references.bib` | Partial |
+| `TODO.md` | Development status and forward plan |
+
+### Storage layout
+
+External storage at `/Volumes/1TB/urban-energy` (hardcoded in `src/urban_energy/paths.py`):
+
+```
+temp/
+├── processing/combined/lsoa_integrated.gpkg   ← Final integrated LSOA dataset
+├── boundaries/built_up_areas.gpkg
+├── lidar/building_heights.gpkg
+├── morphology/buildings_morphology.gpkg
+├── statistics/
+│   ├── census_oa_joined.gpkg
+│   ├── lsoa_energy_consumption.parquet        ← DESNZ metered (LSOA level)
+│   ├── postcode_energy_consumption.parquet     ← DESNZ metered (postcode level)
+│   ├── lsoa_imd2025.parquet                   ← IoD25 indices of deprivation
+│   ├── lsoa_vehicles.parquet                  ← DVLA vehicle licensing
+│   └── lsoa_scaling.parquet
+├── epc/epc_domestic_spatial.parquet
+├── fsa/fsa_establishments.gpkg
+├── transport/naptan_england.gpkg
+├── education/gias_schools.gpkg
+└── health/nhs_facilities.gpkg
+```
+
+## Data Source Inventory
+
+### Currently integrated (Case One)
+
+| # | Source | Granularity | Script | Output | Role |
+|---|--------|------------|--------|--------|------|
+| 1 | Census 2021 (10 topic tables) | OA → LSOA | `data/download_census.py` | `census_oa_joined.gpkg` | Population, accommodation type (TS044), commute distance/mode, deprivation, cars, tenure |
+| 2 | DESNZ metered energy (LSOA) | LSOA | `data/download_energy_stats.py` | `lsoa_energy_consumption.parquet` | **Primary DV**: domestic gas + electricity (actual metered, weather-corrected gas) |
+| 3 | EPC domestic certificates | Property (UPRN) | `data/process_epc.py` | `epc_domestic_spatial.parquet` | SAP modelled energy, building fabric, construction age, floor area |
+| 4 | Environment Agency LiDAR | 2m raster | `data/process_lidar.py` | `building_heights.gpkg` | nDSM building heights → S/V ratio, volume |
+| 5 | OS Open Map Local | Building footprint | (manual) | `os_open_local/` | Building geometry for morphology |
+| 6 | OS Open Roads | Road network | (manual) | `oproad_gpkg_gb/` | Street network for cityseer centrality |
+| 7 | OS Open Greenspace | Polygon | (manual) | `opgrsp_gpkg_gb/` | Recreation/restoration trophic layer |
+| 8 | OS Open UPRN | Point | (manual) | `osopenuprn_*/` | Property-level geocoding |
+| 9 | OS Code-Point Open | Postcode centroid | (manual) | `codepo_gpkg_gb/` | Postcode geocoding (NHS, etc.) |
+| 10 | OS Built Up Areas | Polygon | `data/process_boundaries.py` | `built_up_areas.gpkg` | 18 study city boundaries |
+| 11 | FSA establishments | Point | `data/download_fsa.py` | `fsa_establishments.gpkg` | Commercial exchange trophic layer (~500k) |
+| 12 | NaPTAN transport stops | Point | `data/download_naptan.py` | `naptan_england.gpkg` | Mobility trophic layer (~434k stops) |
+| 13 | GIAS schools (DfE) | Point | `data/prepare_gias.py` | `gias_schools.gpkg` | Education accessibility (~25k) |
+| 14 | NHS ODS facilities | Point | `data/prepare_nhs.py` | `nhs_facilities.gpkg` | Health accessibility (~24k) |
+| 15 | ONS Small Area GVA + BRES | LSOA | `data/download_scaling.py` | `lsoa_scaling.parquet` | Scaling analysis (forward work) |
+
+### New data sources (in progress)
+
+| # | Source | Granularity | Script | Output | Role |
+|---|--------|------------|--------|--------|------|
+| 16 | DESNZ postcode-level energy | Postcode | `data/download_energy_postcode.py` | `postcode_energy_consumption.parquet` | Within-LSOA energy variation, link to building type |
+| 17 | IoD 2025 (IMD) | LSOA (2021) | `data/download_imd.py` | `lsoa_imd2025.parquet` | 7-domain deprivation control (replaces Census TS011) |
+| 18 | DVLA vehicle licensing | LSOA (2021) | `data/download_vehicles.py` | `lsoa_vehicles.parquet` | Fleet composition by fuel type, transport lock-in |
+
+### Data sources identified but not yet integrated
+
+| Source | Granularity | Value | Priority |
+|--------|------------|-------|----------|
+| Carbon & Place (Leeds/CREDS) | LSOA | Independent validation of transport energy estimates | Medium |
+| ONS Energy Efficiency of Housing | LSOA | Median EPC band per LSOA (avoids raw EPC coverage bias) | Medium |
+| VOA dwelling stock | LSOA | Property counts by Council Tax band, type, build period | Low |
+| Sub-regional fuel poverty (LILEE) | LSOA | Fuel-poor household proportion | Low |
+| NEED anonymised data | No geography | Metered consumption linked to property attributes | Reference only |
+| SERL smart meter data | Household (restricted) | Half-hourly consumption | Not accessible |
+| ADR UK meter-level | Property (restricted) | Individual property metered consumption | Not accessible |
+| NEBULA (2025 academic) | Postcode | 242 integrated variables | To evaluate |
+
+## Study Design
+
+### Sample
+
+18 English cities (OS Built-Up Areas), 3,678 LSOAs:
+- **Original 8:** Manchester, Bristol, Milton Keynes, York, Cambridge, Stevenage, Burnley, Canterbury
+- **Expansion 10:** Birmingham, Leeds, Sheffield, Liverpool, Newcastle, Nottingham, Leicester, Plymouth, Southampton, Brighton
+
+### Primary stratification
+
+`dominant_type` — plurality accommodation type from Census TS044 per LSOA:
+- Flat-dominant: 712 LSOAs
+- Terraced-dominant: 1,209 LSOAs
+- Semi-detached-dominant: 1,473 LSOAs
+- Detached-dominant: 284 LSOAs
+
+### Three energy surfaces
+
+1. **Thermal (building):** DESNZ metered gas + electricity per household/capita
+2. **Mobility (transport):** Census commute distance (TS058) × mode (TS061) × energy intensity (road: 0.399, rail: 0.178 kWh/pkm)
+3. **Accessibility (return):** Cityseer network centrality + gravity-weighted land-use counts at 800m walk
+
+### The compounding effect
+
+Each normalisation widens the efficiency gap:
+- kWh/m² → modest (~1.04x)
+- kWh/capita → widens (~1.76x)
+- kWh/capita/accessibility → widens further (~2.79x)
+- With basket penalty → 3.5x between detached-dominant and flat-dominant LSOAs
+
+## Core Thesis: The Trophic Layers Framework
+
+### The Argument
+
+Cities are conduits that capture energy and recycle it through layers of human interaction
+(Jacobs, 2000, "The Nature of Economies"). The measure of urban efficiency is not how much
+energy a neighbourhood consumes, but how many transactions, connections, and transformations
+that energy enables before it dissipates. This connects to Bettencourt et al.'s (2007)
+urban scaling laws: cities scale superlinearly in socioeconomic output (~N^1.15) and
+sublinearly in infrastructure (~N^0.85). Proximity is the mechanism.
+
+### The Rainforest Analogy
+
+A rainforest and a desert receive the same solar radiation per m². The difference is
+**trophic depth** — how many times energy is captured and re-used before it dissipates.
+
+- **Rainforest** (dense urban neighbourhood): Energy passes through dozens of layers —
+  canopy, understorey, epiphytes, soil biome, mycorrhizal networks. Each layer captures
+  energy from the one above. Thousands of species, millions of interactions.
+- **Desert** (suburban sprawl): Energy hits the ground and radiates straight back out.
+  One trophic level. Minimal recycling.
+
+### The Trophic Layers (mapped to our data)
+
+| Layer | Ecological equivalent | Urban function | Our metric |
+|-------|----------------------|----------------|------------|
+| **Physical substrate** | Soil/root network | Street network connectivity | `cc_harmonic_800`, `cc_density_800` |
+| **Commercial exchange** | Canopy photosynthesis | Places where economic transactions happen | `cc_fsa_restaurant_800_wt`, `cc_fsa_pub_800_wt`, `cc_fsa_takeaway_800_wt` |
+| **Mobility** | Seed dispersal/pollinators | Connections to wider city network | `cc_bus_800_wt`, `cc_rail_800_wt` |
+| **Recreation/restoration** | Water cycle/shade | Green space — regenerative capacity | `cc_greenspace_800_wt` |
+
+All metrics at 800m (~10 min walk), the pedestrian catchment. The `_wt` suffix means
+gravity-weighted count (more establishments closer = higher score).
+
+### The PoC Structure (stats/proof_of_concept_lsoa.py)
+
+| Step | Test | Role |
+|------|------|------|
+| 1 | Building typology → building energy | Foundation |
+| 2 | Neighbourhood morphology → transport energy | Gap widens |
+| 3 | Neighbourhood morphology → local amenity access | Sets up compounding |
+| 4 | Trip-demand schedule for selected land uses | Demand side |
+| 5 | Distance allocation: local vs wider access | Supply side |
+| 6 | Access delivery and penalty comparison | **Centerpiece** |
+| 7 | Pattern holds within deprivation quintiles | Rules out wealth |
+| 8 | Relationship across all LSOAs (distribution-wide) | Generalisability |
+| 9 | Aggregate cost of sprawl (18-city sample) | Policy implication |
+
+### Key References
+
+- Jacobs, J. (2000). *The Nature of Economies*. Random House. — Cities as ecosystems
+- Bettencourt, L.M.A. et al. (2007). "Growth, innovation, scaling, and the pace of life in cities." *PNAS*, 104(17). — Superlinear/sublinear scaling
+- Norman, J. et al. (2006). "Comparing high and low residential density." *J. Urban Planning*. — Functional unit matters (per m² vs per capita)
+- Newman, P. & Kenworthy, J. (1989). *Cities and Automobile Dependence*. — Density-transport energy
+- Rode, P. et al. (2014). "Cities and energy: urban morphology and residential heat-energy demand." *Env. & Planning B*. — S/V ratio and building physics
+- Few, J. et al. (2023). "The over-prediction of energy use by EPCs." *Energy & Buildings*. — SAP performance gap
+- Ewing, R. & Cervero, R. (2010). "Travel and the built environment: A meta-analysis." *JAPA*. — Destination accessibility > density
 
 ## Development Standards
 
@@ -56,68 +234,39 @@ urban-energy/
 
 5. **Testing:** Write pytest tests for all non-trivial functions. Tests should cover edge cases and validate geospatial operations with known inputs.
 
+### Script conventions
+
+All data scripts in `data/` follow this pattern:
+- Import `TEMP_DIR` and `CACHE_DIR` from `urban_energy.paths`
+- Use `download_and_cache()` to avoid re-downloading
+- Output parquet (tabular) or GeoPackage (spatial) to `temp/`
+- Print progress with step numbers `[1/N]` and summary statistics
+- Filter to England only (codes starting with "E")
+- Use `requests` with `User-Agent: urban-energy-research/1.0`
+
 ### Geospatial Best Practices
 
-1. **Coordinate Reference Systems (CRS):**
-   - Always explicitly set and validate CRS
-   - Use EPSG:27700 (British National Grid) for UK analyses requiring metric distances/areas
-   - Use EPSG:4326 (WGS84) only for data interchange
-   - Transform early, validate often: `gdf = gdf.to_crs(epsg=27700)`
-
-2. **Spatial Joins and Operations:**
-   - Prefer `sjoin` with explicit `predicate` parameter
-   - Use spatial indices: ensure `.sindex` is built for large datasets
-   - Validate geometries before operations: `gdf.geometry.is_valid`
-
-3. **Memory Efficiency:**
-   - Use appropriate dtypes (e.g., `float32` vs `float64`, categorical for string columns)
-   - Process large datasets in chunks when necessary
-   - Release memory explicitly with `del` and `gc.collect()` for large intermediates
-
-4. **Raster Operations:**
-   - Always use context managers with rasterio: `with rasterio.open(path) as src:`
-   - Respect nodata values in calculations
-   - Match raster and vector CRS before extraction
-
-5. **Reproducibility:**
-   - Set random seeds where stochastic processes are involved
-   - Log or document data source versions and access dates
-   - Use deterministic ordering in spatial operations where possible
+1. **CRS:** EPSG:27700 (British National Grid) for all analysis. EPSG:4326 only for data interchange.
+2. **Spatial Joins:** Prefer `sjoin` with explicit `predicate` parameter.
+3. **Memory:** Use appropriate dtypes, process large datasets in chunks, release with `del` and `gc.collect()`.
+4. **Raster:** Always use context managers with rasterio. Respect nodata values.
+5. **Reproducibility:** Set random seeds, document data source versions, use deterministic ordering.
 
 ### Data Handling
 
-1. **Data Provenance:** Document all data sources, licenses, and access dates in code comments or metadata files.
-
-2. **Sensitive Data:** Never commit raw data containing personal information. Use aggregated or anonymized derivatives.
-
-3. **File Paths:** Use `pathlib.Path` for all file operations. Prefer relative paths from project root.
-
-4. **Data Validation:** Validate inputs at function boundaries. Check for:
-   - Expected columns present
-   - CRS matches expectations
-   - No unexpected null values in critical fields
-   - Geometry validity
+1. **Provenance:** Document all data sources, licenses, and access dates.
+2. **Sensitive Data:** Never commit raw data containing personal information.
+3. **File Paths:** Use `pathlib.Path` for all file operations.
+4. **Validation:** Check expected columns, CRS, null values, geometry validity at function boundaries.
 
 ## Academic Writing Standards
 
-### Paper Guidelines
-
-1. **Style:** Follow formal academic conventions. Avoid contractions, colloquialisms, and first-person singular.
-
-2. **Citations:** Use author-date format (APA/Harvard style). All claims require supporting citations.
-
-3. **Precision:** Quantitative claims must specify units, confidence intervals where appropriate, and data sources.
-
-4. **Reproducibility:** Methods sections should provide sufficient detail for independent replication.
-
-5. **Structure:** Follow standard IMRaD structure (Introduction, Methods, Results, and Discussion) where applicable.
-
-### Literature Review
-
-- Critically evaluate sources; do not merely summarize
-- Identify gaps in existing research
-- Connect sources thematically rather than serially
-- Prioritize peer-reviewed sources; note preprints explicitly
+1. **Style:** Formal academic conventions. No contractions, colloquialisms, or first-person singular.
+2. **Citations:** Author-date format (APA/Harvard). All claims require supporting citations.
+3. **Precision:** Quantitative claims must specify units, confidence intervals, and data sources.
+4. **Reproducibility:** Methods must provide sufficient detail for independent replication.
+5. **Structure:** IMRaD (Introduction, Methods, Results, Discussion).
+6. **Literature Review:** Critically evaluate sources thematically, not serially. Identify gaps. Prioritise peer-reviewed; note preprints explicitly.
 
 ## Commands Reference
 
@@ -128,6 +277,19 @@ uv run pytest                # Run tests
 uv run ruff check .          # Lint code
 uv run ruff format .         # Format code
 uv run ty check              # Type check
+
+# Data pipeline
+uv run python data/download_census.py          # Census 2021
+uv run python data/download_energy_stats.py    # DESNZ energy (LSOA)
+uv run python data/download_energy_postcode.py # DESNZ energy (postcode)
+uv run python data/download_imd.py             # IMD 2025
+uv run python data/download_vehicles.py        # DVLA vehicles
+uv run python data/download_fsa.py             # FSA establishments
+uv run python data/download_naptan.py          # NaPTAN transport
+uv run python data/download_scaling.py         # BRES + GVA
+
+# Analysis
+uv run python stats/build_case.py              # Regenerate all case-one figures
 
 # Git workflow
 git status                   # Check changes
@@ -146,83 +308,9 @@ Before committing, verify:
 - [ ] `ty check` passes (or type errors are intentional/documented)
 - [ ] Tests pass: `uv run pytest`
 - [ ] CRS handling is explicit and correct
-- [ ] No hardcoded absolute paths
+- [ ] No hardcoded absolute paths (except STORAGE_DIR in paths.py)
 - [ ] No sensitive data included
 - [ ] Commit message is descriptive and follows conventional format
-
-## Core Thesis: The Trophic Layers Framework
-
-### The Argument
-
-Cities are conduits that capture energy and recycle it through layers of human interaction
-(Jacobs, 2000, "The Nature of Economies"). The measure of urban efficiency is not how much
-energy a neighbourhood consumes, but how many transactions, connections, and transformations
-that energy enables before it dissipates. This connects to Bettencourt et al.'s (2007)
-urban scaling laws: cities scale superlinearly in socioeconomic output (~N^1.15) and
-sublinearly in infrastructure (~N^0.85). Proximity is the mechanism.
-
-### The Rainforest Analogy
-
-A rainforest and a desert receive the same solar radiation per m². The difference is
-**trophic depth** — how many times energy is captured and re-used before it dissipates.
-
-- **Rainforest** (dense urban neighbourhood): Energy passes through dozens of layers —
-  canopy, understorey, epiphytes, soil biome, mycorrhizal networks. Each layer captures
-  energy from the one above. Thousands of species, millions of interactions.
-- **Desert** (suburban sprawl): Energy hits the ground and radiates straight back out.
-  One trophic level. Minimal recycling.
-
-The urban equivalent: a 1km × 1km inner-city neighbourhood has thousands of land uses,
-shops, schools, transit stops, green spaces — each a layer in the conduit. A 1km × 1km
-suburban plot has a handful of destinations. Same energy input (building + transport),
-radically different interaction depth.
-
-### The Trophic Layers (mapped to our data)
-
-Each layer captures a different dimension of how energy is recycled through the urban system:
-
-| Layer | Ecological equivalent | Urban function | Our metric |
-|-------|----------------------|----------------|------------|
-| **Physical substrate** | Soil/root network | Street network connectivity | `cc_harmonic_800`, `cc_density_800` |
-| **Commercial exchange** | Canopy photosynthesis | Places where economic transactions happen | `cc_fsa_restaurant_800_wt`, `cc_fsa_pub_800_wt`, `cc_fsa_takeaway_800_wt` |
-| **Mobility** | Seed dispersal/pollinators | Connections to wider city network | `cc_bus_800_wt`, `cc_rail_800_wt` |
-| **Recreation/restoration** | Water cycle/shade | Green space — regenerative capacity | `cc_greenspace_800_wt` |
-
-All metrics at 800m (~10 min walk), the pedestrian catchment. The `_wt` suffix means
-gravity-weighted count (more establishments closer = higher score).
-
-### The Compounding Effect
-
-The proof of concept demonstrates that each successive normalisation widens the efficiency
-gap between compact and sprawling morphologies:
-
-1. **kWh/m²** — Building physics alone. Modest difference (~1.04x detached vs flat).
-2. **kWh/capita** — Add transport, normalise per person. Gap widens (~1.76x).
-3. **kWh/capita/accessibility** — Ask what you GET for the energy. Gap widens further (~2.79x).
-
-This is the compounding: sprawl is not just energy-costly, it delivers less city per unit
-of energy consumed. The energy pours through the conduit and is not recoverable.
-
-### The PoC Structure (stats/proof_of_concept.py)
-
-| Step | Test | Role |
-|------|------|------|
-| 1. Physics signatures | Types have distinct thermal envelopes | Foundation |
-| 2. Physics → energy | Physics predicts SAP + metered energy | Foundation |
-| 3. Accessibility signatures | Types differ across ALL trophic layers | Sets up compounding |
-| 4. The compounding | Three normalisations, gap widens at each level | **Centerpiece** |
-| 5. Deprivation control | Compounding holds within deprivation quintiles | Rules out wealth |
-| 6. Lock-in | Stock composition locks inefficiency in for decades | Policy implication |
-
-### Key References
-
-- Jacobs, J. (2000). *The Nature of Economies*. Random House. — Cities as ecosystems
-- Bettencourt, L.M.A. et al. (2007). "Growth, innovation, scaling, and the pace of life in cities." *PNAS*, 104(17). — Superlinear/sublinear scaling
-- Norman, J. et al. (2006). "Comparing high and low residential density." *J. Urban Planning*. — Functional unit matters (per m² vs per capita)
-- Newman, P. & Kenworthy, J. (1989). *Cities and Automobile Dependence*. — Density-transport energy
-- Rode, P. et al. (2014). "Cities and energy: urban morphology and residential heat-energy demand." *Env. & Planning B*. — S/V ratio and building physics
-- Few, J. et al. (2023). "The over-prediction of energy use by EPCs." *Energy & Buildings*. — SAP performance gap
-- Ewing, R. & Cervero, R. (2010). "Travel and the built environment: A meta-analysis." *JAPA*. — Destination accessibility > density
 
 ## Dependencies
 
@@ -235,9 +323,22 @@ Core geospatial stack:
 
 Analysis:
 
-- **numpy:** Numerical operations
-- **pandas:** Tabular data
-- **scipy:** Statistical methods
+- **numpy / pandas:** Numerical and tabular data
+- **scipy / statsmodels:** Statistical methods and regression
+- **xgboost / shap:** ML methods (forward work)
+- **cityseer:** Network centrality and accessibility
+- **momepy:** Building morphology metrics
+- **esda / libpysal:** Spatial statistics
+
+Visualisation:
+
+- **seaborn:** Publication figures
+
+I/O:
+
+- **requests / aiohttp:** HTTP downloads
+- **openpyxl:** DESNZ XLSX parsing
+- **pyarrow:** Parquet I/O
 
 Development:
 
