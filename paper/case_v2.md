@@ -326,20 +326,49 @@ detached-dominant OAs are Band F or G.
 ### 3.3 The access energy penalty
 
 The access surface has a direct energy interpretation. Where services are beyond walking
-distance, households must drive or take public transport to reach them. The energy cost
-of this shortfall — the **access penalty** — is the additional transport energy attributable
-to poor local coverage.
+distance, households must drive or take public transport to reach them. Rather than
+assuming trip rates and decay functions, we estimate the access penalty empirically from the
+observed relationship between local service coverage and Census-reported transport behaviour.
 
-| Type | Local coverage | Access penalty (kWh/hh/yr) |
-| ---- | -------------: | -------------------------: |
-| Flat | 82.2% | 275 |
-| Terraced | 75.6% | 581 |
-| Semi | 61.4% | 1,028 |
-| Detached | 45.2% | 1,629 |
+An OLS model regresses observed transport energy on local coverage, controlling for log
+population density, household size, deprivation, building age, and IMD income domain (HC1
+robust standard errors). The local coverage coefficient is strongly significant across all
+four transport outcomes:
 
-The access penalty in detached-dominant OAs is 5.92× that in flat-dominant OAs. This
-penalty is structural: it is determined by the distance between homes and services, which
-is set by street layout and land-use configuration.
+| Observed behaviour | β(coverage) | t-stat | R² | N |
+| ------------------ | ----------: | -----: | -: | -: |
+| Car commute share | −0.321 | −130 | 0.282 | 173,812 |
+| Walk+cycle share | +0.098 | +89 | 0.262 | 173,812 |
+| Cars per household | −0.653 | −155 | 0.714 | 173,812 |
+| Transport energy (kWh/hh) | −5,155 | −78 | 0.293 | 173,812 |
+
+The cars-per-household model is particularly strong (R² = 0.71): a 10 percentage-point
+improvement in coverage is associated with 0.065 fewer cars per household, controlling for
+density, deprivation, and building age.
+
+The **access energy penalty** is the difference between each OA's predicted transport energy
+at its actual coverage and the predicted value at the compact reference level (85% coverage,
+the median of flat-dominant OAs):
+
+![Figure 7: Empirical access penalty](../stats/figures/nepi/fig_empirical_penalty.png)
+
+| Type | Coverage | Predicted transport | At 85% reference | Penalty (kWh/hh/yr) | Excess cars/hh |
+| ---- | -------: | ------------------: | ---------------: | ------------------: | -------------: |
+| Flat | 85.8% | 5,773 | 5,699 | −42 | −0.01 |
+| Terraced | 80.5% | 6,885 | 6,491 | +232 | +0.03 |
+| Semi | 70.8% | 7,850 | 7,051 | +730 | +0.09 |
+| Detached | 55.4% | 9,630 | 8,086 | **+1,525** | +0.19 |
+
+Detached-dominant OAs incur an empirical access penalty of 1,525 kWh/hh/yr — the additional
+transport energy attributable to poor local coverage, estimated from observed behaviour.
+If detached-dominant OAs had the same walkable service coverage as flat-dominant OAs, their
+predicted transport energy would fall by 1,525 kWh/hh and they would own 0.19 fewer cars
+per household.
+
+![Figure 8: Coverage vs observed transport energy](../stats/figures/nepi/fig_coverage_vs_transport.png)
+
+This penalty is structural: it is determined by the distance between homes and services,
+which is set by street layout and land-use configuration.
 
 ### 3.4 The three-surface decomposition
 
