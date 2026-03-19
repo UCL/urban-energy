@@ -308,11 +308,11 @@ percentage (0–100%).
 
 All three NEPI surfaces are expressed in a common unit — **kWh per household per year**:
 
-| Surface | Raw metric | Unit | Source |
-| ------- | ---------- | ---- | ------ |
-| **Form** | Metered building energy | kWh/hh/yr | DESNZ postcode data |
-| **Mobility** | Estimated transport energy | kWh/hh/yr | Census TS058/TS061 × ECUK intensities |
-| **Access** | Empirical access energy penalty | kWh/hh/yr | OLS: transport energy ~ coverage + controls |
+| Surface      | Raw metric                      | Unit      | Source                                      |
+| ------------ | ------------------------------- | --------- | ------------------------------------------- |
+| **Form**     | Metered building energy         | kWh/hh/yr | DESNZ postcode data                         |
+| **Mobility** | Estimated transport energy      | kWh/hh/yr | Census TS058/TS061 × ECUK intensities       |
+| **Access**   | Empirical access energy penalty | kWh/hh/yr | OLS: transport energy ~ coverage + controls |
 
 The Access surface is the empirical energy cost of poor walkable service coverage: the
 additional transport energy predicted by the OLS model (Section 3.3) relative to a compact
@@ -324,15 +324,15 @@ cost in kWh/hh/yr. Using a common energy unit eliminates the need for arbitrary 
 weighting: the surfaces weight themselves by their energy magnitude. A–G bands are assigned
 by national percentile position of the composite (lower total = better band):
 
-| Band | Percentile range | Interpretation |
-| ---- | ---------------: | -------------- |
-| A | 0–8th | Lowest neighbourhood energy cost |
-| B | 8–19th | |
-| C | 19–36th | |
-| D | 36–60th | |
-| E | 60–81st | |
-| F | 81–95th | |
-| G | 95–100th | Highest neighbourhood energy cost |
+| Band | Percentile range | Interpretation                    |
+| ---- | ---------------: | --------------------------------- |
+| A    |            0–8th | Lowest neighbourhood energy cost  |
+| B    |           8–19th |                                   |
+| C    |          19–36th |                                   |
+| D    |          36–60th |                                   |
+| E    |          60–81st |                                   |
+| F    |          81–95th |                                   |
+| G    |         95–100th | Highest neighbourhood energy cost |
 
 ### 2.7 Stratification
 
@@ -415,12 +415,12 @@ detached-dominant areas.
 
 ![Figure 4: NEPI scorecard — stacked kWh by housing type](../stats/figures/nepi/fig_nepi_scorecard.png)
 
-| Type | Form (kWh/hh) | Mobility (kWh/hh) | Access penalty (kWh/hh) | **Total (kWh/hh)** | Band |
-| ---- | ------------: | -----------------: | ----------------------: | ------------------: | :--: |
-| Flat | 10,766 | 4,412 | 0 | **15,892** | **A** |
-| Terraced | 13,022 | 6,944 | 229 | **20,842** | **D** |
-| Semi | 13,888 | 7,886 | 725 | **23,161** | **D** |
-| Detached | 15,835 | 9,122 | 1,505 | **26,996** | **F** |
+| Type     | Form (kWh/hh) | Mobility (kWh/hh) | Access penalty (kWh/hh) | **Total (kWh/hh)** | Band  |
+| -------- | ------------: | ----------------: | ----------------------: | -----------------: | :---: |
+| Flat     |        10,766 |             4,412 |                       0 |         **15,892** | **A** |
+| Terraced |        13,022 |             6,944 |                     229 |         **20,842** | **D** |
+| Semi     |        13,888 |             7,886 |                     725 |         **23,161** | **D** |
+| Detached |        15,835 |             9,122 |                   1,505 |         **26,996** | **F** |
 
 The median flat-dominant OA scores Band A (15,892 kWh/hh total); the median
 detached-dominant OA scores Band F (26,996 kWh/hh). The total gap is 11,104 kWh/hh/yr
@@ -566,15 +566,15 @@ than structural patterns. To test this, we repeat the transport analysis using C
 commute data (QS701EW, QS702EW) at OA level, mapped to 2021 OA boundaries via the ONS
 OA11→OA21 exact-fit lookup (179,004 matched OAs).
 
-| Metric | 2011 (pre-pandemic) | 2021 (COVID-affected) |
-| ------ | ------------------: | --------------------: |
-| Flat transport kWh/hh (6.04×) | 6,387 | 4,003 |
-| Detached transport kWh/hh (6.04×) | 12,713 | 9,045 |
-| **Flat/Detached ratio** | **0.50 (2.00×)** | **0.59 (1.70×)** |
-| Flat car commute share | 37.3% | ~30% |
-| Detached car commute share | 70.3% | ~51% |
-| Flat WFH share | 8.1% | ~30% |
-| Detached WFH share | 13.0% | ~35% |
+| Metric                            | 2011 (pre-pandemic) | 2021 (COVID-affected) |
+| --------------------------------- | ------------------: | --------------------: |
+| Flat transport kWh/hh (6.04×)     |               6,387 |                 4,003 |
+| Detached transport kWh/hh (6.04×) |              12,713 |                 9,045 |
+| **Flat/Detached ratio**           |    **0.50 (2.00×)** |      **0.59 (1.70×)** |
+| Flat car commute share            |               37.3% |                  ~30% |
+| Detached car commute share        |               70.3% |                  ~51% |
+| Flat WFH share                    |                8.1% |                  ~30% |
+| Detached WFH share                |               13.0% |                  ~35% |
 
 The morphology-transport gradient is **steeper** in 2011 than in 2021. The pandemic
 compressed the gradient by differentially increasing work-from-home in flat-dominant
@@ -583,7 +583,48 @@ commuting, the transport energy ratio was 2.00× (detached/flat), compared to 1.
 the COVID-affected 2021 data. The 2021 analysis is therefore conservative: the true
 steady-state gradient is likely closer to the 2011 figure.
 
-### 4.6 Regression with controls
+### 4.6 Cross-scale validation: MSOA origin-destination model
+
+The OA-level access penalty (Path 1) uses Census band midpoints for commute distances. To
+validate, we repeat the analysis at MSOA level using actual origin-destination commute flows
+(ODWP01EW, Census 2021). For each of 1.76 million commuter flows between 7,264 English
+MSOAs, we compute Euclidean distance between MSOA population-weighted centroids, giving
+actual mean commute distance per origin MSOA rather than band midpoint approximations.
+
+OD-derived median commute distance is 11.8 km — approximately twice the band-midpoint
+estimate (~5–6 km), confirming that midpoint imputation systematically understates commute
+distances (top-band truncation and within-band skew).
+
+Regressing OD-based transport energy (kWh/hh) on local coverage at MSOA level:
+
+| Variable | β | t-stat | p |
+| -------- | -: | -----: | -: |
+| Coverage | −3,479 | −4.3 | <0.001 |
+| Log density | −2,765 | −9.6 | <0.001 |
+| % not deprived | −83 | −15.2 | <0.001 |
+| % detached | −21 | −2.4 | 0.015 |
+
+R² = 0.319, N = 6,831 MSOAs. The coverage coefficient is significant and in the same
+direction as the OA-level model (Path 1: β = −5,155). The MSOA estimate is smaller in
+magnitude because MSOA averaging smooths within-MSOA coverage variation, attenuating the
+coefficient.
+
+The implied access penalty at MSOA level:
+
+| Morphology | Coverage | Transport (kWh/hh) | Access penalty (kWh/hh) |
+| ---------- | -------: | -----------------: | ----------------------: |
+| Flat-leaning | 78.3% | 3,601 | 0 |
+| Semi/Terraced | 69.4% | 4,888 | +299 |
+| Detached-leaning | 58.3% | 5,387 | +686 |
+
+The detached penalty from the MSOA OD model (+686 kWh/hh) is approximately half the
+OA-level estimate (+1,525 kWh/hh). The true penalty likely falls between the two: the OA
+model captures finer spatial variation but uses band-midpoint distances; the MSOA model uses
+actual OD distances but averages over within-MSOA variation. The convergence of both models
+in direction and order of magnitude (686–1,525 kWh/hh) supports the robustness of the
+access penalty estimate.
+
+### 4.7 Regression with controls
 
 OLS regressions with progressive controls (housing type shares with semi as reference,
 log population density, household size, deprivation, building age, IMD income domain,
