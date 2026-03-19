@@ -558,7 +558,32 @@ Excluding OAs in the bottom 10% of network density within each type changes the 
 energy gradient by less than 1% (0.675 → 0.680). The 2,400m road network buffer applied
 during processing prevents meaningful truncation bias.
 
-### 4.5 Regression with controls
+### 4.5 Census 2011 pre-pandemic validation
+
+Census 2021 was conducted during the third national lockdown (21 March 2021), raising the
+concern that the morphology-transport gradient reflects pandemic-distorted behaviour rather
+than structural patterns. To test this, we repeat the transport analysis using Census 2011
+commute data (QS701EW, QS702EW) at OA level, mapped to 2021 OA boundaries via the ONS
+OA11→OA21 exact-fit lookup (179,004 matched OAs).
+
+| Metric | 2011 (pre-pandemic) | 2021 (COVID-affected) |
+| ------ | ------------------: | --------------------: |
+| Flat transport kWh/hh (6.04×) | 6,387 | 4,003 |
+| Detached transport kWh/hh (6.04×) | 12,713 | 9,045 |
+| **Flat/Detached ratio** | **0.50 (2.00×)** | **0.59 (1.70×)** |
+| Flat car commute share | 37.3% | ~30% |
+| Detached car commute share | 70.3% | ~51% |
+| Flat WFH share | 8.1% | ~30% |
+| Detached WFH share | 13.0% | ~35% |
+
+The morphology-transport gradient is **steeper** in 2011 than in 2021. The pandemic
+compressed the gradient by differentially increasing work-from-home in flat-dominant
+(urban) OAs, where knowledge-economy workers are concentrated. Under pre-pandemic
+commuting, the transport energy ratio was 2.00× (detached/flat), compared to 1.70× in
+the COVID-affected 2021 data. The 2021 analysis is therefore conservative: the true
+steady-state gradient is likely closer to the 2011 figure.
+
+### 4.6 Regression with controls
 
 OLS regressions with progressive controls (housing type shares with semi as reference,
 log population density, household size, deprivation, building age, IMD income domain,
