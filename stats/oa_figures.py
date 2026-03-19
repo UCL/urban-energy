@@ -103,14 +103,15 @@ def _add_footnote(fig: plt.Figure, text: str) -> None:
 # -- Reusable source / methodology fragments -----------------------------------
 _SRC_BLDG = (
     "Building energy: DESNZ metered domestic gas + electricity"
-    " at LSOA level (2023). No per-building breakdown exists"
-    " -- the whole LSOA total is divided by household count."
+    " at postcode level (2024), aggregated to OA via meter-weighted means."
+    " No per-building breakdown exists"
+    " -- the whole OA total is divided by household count."
 )
 _SRC_TYPE = (
-    "Housing type: each LSOA is labelled by its dominant"
+    "Housing type: each OA is labelled by its dominant"
     " Census 2021 accommodation type (ts044, highest share)."
     " This is an ecological grouping -- bars show median"
-    " LSOA-level energy for LSOAs dominated by that type,"
+    " OA-level energy for OAs dominated by that type,"
     " not individual building energy."
 )
 _SRC_TRANSPORT = (
@@ -149,7 +150,7 @@ def save_summary_tables(lsoa: pd.DataFrame) -> None:
     Parameters
     ----------
     lsoa : pd.DataFrame
-        LSOA data with dominant_type, energy, and accessibility columns.
+        OA data with dominant_type, energy, and accessibility columns.
     """
     types = TYPE_ORDER
     valid = lsoa["transport_kwh_per_hh_est"].notna()
@@ -348,11 +349,11 @@ def fig1_building_energy(lsoa: pd.DataFrame) -> None:
     )
     _add_footnote(
         fig,
-        "(A) Each LSOA binned by dominant Census 2021"
+        "(A) Each OA binned by dominant Census 2021"
         " accommodation type (ts044, highest share)."
-        " Bars show median LSOA-level metered energy"
-        " (DESNZ) divided by household count."
-        "  (B) LSOAs split into thirds by % households"
+        " Bars show median OA-level metered energy"
+        " (DESNZ postcode-aggregated) divided by household count."
+        "  (B) OAs split into thirds by % households"
         " not deprived (Census ts011)."
         " Deprivation is the strongest confounder of"
         " building energy"
@@ -510,7 +511,7 @@ def fig2_mobility_penalty(lsoa: pd.DataFrame) -> None:
     )
     _add_footnote(
         fig,
-        "LSOAs binned by dominant Census accommodation type (ts044). "
+        "OAs binned by dominant Census accommodation type (ts044). "
         "Building: DESNZ metered gas + electricity per household. "
         f"Commute transport: {_SRC_TRANSPORT} "
         f"Overall scenario: {_SRC_TRANSPORT_TOTAL_EST} "
@@ -900,7 +901,7 @@ def fig5_access_bar(lsoa: pd.DataFrame) -> None:
     )
     _add_footnote(
         fig,
-        "Each panel shows median LSOA-level metric"
+        "Each panel shows median OA-level metric"
         " by dominant Census housing type (ts044)."
         " Error bars: IQR. Accessibility metrics:"
         " cityseer gravity-weighted counts"
@@ -1007,7 +1008,7 @@ def main(cities: list[str] | None = None) -> None:
     lsoa = compute_access_per_kwh(lsoa)
 
     print(f"\n{'=' * 70}")
-    print(f"GENERATING FIGURES ({len(lsoa):,} LSOAs)")
+    print(f"GENERATING FIGURES ({len(lsoa):,} OAs)")
     print("=" * 70)
 
     save_summary_tables(lsoa)

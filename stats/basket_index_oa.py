@@ -292,7 +292,7 @@ def _local_access_distance_share(
 
 
 def prepare_lsoa(cities: list[str] | None = None) -> pd.DataFrame:
-    """Load PoC LSOA dataset and derive basket inputs."""
+    """Load PoC OA dataset and derive basket inputs."""
     lsoa = load_and_aggregate(cities=cities)
 
     fsa_cols_local = [
@@ -1099,10 +1099,10 @@ def save_summary_tables(lsoa: pd.DataFrame, schema: pd.DataFrame) -> tuple[Path,
     return type_path, dep_path
 
 
-def save_lsoa_scores(lsoa: pd.DataFrame, schema: pd.DataFrame) -> Path:
-    """Export a slim LSOA-level scored table for inspection and mapping."""
+def save_oa_scores(lsoa: pd.DataFrame, schema: pd.DataFrame) -> Path:
+    """Export a slim OA-level scored table for inspection and mapping."""
     keep = [
-        "LSOA21CD",
+        "OA21CD",
         "city",
         "dominant_type",
         "people_per_ha",
@@ -1219,7 +1219,7 @@ def fig1_category_scores_heatmap(lsoa: pd.DataFrame, schema: pd.DataFrame) -> Pa
         vmin=0,
         vmax=1,
         linewidths=0.5,
-        cbar_kws={"label": "Share of LSOAs with local access <= 800m"},
+        cbar_kws={"label": "Share of OAs with local access <= 800m"},
         ax=ax,
     )
     ax.set_title(
@@ -1681,7 +1681,7 @@ def write_summary_document(
         "\n"
         "This is the **generated data-and-figures appendix** for the"
         " pilot case note on morphology-\n"
-        "linked energy cost of access at LSOA level.\n"
+        "linked energy cost of access at OA level.\n"
         "\n"
         "Use this alongside the canonical narrative case document:\n"
         "\n"
@@ -1697,7 +1697,7 @@ def write_summary_document(
         "\n"
         "## Status (What v1 Is)\n"
         "\n"
-        f"- **Pilot geography:** {total_n:,} LSOAs across"
+        f"- **Pilot geography:** {total_n:,} OAs across"
         f" {int(n_cities)} English cities\n"
         "- **Accessibility basis:** trip-type distance-decay"
         " local-access model from nearest-network distance,"
@@ -1771,19 +1771,19 @@ def write_summary_document(
         "The pilot reproduces the core morphology lock-in"
         " pattern under a basket formulation:\n"
         "\n"
-        f"- Detached-dominated LSOAs have"
+        f"- Detached-dominated OAs have"
         f" **{detached_vs_flat_energy:.2f}x** the median total"
-        f" household energy of flat-dominant LSOAs\n"
-        f"- Flat-dominant LSOAs have"
+        f" household energy of flat-dominant OAs\n"
+        f"- Flat-dominant OAs have"
         f" **{flat_vs_det_basket:.2f}x** the median basket"
-        f" attainment of detached-dominant LSOAs\n"
-        f"- Detached-dominated LSOAs face"
+        f" attainment of detached-dominant OAs\n"
+        f"- Detached-dominated OAs face"
         f" **{detached_vs_flat_cost:.2f}x** higher energy cost"
         f" of access (`kWh / basket point`) than"
-        f" flat-dominant LSOAs\n"
-        f"- Equivalently, flat-dominant LSOAs deliver"
+        f" flat-dominant OAs\n"
+        f"- Equivalently, flat-dominant OAs deliver"
         f" **{flat_vs_det_yield:.2f}x** more basket points"
-        f" per 10 MWh than detached-dominant LSOAs\n"
+        f" per 10 MWh than detached-dominant OAs\n"
         "\n"
         "## Narrative Walkthrough"
         " (Figures + Interpretation)\n"
@@ -1805,10 +1805,10 @@ def write_summary_document(
         "\n"
         "- The morphology gradient is visible across multiple"
         " categories, not just one amenity type.\n"
-        "- Compact forms (flat- and terraced-dominant LSOAs)"
+        "- Compact forms (flat- and terraced-dominant OAs)"
         " perform strongly across more basket\n"
         "  categories.\n"
-        "- Detached-dominant LSOAs score lower across most"
+        "- Detached-dominant OAs score lower across most"
         " core categories, especially local\n"
         "  food/services and primary care access.\n"
         "- Rail is intentionally a low-weight support category"
@@ -1834,14 +1834,14 @@ def write_summary_document(
         "- The energy gap alone is meaningful but limited.\n"
         "- Once local basket attainment is included, the"
         " difference becomes much larger.\n"
-        "- Detached-dominant LSOAs show both **higher total"
+        "- Detached-dominant OAs show both **higher total"
         " energy** and **lower basket attainment**,\n"
         "  so the **energy cost of access** rises sharply.\n"
         "\n"
         "### 3. Is this only an artifact of medians?\n"
         "\n"
         "No. The KDE contour plot shows the relationship"
-        " across all pilot LSOAs and preserves the\n"
+        " across all pilot OAs and preserves the\n"
         "same visual language as the existing three-surfaces"
         " figures.\n"
         "\n"
@@ -1851,9 +1851,9 @@ def write_summary_document(
         "\n"
         "- The type-specific distributions occupy different"
         " regions of the energy/local-coverage plane.\n"
-        "- Flat- and terraced-dominant LSOAs cluster toward"
+        "- Flat- and terraced-dominant OAs cluster toward"
         " **higher local trip coverage at lower energy**.\n"
-        "- Semi- and detached-dominant LSOAs shift toward"
+        "- Semi- and detached-dominant OAs shift toward"
         " **lower local trip coverage and higher energy**.\n"
         "- The morphology pattern is distributed, not just"
         " a result of a few extreme outliers.\n"
@@ -1868,7 +1868,7 @@ def write_summary_document(
         "\n"
         f"{fig_dep}\n"
         "\n"
-        "## Results by Dominant Housing Type (Median LSOA)\n"
+        "## Results by Dominant Housing Type (Median OA)\n"
         "\n"
         f"{type_md}\n"
         "\n"
@@ -1956,7 +1956,7 @@ def main(cities: list[str] | None = None) -> None:
 
     schema_path = save_schema_table(schema)
     type_path, dep_path = save_summary_tables(lsoa, schema)
-    lsoa_scores_path = save_lsoa_scores(lsoa, schema)
+    oa_scores_path = save_oa_scores(lsoa, schema)
     fig_paths: list[Path] = []
     fig_paths.append(fig1_category_scores_heatmap(lsoa, schema))
     fig_paths.append(fig2_basket_and_cost_bars(lsoa))
@@ -1969,7 +1969,7 @@ def main(cities: list[str] | None = None) -> None:
     print(f"  Schema table: {schema_path}")
     print(f"  Type summary: {type_path}")
     print(f"  Deprivation summary: {dep_path}")
-    print(f"  LSOA scores: {lsoa_scores_path}")
+    print(f"  OA scores: {oa_scores_path}")
     for p in fig_paths:
         print(f"  Figure: {p}")
     print(f"  Figures/tables dir: {OUT_DIR}")

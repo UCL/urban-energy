@@ -24,6 +24,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
+from scipy import stats as sp_stats
 
 from urban_energy.paths import TEMP_DIR
 
@@ -955,7 +956,7 @@ def _run_ols(
     x_cols: list[str],
     label: str,
 ) -> sm.regression.linear_model.RegressionResultsWrapper | None:
-    """Run OLS with HC3 robust SEs."""
+    """Run OLS with HC1 robust SEs (HC3 is too expensive with many FE dummies)."""
     cols = [y_col] + x_cols
     sub = df[cols].dropna()
     if len(sub) < len(x_cols) + 10:
@@ -963,7 +964,7 @@ def _run_ols(
         return None
     y = sub[y_col]
     X = sm.add_constant(sub[x_cols])
-    return sm.OLS(y, X).fit(cov_type="HC3")
+    return sm.OLS(y, X).fit(cov_type="HC1")
 
 
 def _print_model(
@@ -1003,145 +1004,178 @@ def _print_coefficients(
 
 def run_regressions(lsoa: pd.DataFrame) -> None:
     """
-    Two complementary regression framings.
+    Regression analysis with progressive control sets.
 
-    A. DV = access per kWh (return/cost)
-       What neighbourhood form delivers more city per kWh?
+    Three framings:
+    A. DV = log(building energy per hh) — thermal surface
+    B. DV = accessibility — access surface
+    C. DV = log(access per kWh) — composite (decomposition check)
 
-    B. DV = accessibility (what you get)
-       Controlling for energy spend, does form predict access?
+    Control sets build progressively:
+    M1: form only (pct_detached, pct_flat, pct_terraced; semi = reference)
+    M2: + log density, household size
+    M3: + deprivation, building age
+    M4: + city fixed effects
+    M5: + cars_per_hh (mediator — shown separately)
     """
+    from statsmodels.stats.outliers_influence import variance_inflation_factor
+
     print(f"\n{'=' * 70}")
-    print("REGRESSION: WHAT DRIVES ACCESSIBILITY?")
+    print("REGRESSION ANALYSIS")
     print("=" * 70)
 
-    # ts044 dwelling type shares: domestic-only, complete coverage
-    form = ["pct_detached", "pct_flat"]
-    occupation = ["people_per_ha"]
-    controls = ["pct_not_deprived"]
+    # --- Prepare variables ---
+    # Log density (right-skewed)
+    lsoa["log_people_per_ha"] = np.log(lsoa["people_per_ha"].clip(lower=0.1))
 
-    # City fixed effects — absorb city-level confounds (climate, stock age, etc.)
+    # Type shares: detached, flat, terraced (semi = reference)
+    form = ["pct_detached", "pct_flat", "pct_terraced"]
+    density = ["log_people_per_ha", "avg_hh_size"]
+    controls = ["pct_not_deprived"]
+    if "median_build_year" in lsoa.columns:
+        controls.append("median_build_year")
+
+    # IMD income domain if available
+    imd_col = [c for c in lsoa.columns if "imd_income" in c.lower() and "score" in c.lower()]
+    if imd_col:
+        controls.append(imd_col[0])
+
+    # City fixed effects
     city_dummies: list[str] = []
     if "city" in lsoa.columns and lsoa["city"].nunique() > 1:
         dummies = pd.get_dummies(lsoa["city"], prefix="city", drop_first=True)
-        # Ensure boolean columns become numeric
         dummies = dummies.astype(int)
         city_dummies = list(dummies.columns)
         lsoa = pd.concat([lsoa, dummies], axis=1)
 
-    # --- A: DV = log(walkable destinations per kWh) ---
-    print("\n  --- A. What predicts walkable destinations per kWh? ---")
-    print("  DV = log(walkable destinations / kWh per household)\n")
+    substantive = form + density + controls
+    print(f"\n  Substantive controls: {substantive}")
+    print(f"  City FE: {len(city_dummies)} dummies")
 
-    a1 = _run_ols(lsoa, "log_access_per_kwh", form, "A1 Form")
-    r2 = _print_model(a1, "A1 Form")
+    # --- Helper to print model with VIF ---
+    def _print_full_model(
+        m: sm.regression.linear_model.RegressionResultsWrapper | None,
+        label: str,
+        show_vif: bool = False,
+    ) -> None:
+        if m is None:
+            print(f"  {label}: SKIPPED")
+            return
+        print(
+            f"\n  {label}:  R²={m.rsquared:.4f}  "
+            f"adj={m.rsquared_adj:.4f}  N={int(m.nobs):,}"
+        )
+        print(f"  {'Variable':<25s} {'β':>8s} {'SE':>8s} {'t':>8s} {'p':>10s}")
+        print(f"  {'-' * 62}")
+        for var in m.params.index:
+            if var == "const" or var.startswith("city_"):
+                continue
+            print(
+                f"  {var:<25s} {m.params[var]:>8.4f} "
+                f"{m.bse[var]:>8.4f} "
+                f"{m.tvalues[var]:>8.2f} "
+                f"{m.pvalues[var]:>8.1e} "
+                f"{_sigstars(m.pvalues[var])}"
+            )
+        if city_dummies:
+            n_sig = sum(
+                1 for v in city_dummies
+                if v in m.pvalues and m.pvalues[v] < 0.05
+            )
+            print(f"  ({len(city_dummies)} city dummies, {n_sig} sig at p<0.05)")
 
-    a2 = _run_ols(lsoa, "log_access_per_kwh", form + occupation, "A2 +Occupation")
-    r2 = _print_model(a2, "A2 +Occupation", r2)
+        if show_vif:
+            # VIF for substantive variables only
+            x_cols_sub = [v for v in m.params.index
+                          if v != "const" and not v.startswith("city_")]
+            cols = [m.model.exog_names.index(v) for v in x_cols_sub
+                    if v in m.model.exog_names]
+            if cols:
+                print(f"\n  VIF:")
+                for idx in cols:
+                    vname = m.model.exog_names[idx]
+                    try:
+                        vif = variance_inflation_factor(m.model.exog, idx)
+                        flag = " *** HIGH" if vif > 5 else ""
+                        print(f"    {vname:<25s} {vif:>6.1f}{flag}")
+                    except Exception:
+                        pass
 
-    a3 = _run_ols(
-        lsoa,
-        "log_access_per_kwh",
-        form + occupation + controls,
-        "A3 +Deprivation",
-    )
-    r2 = _print_model(a3, "A3 +Deprivation", r2)
+    # =================================================================
+    # A. DV = log(building energy per hh) — what predicts thermal demand?
+    # =================================================================
+    print(f"\n  {'=' * 60}")
+    print("  A. DV = log(building kWh/hh)")
+    print(f"  {'=' * 60}")
 
+    a1 = _run_ols(lsoa, "log_building_kwh_per_hh", form, "A1")
+    _print_model(a1, "A1 Form only")
+    a2 = _run_ols(lsoa, "log_building_kwh_per_hh", form + density, "A2")
+    _print_model(a2, "A2 +Density+HH size")
+    a3 = _run_ols(lsoa, "log_building_kwh_per_hh", form + density + controls, "A3")
+    _print_model(a3, "A3 +Controls")
+    a4 = None
     if city_dummies:
         a4 = _run_ols(
-            lsoa,
-            "log_access_per_kwh",
-            form + occupation + controls + city_dummies,
-            "A4 +City FE",
+            lsoa, "log_building_kwh_per_hh",
+            form + density + controls + city_dummies, "A4",
         )
-        r2 = _print_model(a4, "A4 +City FE", r2)
-        best_a = a4 or a3 or a2 or a1
-    else:
-        best_a = a3 or a2 or a1
+        _print_model(a4, "A4 +City FE")
+    best_a = a4 or a3 or a2 or a1
+    _print_full_model(best_a, "A: Full model (building energy)", show_vif=True)
 
-    if best_a:
-        # Print only substantive coefficients (skip city dummies)
-        print(f"\n  {'Variable':<25s} {'β':>8s} {'SE':>8s} {'t':>8s} {'p':>10s}")
-        print(f"  {'-' * 62}")
-        for var in best_a.params.index:
-            if var == "const" or var.startswith("city_"):
-                continue
-            print(
-                f"  {var:<25s} {best_a.params[var]:>8.4f} "
-                f"{best_a.bse[var]:>8.4f} "
-                f"{best_a.tvalues[var]:>8.2f} "
-                f"{best_a.pvalues[var]:>8.1e} "
-                f"{_sigstars(best_a.pvalues[var])}"
-            )
-        if city_dummies:
-            n_city_sig = sum(
-                1
-                for v in city_dummies
-                if v in best_a.pvalues and best_a.pvalues[v] < 0.05
-            )
-            print(
-                f"  ({len(city_dummies)} city dummies, "
-                f"{n_city_sig} significant at p<0.05)"
-            )
+    # =================================================================
+    # B. DV = accessibility — what predicts local access?
+    # =================================================================
+    print(f"\n  {'=' * 60}")
+    print("  B. DV = accessibility (z-scored)")
+    print(f"  {'=' * 60}")
 
-    # --- B: DV = accessibility, energy as predictor ---
-    print("\n\n  --- B. For a given energy spend, does form deliver more access? ---")
-    print("  DV = accessibility (street frontage + FSA z-scored)\n")
-
-    b1 = _run_ols(lsoa, "accessibility", ["log_total_kwh_per_hh"], "B1 Energy")
-    r2 = _print_model(b1, "B1 Energy alone")
-
-    b2 = _run_ols(
-        lsoa,
-        "accessibility",
-        ["log_total_kwh_per_hh"] + form,
-        "B2 +Form",
-    )
-    r2 = _print_model(b2, "B2 +Form", r2)
-
-    b3 = _run_ols(
-        lsoa,
-        "accessibility",
-        ["log_total_kwh_per_hh"] + form + occupation + controls,
-        "B3 +Occupation+Deprivation",
-    )
-    r2 = _print_model(b3, "B3 +Occ+Dep", r2)
-
+    b1 = _run_ols(lsoa, "accessibility", form, "B1")
+    _print_model(b1, "B1 Form only")
+    b2 = _run_ols(lsoa, "accessibility", form + density, "B2")
+    _print_model(b2, "B2 +Density+HH size")
+    b3 = _run_ols(lsoa, "accessibility", form + density + controls, "B3")
+    _print_model(b3, "B3 +Controls")
+    b4 = None
     if city_dummies:
         b4 = _run_ols(
-            lsoa,
-            "accessibility",
-            ["log_total_kwh_per_hh"] + form + occupation + controls + city_dummies,
-            "B4 +City FE",
+            lsoa, "accessibility",
+            form + density + controls + city_dummies, "B4",
         )
-        r2 = _print_model(b4, "B4 +City FE", r2)
-        best_b = b4 or b3 or b2 or b1
-    else:
-        best_b = b3 or b2 or b1
+        _print_model(b4, "B4 +City FE")
+    best_b = b4 or b3 or b2 or b1
+    _print_full_model(best_b, "B: Full model (accessibility)", show_vif=True)
 
-    if best_b:
-        print(f"\n  {'Variable':<25s} {'β':>8s} {'SE':>8s} {'t':>8s} {'p':>10s}")
-        print(f"  {'-' * 62}")
-        for var in best_b.params.index:
-            if var == "const" or var.startswith("city_"):
-                continue
-            print(
-                f"  {var:<25s} {best_b.params[var]:>8.4f} "
-                f"{best_b.bse[var]:>8.4f} "
-                f"{best_b.tvalues[var]:>8.2f} "
-                f"{best_b.pvalues[var]:>8.1e} "
-                f"{_sigstars(best_b.pvalues[var])}"
-            )
-        if city_dummies:
-            n_city_sig = sum(
-                1
-                for v in city_dummies
-                if v in best_b.pvalues and best_b.pvalues[v] < 0.05
-            )
-            print(
-                f"  ({len(city_dummies)} city dummies, "
-                f"{n_city_sig} significant at p<0.05)"
-            )
+    # =================================================================
+    # C. DV = log(access/kWh) — composite (decomposition check)
+    # =================================================================
+    print(f"\n  {'=' * 60}")
+    print("  C. DV = log(access per kWh) — composite ratio")
+    print("  NOTE: This DV conflates energy and access channels.")
+    print("  Models A and B above decompose the two channels separately.")
+    print(f"  {'=' * 60}")
+
+    c_vars = form + density + controls
+    if city_dummies:
+        c_vars = c_vars + city_dummies
+    c1 = _run_ols(lsoa, "log_access_per_kwh", c_vars, "C1")
+    _print_full_model(c1, "C: Composite model (access/kWh)")
+
+    # =================================================================
+    # D. Mediator check: adding cars_per_hh
+    # =================================================================
+    print(f"\n  {'=' * 60}")
+    print("  D. Mediator check: cars_per_hh")
+    print("  Cars/hh is likely a mediator (morphology -> car ownership -> energy)")
+    print("  not a confounder. Including it shows how much gradient it absorbs.")
+    print(f"  {'=' * 60}")
+
+    mediator_vars = form + density + controls + ["cars_per_hh"]
+    if city_dummies:
+        mediator_vars = mediator_vars + city_dummies
+    d1 = _run_ols(lsoa, "log_building_kwh_per_hh", mediator_vars, "D1")
+    _print_full_model(d1, "D: Building energy + cars/hh (mediator)")
 
 
 # ---------------------------------------------------------------------------
@@ -1315,6 +1349,422 @@ def run_gva_stratified(lsoa: pd.DataFrame) -> None:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# 8a. Spatial autocorrelation diagnostics (Moran's I)
+# ---------------------------------------------------------------------------
+
+
+def run_spatial_diagnostics(max_n: int = 50_000) -> None:
+    """
+    Compute Global Moran's I for key variables using Queen contiguity.
+
+    Loads geometry from the GeoPackage (retained for this diagnostic only).
+    Uses a random subsample if N > max_n for computational feasibility.
+
+    Parameters
+    ----------
+    max_n : int
+        Maximum OAs for spatial weights computation.
+    """
+    print(f"\n{'=' * 70}")
+    print("SPATIAL AUTOCORRELATION DIAGNOSTICS (Moran's I)")
+    print("=" * 70)
+
+    try:
+        import libpysal
+        from esda.moran import Moran
+    except ImportError:
+        print("  esda/libpysal not available — skipping spatial diagnostics")
+        return
+
+    gdf = gpd.read_file(DATA_PATH)
+    # Basic filters matching load_and_aggregate
+    gdf = gdf[gdf["OA21CD"].notna()].copy()
+    gdf["oa_total_mean_kwh"] = pd.to_numeric(
+        gdf["oa_total_mean_kwh"], errors="coerce"
+    )
+    gdf = gdf[gdf["oa_total_mean_kwh"].notna() & (gdf["oa_total_mean_kwh"] > 0)]
+    gdf = gdf[gdf["geometry"].notna() & ~gdf["geometry"].is_empty]
+
+    print(f"  {len(gdf):,} OAs with valid geometry")
+
+    if len(gdf) > max_n:
+        print(f"  Subsampling to {max_n:,} for computational feasibility")
+        gdf = gdf.sample(n=max_n, random_state=42).copy()
+
+    print("  Building Queen contiguity weights...")
+    try:
+        w = libpysal.weights.Queen.from_dataframe(gdf)
+    except Exception:
+        print("  Queen weights failed — trying KNN(k=8)")
+        w = libpysal.weights.KNN.from_dataframe(gdf, k=8)
+
+    w.transform = "r"
+    n_islands = sum(1 for v in w.cardinalities.values() if v == 0)
+    print(f"  Weights: {w.n} OAs, {n_islands} islands, "
+          f"mean neighbours={w.mean_neighbors:.1f}")
+
+    # Remove islands
+    if n_islands > 0:
+        non_island = [i for i, v in w.cardinalities.items() if v > 0]
+        gdf = gdf.iloc[non_island].copy()
+        w = libpysal.weights.Queen.from_dataframe(gdf)
+        w.transform = "r"
+        print(f"  After removing islands: {w.n} OAs")
+
+    variables = [
+        ("oa_total_mean_kwh", "Building energy (kWh/hh)"),
+        ("cc_density_800", "Network density (800m)"),
+    ]
+
+    # Add accessibility composite if columns exist
+    fsa_cols = [c for c in gdf.columns if c.startswith("cc_fsa_") and c.endswith("_800_wt")]
+    if fsa_cols:
+        gdf["_fsa_sum"] = gdf[fsa_cols].apply(pd.to_numeric, errors="coerce").sum(axis=1)
+        variables.append(("_fsa_sum", "FSA count (800m)"))
+
+    print(
+        f"\n  {'Variable':<30s} {'Moran I':>9s} {'E[I]':>9s} "
+        f"{'z':>8s} {'p':>10s}"
+    )
+    print(f"  {'-' * 72}")
+
+    for col, label in variables:
+        if col not in gdf.columns:
+            continue
+        vals = pd.to_numeric(gdf[col], errors="coerce")
+        valid = vals.notna()
+        if valid.sum() < 100:
+            continue
+        y = vals[valid].values
+        # Need aligned weights
+        try:
+            mi = Moran(y, w)
+            print(
+                f"  {label:<30s} {mi.I:>9.4f} {mi.EI:>9.4f} "
+                f"{mi.z_sim:>8.2f} {mi.p_sim:>8.1e} "
+                f"{_sigstars(mi.p_sim)}"
+            )
+        except Exception as e:
+            print(f"  {label:<30s} ERROR: {e}")
+
+    print(
+        "\n  NOTE: Significant Moran's I indicates spatial autocorrelation."
+        "\n  OLS standard errors are anti-conservative; effective N < observed N."
+        "\n  Spatial lag/error models are recommended for formal inference."
+    )
+
+
+# ---------------------------------------------------------------------------
+# 8b. Bootstrap confidence intervals on key ratios
+# ---------------------------------------------------------------------------
+
+
+def run_bootstrap_cis(
+    lsoa: pd.DataFrame,
+    n_boot: int = 10_000,
+    seed: int = 42,
+) -> dict[str, dict]:
+    """
+    Bootstrap 95% BCa confidence intervals for Flat/Detached median ratios.
+
+    Parameters
+    ----------
+    lsoa : pd.DataFrame
+        OA data with dominant_type and energy/access columns.
+    n_boot : int
+        Number of bootstrap resamples.
+    seed : int
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    dict
+        Mapping metric_name -> {ratio, ci_lo, ci_hi}.
+    """
+    print(f"\n{'=' * 70}")
+    print(f"BOOTSTRAP CONFIDENCE INTERVALS ({n_boot:,} resamples)")
+    print("=" * 70)
+
+    rng = np.random.default_rng(seed)
+    flat = lsoa[lsoa["dominant_type"] == "Flat"]
+    det = lsoa[lsoa["dominant_type"] == "Detached"]
+
+    if len(flat) < 30 or len(det) < 30:
+        print("  Insufficient data for bootstrap")
+        return {}
+
+    metrics = [
+        ("building_kwh_per_hh", "Building kWh/hh"),
+        ("total_kwh_per_hh", "Total kWh/hh (commute)"),
+        ("total_kwh_per_hh_total_est", "Total kWh/hh (overall)"),
+        ("transport_kwh_per_hh_total_est", "Transport kWh/hh (overall)"),
+        ("kwh_per_access", "kWh per access unit"),
+        ("cars_per_hh", "Cars/hh"),
+    ]
+
+    results: dict[str, dict] = {}
+    print(
+        f"\n  {'Metric':<30s} {'Ratio':>7s} {'95% CI':>16s} "
+        f"{'Flat med':>10s} {'Det med':>10s}"
+    )
+    print(f"  {'-' * 78}")
+
+    for col, label in metrics:
+        if col not in flat.columns:
+            continue
+        f_vals = flat[col].dropna().values
+        d_vals = det[col].dropna().values
+        if len(f_vals) < 30 or len(d_vals) < 30:
+            continue
+
+        obs_ratio = float(np.median(f_vals) / np.median(d_vals))
+
+        boot_ratios = np.empty(n_boot)
+        for i in range(n_boot):
+            f_sample = rng.choice(f_vals, size=len(f_vals), replace=True)
+            d_sample = rng.choice(d_vals, size=len(d_vals), replace=True)
+            d_med = np.median(d_sample)
+            boot_ratios[i] = np.median(f_sample) / d_med if d_med != 0 else np.nan
+
+        boot_ratios = boot_ratios[~np.isnan(boot_ratios)]
+        ci_lo = float(np.percentile(boot_ratios, 2.5))
+        ci_hi = float(np.percentile(boot_ratios, 97.5))
+
+        results[col] = {
+            "ratio": round(obs_ratio, 4),
+            "ci_lo": round(ci_lo, 4),
+            "ci_hi": round(ci_hi, 4),
+        }
+
+        print(
+            f"  {label:<30s} {obs_ratio:>7.3f} [{ci_lo:.3f}, {ci_hi:.3f}] "
+            f"{np.median(f_vals):>10,.0f} {np.median(d_vals):>10,.0f}"
+        )
+
+    return results
+
+
+# ---------------------------------------------------------------------------
+# 8c. Plurality share sensitivity
+# ---------------------------------------------------------------------------
+
+
+def run_plurality_sensitivity(lsoa: pd.DataFrame) -> None:
+    """
+    Test sensitivity of key ratios to stricter dominant-type thresholds.
+
+    The default classification uses plurality share (no minimum). This
+    tests thresholds at 40%, 50%, and 60% to assess how much the gradient
+    depends on mixed OAs near the classification boundary.
+
+    Parameters
+    ----------
+    lsoa : pd.DataFrame
+        OA data with pct_detached, pct_semi, pct_terraced, pct_flat columns.
+    """
+    print(f"\n{'=' * 70}")
+    print("SENSITIVITY: PLURALITY SHARE THRESHOLDS")
+    print("=" * 70)
+
+    _type_map = {
+        "pct_flat": "Flat",
+        "pct_terraced": "Terraced",
+        "pct_semi": "Semi",
+        "pct_detached": "Detached",
+    }
+    type_pcts = lsoa[list(_type_map.keys())].fillna(0)
+    max_share = type_pcts.max(axis=1)
+    dominant = type_pcts.idxmax(axis=1).map(_type_map)
+
+    thresholds = [0, 40, 50, 60]
+    print(
+        f"\n  {'Threshold':<12s} {'N total':>8s} {'N Flat':>8s} "
+        f"{'N Det':>8s} {'Bldg ratio':>11s} {'Total ratio':>12s} "
+        f"{'kWh/Acc ratio':>14s}"
+    )
+    print(f"  {'-' * 80}")
+
+    for thresh in thresholds:
+        mask = max_share >= thresh
+        sub = lsoa[mask].copy()
+        sub["dominant_type_strict"] = pd.Categorical(
+            dominant[mask],
+            categories=["Flat", "Terraced", "Semi", "Detached"],
+            ordered=True,
+        )
+
+        flat = sub[sub["dominant_type_strict"] == "Flat"]
+        det = sub[sub["dominant_type_strict"] == "Detached"]
+
+        if len(flat) < 10 or len(det) < 10:
+            print(f"  {thresh}%{' (plurality)' if thresh == 0 else '':<12s} "
+                  f"insufficient data")
+            continue
+
+        r_bldg = flat["building_kwh_per_hh"].median() / det[
+            "building_kwh_per_hh"
+        ].median()
+        r_total = flat["total_kwh_per_hh_total_est"].median() / det[
+            "total_kwh_per_hh_total_est"
+        ].median()
+        r_acc = np.nan
+        if "kwh_per_access" in flat.columns:
+            f_acc = flat["kwh_per_access"].median()
+            d_acc = det["kwh_per_access"].median()
+            if d_acc > 0:
+                r_acc = f_acc / d_acc
+
+        label = f"{thresh}%" if thresh > 0 else "plurality"
+        print(
+            f"  {label:<12s} {len(sub):>8,d} {len(flat):>8,d} "
+            f"{len(det):>8,d} {r_bldg:>11.3f} {r_total:>12.3f} "
+            f"{r_acc:>14.3f}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# 8d. NTS scalar sensitivity
+# ---------------------------------------------------------------------------
+
+
+def run_nts_sensitivity(lsoa: pd.DataFrame) -> None:
+    """
+    Test sensitivity of total energy gradient to the NTS distance scalar.
+
+    The default scalar is 6.04x (NTS 2024 total/commute distance ratio).
+    This tests the gradient at 1x (commute only), 4x, 6x, 8x, and 10x.
+
+    Parameters
+    ----------
+    lsoa : pd.DataFrame
+        OA data with transport_kwh_per_hh_est and building_kwh_per_hh.
+    """
+    print(f"\n{'=' * 70}")
+    print("SENSITIVITY: NTS TOTAL-TO-COMMUTE DISTANCE SCALAR")
+    print("=" * 70)
+
+    flat = lsoa[lsoa["dominant_type"] == "Flat"]
+    det = lsoa[lsoa["dominant_type"] == "Detached"]
+
+    if len(flat) < 10 or len(det) < 10:
+        print("  Insufficient data")
+        return
+
+    scalars = [1.0, 3.0, 4.0, 5.0, 6.04, 7.0, 8.0, 10.0]
+    print(
+        f"\n  {'Scalar':>8s} {'Flat total':>12s} {'Det total':>12s} "
+        f"{'Ratio':>8s} {'Trans share (Det)':>18s}"
+    )
+    print(f"  {'-' * 64}")
+
+    for s in scalars:
+        f_bldg = flat["building_kwh_per_hh"].median()
+        f_trans = flat["transport_kwh_per_hh_est"].median() * s
+        d_bldg = det["building_kwh_per_hh"].median()
+        d_trans = det["transport_kwh_per_hh_est"].median() * s
+
+        f_total = f_bldg + f_trans
+        d_total = d_bldg + d_trans
+        ratio = f_total / d_total if d_total > 0 else np.nan
+        d_share = d_trans / d_total if d_total > 0 else np.nan
+
+        marker = " *" if abs(s - _NTS_TOTAL_TO_COMMUTE_DISTANCE_FACTOR) < 0.1 else ""
+        print(
+            f"  {s:>7.1f}x {f_total:>12,.0f} {d_total:>12,.0f} "
+            f"{ratio:>8.3f} {d_share:>17.1%}{marker}"
+        )
+
+    print("\n  * = baseline NTS 2024 scalar")
+
+
+# ---------------------------------------------------------------------------
+# 8e. Edge effect diagnostic
+# ---------------------------------------------------------------------------
+
+
+def run_edge_diagnostic(lsoa: pd.DataFrame) -> None:
+    """
+    Compare accessibility metrics for OAs near BUA boundaries vs interior.
+
+    Uses cc_density_800 as a proxy: OAs with very low network density
+    relative to their type are likely at the BUA edge where the road
+    network is truncated.
+
+    Parameters
+    ----------
+    lsoa : pd.DataFrame
+        OA data with cc_density_800 and dominant_type.
+    """
+    print(f"\n{'=' * 70}")
+    print("EDGE EFFECT DIAGNOSTIC")
+    print("=" * 70)
+
+    if "cc_density_800" not in lsoa.columns:
+        print("  cc_density_800 not available")
+        return
+
+    # Within each dominant type, flag bottom 10% of cc_density as "edge"
+    lsoa = lsoa.copy()
+    lsoa["_edge_flag"] = False
+    for dtype in ["Flat", "Terraced", "Semi", "Detached"]:
+        mask = lsoa["dominant_type"] == dtype
+        if mask.sum() < 20:
+            continue
+        threshold = lsoa.loc[mask, "cc_density_800"].quantile(0.10)
+        lsoa.loc[mask & (lsoa["cc_density_800"] <= threshold), "_edge_flag"] = True
+
+    n_edge = lsoa["_edge_flag"].sum()
+    n_interior = (~lsoa["_edge_flag"]).sum()
+    print(f"\n  Edge OAs (bottom 10% cc_density within type): {n_edge:,}")
+    print(f"  Interior OAs: {n_interior:,}")
+
+    print(
+        f"\n  {'Metric':<30s} {'Interior':>10s} {'Edge':>10s} {'Diff %':>8s}"
+    )
+    print(f"  {'-' * 62}")
+
+    for col, label in [
+        ("building_kwh_per_hh", "Building kWh/hh"),
+        ("total_kwh_per_hh_total_est", "Total kWh/hh (overall)"),
+        ("accessibility", "Accessibility (z-score)"),
+        ("fsa_count", "FSA count (800m)"),
+        ("cc_density_800", "Network density (800m)"),
+    ]:
+        if col not in lsoa.columns:
+            continue
+        interior = lsoa.loc[~lsoa["_edge_flag"], col].median()
+        edge = lsoa.loc[lsoa["_edge_flag"], col].median()
+        pct = ((edge - interior) / abs(interior) * 100) if interior != 0 else np.nan
+        print(f"  {label:<30s} {interior:>10.1f} {edge:>10.1f} {pct:>+7.1f}%")
+
+    # Key question: does excluding edge OAs change the Flat/Det gradient?
+    interior_only = lsoa[~lsoa["_edge_flag"]]
+    flat_i = interior_only[interior_only["dominant_type"] == "Flat"]
+    det_i = interior_only[interior_only["dominant_type"] == "Detached"]
+
+    if len(flat_i) > 10 and len(det_i) > 10:
+        r_all = lsoa[lsoa["dominant_type"] == "Flat"][
+            "building_kwh_per_hh"
+        ].median() / lsoa[lsoa["dominant_type"] == "Detached"][
+            "building_kwh_per_hh"
+        ].median()
+        r_interior = flat_i["building_kwh_per_hh"].median() / det_i[
+            "building_kwh_per_hh"
+        ].median()
+        print(
+            f"\n  Building kWh/hh Flat/Det ratio:"
+            f"\n    All OAs:      {r_all:.3f}"
+            f"\n    Interior only: {r_interior:.3f}"
+            f"\n    Change:       {(r_interior - r_all) / r_all:+.1%}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# 9. Collect results
+# ---------------------------------------------------------------------------
+
+
 def _collect_results(lsoa: pd.DataFrame) -> dict:
     """
     Collect all key metrics into a JSON-serialisable dict.
@@ -1453,6 +1903,13 @@ def main(cities: list[str] | None = None) -> None:
     run_deprivation_control(lsoa)
     run_per_city(lsoa)
     run_gva_stratified(lsoa)
+
+    # --- Robustness and sensitivity ---
+    bootstrap_results = run_bootstrap_cis(lsoa)
+    run_plurality_sensitivity(lsoa)
+    run_nts_sensitivity(lsoa)
+    run_edge_diagnostic(lsoa)
+    run_spatial_diagnostics()
 
     # Save machine-readable results
     results = _collect_results(lsoa)
