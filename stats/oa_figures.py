@@ -990,6 +990,192 @@ def fig6_correlation_heatmap(lsoa: pd.DataFrame) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Fig 7: Three-surface composite (SIGNATURE FIGURE)
+# ---------------------------------------------------------------------------
+
+
+def fig7_three_surface_composite(lsoa: pd.DataFrame) -> None:
+    """
+    Three-panel composite showing the widening gradient across surfaces.
+
+    Panel A: Building energy per household
+    Panel B: Total energy per household (overall scenario)
+    Panel C: Energy per unit of local access
+
+    Each panel shows median by dominant type with the Flat/Detached ratio
+    annotated. This is the paper's centrepiece figure.
+    """
+    types = ["Flat", "Terraced", "Semi", "Detached"]
+    colours = [TYPE_COLORS[t] for t in types]
+
+    # Compute medians
+    bldg = [lsoa.loc[lsoa["dominant_type"] == t, "building_kwh_per_hh"].median()
+            for t in types]
+    total = [lsoa.loc[lsoa["dominant_type"] == t, "total_kwh_per_hh_total_est"].median()
+             for t in types]
+    # kWh per access: shift accessibility positive first
+    acc = lsoa["accessibility"]
+    acc_pos = acc - acc.min() + 1
+    lsoa["_kwh_per_access"] = lsoa["total_kwh_per_hh"] / acc_pos
+    access = [lsoa.loc[lsoa["dominant_type"] == t, "_kwh_per_access"].median()
+              for t in types]
+
+    panels = [
+        ("A. Building energy", "kWh / household", bldg),
+        ("B. Total energy (overall est.)", "kWh / household", total),
+        ("C. Energy per unit access", "kWh / access unit", access),
+    ]
+
+    fig, axes = plt.subplots(1, 3, figsize=(14, 5))
+
+    for ax, (title, ylabel, vals) in zip(axes, panels):
+        bars = ax.bar(types, vals, color=colours, edgecolor="white", linewidth=0.5)
+        ax.set_title(title, fontsize=12, fontweight="bold")
+        ax.set_ylabel(ylabel, fontsize=10)
+        ax.tick_params(axis="x", rotation=30)
+
+        # Annotate the Flat/Detached ratio
+        if vals[0] > 0 and vals[3] > 0:
+            ratio = vals[3] / vals[0]
+            # Draw bracket between first and last bar
+            y_top = max(vals) * 1.12
+            ax.plot([0, 3], [y_top, y_top], color="#333333", linewidth=1.5)
+            ax.plot([0, 0], [y_top * 0.98, y_top], color="#333333", linewidth=1.5)
+            ax.plot([3, 3], [y_top * 0.98, y_top], color="#333333", linewidth=1.5)
+            ax.text(
+                1.5, y_top * 1.02, f"{ratio:.2f}x",
+                ha="center", va="bottom", fontsize=13, fontweight="bold",
+                color="#CC0000",
+            )
+            ax.set_ylim(top=y_top * 1.15)
+
+        # Value labels on bars
+        for bar, val in zip(bars, vals):
+            ax.text(
+                bar.get_x() + bar.get_width() / 2, bar.get_height() + max(vals) * 0.01,
+                f"{val:,.0f}", ha="center", va="bottom", fontsize=9,
+            )
+
+    _add_footnote(
+        fig,
+        "Median OA values by dominant Census 2021 accommodation type (ts044). "
+        "Building energy: DESNZ metered postcode data aggregated to OA. "
+        "Total energy: building + transport (NTS 6.04x scenario). "
+        "Access: z-scored street density + FSA count at 800m, shifted positive. "
+        "Red ratios show Detached / Flat.",
+    )
+    plt.tight_layout()
+    plt.savefig(FIGURE_DIR / "fig7_three_surface_composite.png", bbox_inches="tight",
+                dpi=200)
+    plt.close()
+    print("  Saved fig7_three_surface_composite.png")
+
+
+# ---------------------------------------------------------------------------
+# Fig 8: Plurality threshold sensitivity
+# ---------------------------------------------------------------------------
+
+
+def fig8_plurality_sensitivity(lsoa: pd.DataFrame) -> None:
+    """
+    Line plot showing Flat/Detached ratios steepen at stricter thresholds.
+
+    X-axis: plurality threshold (0%, 40%, 50%, 60%)
+    Y-axis: Detached/Flat median ratio
+    Three lines: building energy, total energy, kWh per access unit
+    """
+    _type_map = {
+        "pct_flat": "Flat",
+        "pct_terraced": "Terraced",
+        "pct_semi": "Semi",
+        "pct_detached": "Detached",
+    }
+    type_pcts = lsoa[list(_type_map.keys())].fillna(0)
+    max_share = type_pcts.max(axis=1)
+    dominant = type_pcts.idxmax(axis=1).map(_type_map)
+
+    # Compute shifted access
+    acc = lsoa["accessibility"]
+    acc_pos = acc - acc.min() + 1
+    lsoa["_kwh_per_access_sens"] = lsoa["total_kwh_per_hh"] / acc_pos
+
+    thresholds = [0, 30, 40, 50, 60, 70]
+    bldg_ratios = []
+    total_ratios = []
+    access_ratios = []
+    ns = []
+
+    for thresh in thresholds:
+        mask = max_share >= thresh
+        sub = lsoa[mask].copy()
+        sub_dom = dominant[mask]
+
+        flat = sub[sub_dom == "Flat"]
+        det = sub[sub_dom == "Detached"]
+
+        if len(flat) < 30 or len(det) < 30:
+            bldg_ratios.append(np.nan)
+            total_ratios.append(np.nan)
+            access_ratios.append(np.nan)
+            ns.append(len(sub))
+            continue
+
+        bldg_ratios.append(
+            det["building_kwh_per_hh"].median() / flat["building_kwh_per_hh"].median()
+        )
+        total_ratios.append(
+            det["total_kwh_per_hh_total_est"].median() /
+            flat["total_kwh_per_hh_total_est"].median()
+        )
+        access_ratios.append(
+            det["_kwh_per_access_sens"].median() / flat["_kwh_per_access_sens"].median()
+        )
+        ns.append(len(sub))
+
+    fig, ax1 = plt.subplots(figsize=(8, 5))
+
+    labels = [f"{t}%" if t > 0 else "Plurality\n(no min)" for t in thresholds]
+
+    ax1.plot(labels, bldg_ratios, "o-", color="#2196F3", linewidth=2,
+             markersize=8, label="Building energy", zorder=3)
+    ax1.plot(labels, total_ratios, "s-", color="#FF9800", linewidth=2,
+             markersize=8, label="Total energy (overall)", zorder=3)
+    ax1.plot(labels, access_ratios, "D-", color="#E91E63", linewidth=2,
+             markersize=10, label="kWh per access unit", zorder=3)
+
+    ax1.set_xlabel("Minimum dominant-type share threshold", fontsize=11)
+    ax1.set_ylabel("Detached / Flat median ratio", fontsize=11)
+    ax1.set_title(
+        "Morphology gradient steepens with purer type classification",
+        fontsize=12, fontweight="bold",
+    )
+    ax1.legend(loc="upper left", fontsize=10)
+    ax1.axhline(y=1.0, color="#999999", linestyle="--", linewidth=0.8)
+    ax1.grid(axis="y", alpha=0.3)
+
+    # Add sample sizes on secondary axis
+    ax2 = ax1.twinx()
+    ax2.bar(labels, [n / 1000 for n in ns], alpha=0.15, color="#999999",
+            width=0.6, zorder=1)
+    ax2.set_ylabel("Sample size (×1,000 OAs)", fontsize=10, color="#999999")
+    ax2.tick_params(axis="y", labelcolor="#999999")
+
+    _add_footnote(
+        fig,
+        "Each point shows the ratio of detached-dominant to flat-dominant OA medians. "
+        "Stricter thresholds drop mixed OAs, retaining only those where the dominant "
+        "type holds at least the stated share. "
+        "Gradient steepening is consistent with attenuation from classification noise "
+        "(Bound et al., 2001): the plurality estimate is conservative.",
+    )
+    plt.tight_layout()
+    plt.savefig(FIGURE_DIR / "fig8_plurality_sensitivity.png", bbox_inches="tight",
+                dpi=200)
+    plt.close()
+    print("  Saved fig8_plurality_sensitivity.png")
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -1019,6 +1205,8 @@ def main(cities: list[str] | None = None) -> None:
     fig4_accessibility_dividend(lsoa)
     fig5_access_bar(lsoa)
     fig6_correlation_heatmap(lsoa)
+    fig7_three_surface_composite(lsoa)
+    fig8_plurality_sensitivity(lsoa)
 
     print(f"\n{'=' * 70}")
     print(f"All outputs saved to: {FIGURE_DIR}")

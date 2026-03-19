@@ -955,16 +955,38 @@ def _run_ols(
     y_col: str,
     x_cols: list[str],
     label: str,
+    cluster_col: str | None = None,
 ) -> sm.regression.linear_model.RegressionResultsWrapper | None:
-    """Run OLS with HC1 robust SEs (HC3 is too expensive with many FE dummies)."""
-    cols = [y_col] + x_cols
+    """
+    Run OLS with HC1 robust SEs.
+
+    Parameters
+    ----------
+    cluster_col : str or None
+        If provided, also fits with cluster-robust SEs and stores
+        the clustered result as ``model._clustered_fit``.
+    """
+    extra_cols = [cluster_col] if cluster_col and cluster_col not in [y_col] + x_cols else []
+    cols = [y_col] + x_cols + extra_cols
     sub = df[cols].dropna()
     if len(sub) < len(x_cols) + 10:
         print(f"  {label}: insufficient data (N={len(sub)})")
         return None
     y = sub[y_col]
     X = sm.add_constant(sub[x_cols])
-    return sm.OLS(y, X).fit(cov_type="HC1")
+    result = sm.OLS(y, X).fit(cov_type="HC1")
+    # Also fit with BUA-clustered SEs if requested
+    if cluster_col and cluster_col in sub.columns:
+        groups = sub[cluster_col]
+        try:
+            clustered = sm.OLS(y, X).fit(
+                cov_type="cluster",
+                cov_kwds={"groups": groups},
+            )
+            result._clustered_fit = clustered  # type: ignore[attr-defined]
+        except Exception:
+            pass
+    return result
 
 
 def _print_model(
@@ -1084,6 +1106,30 @@ def run_regressions(lsoa: pd.DataFrame) -> None:
             )
             print(f"  ({len(city_dummies)} city dummies, {n_sig} sig at p<0.05)")
 
+        # BUA-clustered SE comparison
+        clustered = getattr(m, "_clustered_fit", None)
+        if clustered is not None:
+            print(f"\n  BUA-clustered SEs (vs HC1):")
+            print(
+                f"  {'Variable':<25s} {'β':>8s} "
+                f"{'SE(HC1)':>8s} {'SE(clust)':>10s} "
+                f"{'t(clust)':>9s} {'p(clust)':>10s}"
+            )
+            print(f"  {'-' * 76}")
+            for var in m.params.index:
+                if var == "const" or var.startswith("city_"):
+                    continue
+                se_hc1 = m.bse[var]
+                se_cl = clustered.bse[var]
+                t_cl = clustered.tvalues[var]
+                p_cl = clustered.pvalues[var]
+                print(
+                    f"  {var:<25s} {m.params[var]:>8.4f} "
+                    f"{se_hc1:>8.4f} {se_cl:>10.4f} "
+                    f"{t_cl:>9.2f} {p_cl:>8.1e} "
+                    f"{_sigstars(p_cl)}"
+                )
+
         if show_vif:
             # VIF for substantive variables only
             x_cols_sub = [v for v in m.params.index
@@ -1119,6 +1165,7 @@ def run_regressions(lsoa: pd.DataFrame) -> None:
         a4 = _run_ols(
             lsoa, "log_building_kwh_per_hh",
             form + density + controls + city_dummies, "A4",
+            cluster_col="city",
         )
         _print_model(a4, "A4 +City FE")
     best_a = a4 or a3 or a2 or a1
@@ -1142,6 +1189,7 @@ def run_regressions(lsoa: pd.DataFrame) -> None:
         b4 = _run_ols(
             lsoa, "accessibility",
             form + density + controls + city_dummies, "B4",
+            cluster_col="city",
         )
         _print_model(b4, "B4 +City FE")
     best_b = b4 or b3 or b2 or b1
@@ -1159,7 +1207,8 @@ def run_regressions(lsoa: pd.DataFrame) -> None:
     c_vars = form + density + controls
     if city_dummies:
         c_vars = c_vars + city_dummies
-    c1 = _run_ols(lsoa, "log_access_per_kwh", c_vars, "C1")
+    c1 = _run_ols(lsoa, "log_access_per_kwh", c_vars, "C1",
+                  cluster_col="city")
     _print_full_model(c1, "C: Composite model (access/kWh)")
 
     # =================================================================
@@ -1174,7 +1223,8 @@ def run_regressions(lsoa: pd.DataFrame) -> None:
     mediator_vars = form + density + controls + ["cars_per_hh"]
     if city_dummies:
         mediator_vars = mediator_vars + city_dummies
-    d1 = _run_ols(lsoa, "log_building_kwh_per_hh", mediator_vars, "D1")
+    d1 = _run_ols(lsoa, "log_building_kwh_per_hh", mediator_vars, "D1",
+                  cluster_col="city")
     _print_full_model(d1, "D: Building energy + cars/hh (mediator)")
 
 
