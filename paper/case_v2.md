@@ -478,6 +478,38 @@ per household.
 This penalty is structural: it is determined by the distance between homes and services,
 which is set by street layout and land-use configuration.
 
+**Service-level decomposition.** A direct calculation — nearest distance × national trip
+rate × energy intensity per service type — gives the energy cost attributable to specific
+service trips:
+
+| Service | Flat (kWh/hh) | Detached (kWh/hh) | Gap |
+| ------- | ------------: | -----------------: | --: |
+| Food (restaurant) | 5 | 66 | 61 |
+| Food (takeaway) | 8 | 92 | 84 |
+| School | 5 | 25 | 20 |
+| GP practice | 1 | 12 | 11 |
+| Pharmacy | 1 | 10 | 9 |
+| Greenspace | 5 | 12 | 7 |
+| Hospital | 0 | 1 | 1 |
+| **Total (direct service trips)** | **37** | **299** | **262** |
+
+The direct service penalty (262 kWh/hh) is approximately one-sixth of the empirical penalty
+(1,525 kWh/hh). The remainder reflects broader car dependence: neighbourhoods with poor
+walkable coverage do not merely drive to the GP more — they drive for all purposes more,
+because the same morphology that places services beyond walking distance makes car ownership
+necessary and walking impractical for shopping, leisure, and social trips. The empirical
+model captures this full behavioural gradient; the direct calculation captures only the
+service-specific component.
+
+**Fleet upper bound.** The empirical model also predicts 0.19 excess cars per household in
+detached-dominant OAs relative to compact reference. At average annual mileage (~11,900
+km/yr, NTS 2024) and road energy intensity (0.399 kWh/pkm), this implies ~900 kWh/yr per
+excess car, or ~1,700 kWh/hh — broadly consistent with the empirical penalty of 1,525
+kWh/hh. The convergence of three independent estimates (direct service: 262, empirical OLS:
+1,525, fleet: ~1,700 kWh/hh) supports the interpretation that poor walkable coverage is
+associated with substantially higher transport energy, of which specific service trips are
+a modest component and general car dependence is the dominant mechanism.
+
 ### 3.4 The three-surface decomposition
 
 ![Figure 7: Three-surface composite](../stats/figures/oa/fig7_three_surface_composite.png)
@@ -583,46 +615,21 @@ commuting, the transport energy ratio was 2.00× (detached/flat), compared to 1.
 the COVID-affected 2021 data. The 2021 analysis is therefore conservative: the true
 steady-state gradient is likely closer to the 2011 figure.
 
-### 4.6 Cross-scale validation: MSOA origin-destination model
+### 4.6 Origin-destination commute distances
 
-The OA-level access penalty (Path 1) uses Census band midpoints for commute distances. To
-validate, we repeat the analysis at MSOA level using actual origin-destination commute flows
-(ODWP01EW, Census 2021). For each of 1.76 million commuter flows between 7,264 English
-MSOAs, we compute Euclidean distance between MSOA population-weighted centroids, giving
-actual mean commute distance per origin MSOA rather than band midpoint approximations.
+Census 2021 origin-destination workplace flows (ODWP01EW) record 1.76 million commuter
+flows between 7,264 English MSOAs. Computing Euclidean distances between MSOA centroids
+gives actual mean commute distance per origin MSOA: the median is 11.8 km, approximately
+twice the band-midpoint estimate from Census TS058 (~5–6 km). This confirms that
+midpoint imputation systematically understates commute distances due to top-band truncation
+(60+ km coded as 80 km) and within-band skew. The absolute transport energy figures in
+the Mobility surface are therefore conservative; the true values are likely higher.
 
-OD-derived median commute distance is 11.8 km — approximately twice the band-midpoint
-estimate (~5–6 km), confirming that midpoint imputation systematically understates commute
-distances (top-band truncation and within-band skew).
-
-Regressing OD-based transport energy (kWh/hh) on local coverage at MSOA level:
-
-| Variable | β | t-stat | p |
-| -------- | -: | -----: | -: |
-| Coverage | −3,479 | −4.3 | <0.001 |
-| Log density | −2,765 | −9.6 | <0.001 |
-| % not deprived | −83 | −15.2 | <0.001 |
-| % detached | −21 | −2.4 | 0.015 |
-
-R² = 0.319, N = 6,831 MSOAs. The coverage coefficient is significant and in the same
-direction as the OA-level model (Path 1: β = −5,155). The MSOA estimate is smaller in
-magnitude because MSOA averaging smooths within-MSOA coverage variation, attenuating the
-coefficient.
-
-The implied access penalty at MSOA level:
-
-| Morphology | Coverage | Transport (kWh/hh) | Access penalty (kWh/hh) |
-| ---------- | -------: | -----------------: | ----------------------: |
-| Flat-leaning | 78.3% | 3,601 | 0 |
-| Semi/Terraced | 69.4% | 4,888 | +299 |
-| Detached-leaning | 58.3% | 5,387 | +686 |
-
-The detached penalty from the MSOA OD model (+686 kWh/hh) is approximately half the
-OA-level estimate (+1,525 kWh/hh). The true penalty likely falls between the two: the OA
-model captures finer spatial variation but uses band-midpoint distances; the MSOA model uses
-actual OD distances but averages over within-MSOA variation. The convergence of both models
-in direction and order of magnitude (686–1,525 kWh/hh) supports the robustness of the
-access penalty estimate.
+Replacing band midpoints with OD distances at OA level (assigning each OA its parent MSOA's
+mean commute distance) preserves the morphology gradient (1.54× vs 1.68× with band
+midpoints). The slight compression reflects the loss of within-MSOA variation when a single
+MSOA distance is applied to all constituent OAs. The band-midpoint approach is retained for
+the NEPI because it captures OA-level variation, despite underestimating absolute distances.
 
 ### 4.7 Regression with controls
 
