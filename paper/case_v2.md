@@ -81,7 +81,123 @@ performance of neighbourhoods as they exist, using the same logic as a building 
 rating of current performance, not a prediction of what would happen if the neighbourhood
 changed.
 
-## 2. Data and Methods
+## 2. Background
+
+### 2.1 Building energy and urban form
+
+The relationship between building morphology and heating energy is grounded in thermodynamic
+first principles: heat loss is proportional to the area of the building envelope exposed to
+the external environment, and compact forms (low surface-to-volume ratio, shared party
+walls) lose less heat per unit of floor area. Rode et al. (2014) formalised this for
+residential buildings, demonstrating that urban morphology — building height, density, and
+configuration — explains a substantial share of variation in heating demand across London
+neighbourhoods. Kavgic et al. (2010) reviewed the landscape of bottom-up building stock
+energy models, identifying the challenge of scaling from individual building physics to
+area-level estimates. Steadman, Evans and Liddiard (2020) addressed this through the 3DStock
+method, which constructs three-dimensional models of every building in England and Wales
+from Ordnance Survey maps, Valuation Office data, and Environment Agency LiDAR, enabling
+energy analysis at neighbourhood and city scale. The present study uses many of the same
+data sources (OS footprints, LiDAR heights) but at Output Area resolution rather than
+individual buildings, and with metered rather than modelled energy as the dependent variable.
+
+The distinction between metered and modelled energy is critical. Energy Performance
+Certificates (EPCs) use the Standard Assessment Procedure (SAP) to estimate energy demand
+from building fabric properties. Few et al. (2023) demonstrated systematic over-prediction
+of actual consumption in EPC ratings, with the performance gap varying by dwelling type and
+age. By using DESNZ postcode-level metered consumption — actual gas and electricity recorded
+at the meter — the present study sidesteps this performance gap entirely.
+
+### 2.2 Transport energy, density, and the 3Ds
+
+Newman and Kenworthy (1989) established the foundational inverse relationship between urban
+density and per-capita transport fuel consumption across 32 global cities. Subsequent work
+refined the density-transport link into a multidimensional framework. Cervero and Kockelman
+(1997) proposed the "3Ds" — density, diversity, and design — as the principal dimensions
+through which the built environment influences travel demand, finding statistically
+significant but modest elasticities (0.06–0.18) for non-work trip rates in the San Francisco
+Bay Area. Ewing and Cervero (2010) extended this to a meta-analysis of over 50 studies,
+concluding that destination accessibility — the ease of reaching activities — is a stronger
+predictor of vehicle-miles-travelled than density alone.
+
+Stevens (2017) subjected this literature to critical review, examining whether the compact
+development effect survives self-selection controls. Across over sixty studies, the effect
+persists but is attenuated by roughly 5–25% when residential sorting is properly controlled,
+with the residual effect operating primarily through destination accessibility and street
+network design.
+
+Banister (2011) framed the policy response as a three-part strategy: reduce the need to
+travel, shift to lower-energy modes, and improve vehicle efficiency. The first two
+components — reduce and shift — are fundamentally shaped by neighbourhood morphology: compact,
+mixed-use areas with walkable services generate shorter trips and higher non-car mode shares.
+The present study quantifies this empirically through the relationship between walkable
+service coverage and observed Census transport outcomes.
+
+### 2.3 Accessibility measurement
+
+The concept of accessibility as a spatial quantity was formalised by Hansen (1959), who
+defined it as "the potential of opportunities for interaction" and demonstrated that
+residential growth patterns could be predicted from gravity-weighted accessibility to
+employment. Geurs and van Wee (2004) reviewed accessibility measures across four
+perspectives — infrastructure-based, location-based, person-based, and utility-based — and
+four components: land use, transportation, temporal, and individual. They noted a persistent
+tension between theoretical rigour and practical operationalisability: simple measures
+(travel time, distance) are easy to interpret but theoretically limited; complex measures
+(utility-based) are theoretically sound but difficult to communicate to planners.
+
+The NEPI's Access surface uses a location-based, gravity-type measure (Gaussian-decayed
+network distance to essential services) that sits in the middle of Geurs and van Wee's
+spectrum: more theoretically grounded than simple proximity (it accounts for distance decay)
+but more interpretable than utility-based measures (it reports percentage coverage of
+services within walking distance). The network-based computation via cityseer (Simons, 2024)
+ensures that distances reflect actual walking routes rather than Euclidean approximations.
+
+### 2.4 Composite neighbourhood rating systems
+
+Several systems rate neighbourhoods on sustainability or liveability dimensions. Walk Score
+(Carr, Dunsiger & Marcus, 2011) computes a 0–100 walkability index from proximity to
+amenities using network distances, with penalties for pedestrian unfriendliness. It has been
+widely validated against travel behaviour but captures only the accessibility dimension —
+it does not measure building energy or transport energy. LEED for Neighborhood Development
+(LEED-ND; USGBC, Congress for the New Urbanism & NRDC, 2009) is a certification system
+that scores developments on smart location, neighbourhood pattern, and green infrastructure,
+but operates as a design-stage tool for new developments rather than a performance rating
+of existing neighbourhoods. BREEAM Communities (BRE, 2012) offers a similar framework for
+the UK context.
+
+None of these systems integrates metered building energy, transport energy, and access into
+a single metric using observed outcome data. Walk Score measures access but not energy;
+LEED-ND measures design intent but not observed performance; building EPCs measure fabric
+efficiency but not transport or access. The NEPI fills this gap: a post-occupancy
+performance rating that integrates all three surfaces from open data, applicable to every
+existing neighbourhood in England.
+
+### 2.5 Ecological analysis and the modifiable areal unit problem
+
+Area-level studies of energy and urban form face two well-known challenges. First, the
+ecological fallacy (Robinson, 1950): associations observed at the area level may not hold
+at the household level due to compositional confounding. Second, the modifiable areal unit
+problem (MAUP; Fotheringham & Wong, 1991): results may depend on the choice of spatial
+unit and aggregation scheme. Fotheringham and Wong demonstrated that the MAUP is
+"essentially unpredictable in its intensity and effects in multivariate statistical analysis,"
+making the choice of spatial unit consequential.
+
+The present study addresses both concerns explicitly. The ecological nature of the analysis
+is acknowledged throughout: the NEPI rates neighbourhoods, not households, and the
+associations documented are ecological, not causal. On the MAUP, the study uses Output Areas
+— the finest Census geography (~130 households), designed by ONS to be socially homogeneous
+and of consistent population size — and tests sensitivity to the classification threshold
+(plurality vs 40–60% dominant-type share), demonstrating that the morphology gradient
+strengthens at finer type purity, consistent with attenuation from classification noise
+(Bound et al., 2001) rather than an artefact of aggregation.
+
+Greenland (2001) and Wakefield (2008) provide the formal framework for when ecological
+studies are appropriate: specifically, when the exposure is genuinely ecological — a property
+of the area, not of the individual. Neighbourhood morphology (street layout, building form
+mix, service proximity) is inherently an area-level property. The ecological study design is
+therefore not a limitation to be apologised for but the correct level of analysis for the
+question being asked.
+
+## 3. Data and Methods
 
 ### 2.1 Unit of analysis
 
@@ -550,14 +666,25 @@ fix is the least visible to current policy — is robust to the methodological c
 
 ## References
 
+Banister, D. (2011). Cities, mobility and climate change. *Journal of Transport Geography*,
+19(6), 1538–1546.
+
 Bettencourt, L.M.A. et al. (2007). Growth, innovation, scaling, and the pace of life in
 cities. *PNAS*, 104(17), 7301–7306.
 
 Bound, J., Brown, C. & Mathiowetz, N. (2001). Measurement error in survey data. In
 *Handbook of Econometrics*, Vol. 5, 3705–3843.
 
+BRE (2012). *BREEAM Communities Technical Manual.* Building Research Establishment, Watford.
+
 Cao, X., Mokhtarian, P.L. & Handy, S.L. (2009). Examining the impacts of residential
 self-selection on travel behaviour. *Transport Reviews*, 29(3), 359–395.
+
+Carr, L.J., Dunsiger, S.I. & Marcus, B.H. (2011). Validation of Walk Score for estimating
+access to walkable amenities. *British Journal of Sports Medicine*, 45(14), 1144–1148.
+
+Cervero, R. & Kockelman, K. (1997). Travel demand and the 3Ds: Density, diversity, and
+design. *Transportation Research Part D*, 2(3), 199–219.
 
 DESNZ (2025). Subnational Consumption Statistics: Methodology and Guidance Booklet.
 Department for Energy Security and Net Zero, December 2025.
@@ -565,11 +692,28 @@ Department for Energy Security and Net Zero, December 2025.
 Ewing, R. & Cervero, R. (2010). Travel and the built environment: A meta-analysis.
 *JAPA*, 76(3), 265–294.
 
+Few, J. et al. (2023). The over-prediction of energy use by EPCs in Great Britain: A
+comparison of EPC-modelled and metered primary energy consumption. *Energy & Buildings*,
+288, 113024.
+
+Fotheringham, A.S. & Wong, D.W.S. (1991). The modifiable areal unit problem in
+multivariate statistical analysis. *Environment and Planning A*, 23(7), 1025–1044.
+
+Geurs, K.T. & van Wee, B. (2004). Accessibility evaluation of land-use and transport
+strategies: Review and research directions. *Journal of Transport Geography*, 12(2),
+127–140.
+
 Greenland, S. (2001). Ecologic versus individual-level sources of bias in ecologic
 estimates of contextual health effects. *International Journal of Epidemiology*, 30(6),
 1343–1350.
 
+Hansen, W.G. (1959). How accessibility shapes land use. *Journal of the American Institute
+of Planners*, 25(2), 73–76.
+
 Jacobs, J. (2000). *The Nature of Economies*. Random House.
+
+Kavgic, M. et al. (2010). A review of bottom-up building stock models for energy
+consumption in the residential sector. *Building and Environment*, 45(7), 1683–1697.
 
 Mokhtarian, P.L. & Cao, X. (2008). Examining the impacts of residential self-selection
 on travel behavior. *Transport Reviews*, 28(3), 359–395.
@@ -586,8 +730,17 @@ Sociological Review*, 15(3), 351–357.
 Rode, P. et al. (2014). Cities and energy: Urban morphology and residential heat-energy
 demand. *Environment and Planning B*, 41(1), 138–162.
 
+Simons, G. (2024). cityseer: Urban analysis with network-based methods. *Environment and
+Planning B*, forthcoming.
+
+Steadman, P., Evans, S. & Liddiard, R. (2020). Building stock energy modelling in the UK:
+The 3DStock method and the London Building Stock Model. *Buildings & Cities*, 1(1), 100–119.
+
 Stevens, M.R. (2017). Does compact development make people drive less? *Journal of
 Planning Literature*, 32(3), 184–211.
+
+USGBC, Congress for the New Urbanism & NRDC (2009). *LEED for Neighborhood Development
+Rating System.* U.S. Green Building Council.
 
 Wakefield, J. (2008). Ecologic studies revisited. *Annual Review of Public Health*, 29,
 75–90.
