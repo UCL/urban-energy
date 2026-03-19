@@ -123,23 +123,53 @@ def compute_nepi(lsoa: pd.DataFrame) -> pd.DataFrame:
         transport_col = "transport_kwh_per_hh_est"
     lsoa["nepi_mobility"] = _score_inverse(lsoa[transport_col])
 
-    # --- Surface 3: Access (local trip coverage, higher = better) ---
-    # Use basket coverage if available, otherwise compute from accessibility
-    coverage_col = None
-    for candidate in [
-        "basket_trip_coverage_rate_est",
-        "basket_trip_coverage_rate_est_median",
-    ]:
-        if candidate in lsoa.columns:
-            coverage_col = candidate
-            break
+    # --- Surface 3: Access (local service coverage, higher = better) ---
+    # Computed directly from cityseer nearest-distance columns using
+    # Gaussian decay: score = exp(-ln(2) * (d / d_half)^2)
+    # where d_half is the walking-distance threshold per service type.
+    # NaN (no destination within 4800m search radius) = 0 coverage.
+    _SERVICE_THRESHOLDS: dict[str, tuple[str, int]] = {
+        "cc_fsa_restaurant_nearest_max_4800": ("food_restaurant", 800),
+        "cc_fsa_takeaway_nearest_max_4800": ("food_takeaway", 800),
+        "cc_fsa_pub_nearest_max_4800": ("food_pub", 800),
+        "cc_gp_practice_nearest_max_4800": ("gp_practice", 1200),
+        "cc_pharmacy_nearest_max_4800": ("pharmacy", 1000),
+        "cc_school_nearest_max_4800": ("school", 1200),
+        "cc_greenspace_nearest_max_4800": ("greenspace", 1000),
+        "cc_bus_nearest_max_4800": ("bus_stop", 800),
+        "cc_hospital_nearest_max_4800": ("hospital", 2000),
+    }
 
-    if coverage_col is not None:
-        lsoa["nepi_access"] = _score_direct(lsoa[coverage_col])
+    coverage_cols: list[str] = []
+    n_services_available = 0
+    for col, (name, threshold) in _SERVICE_THRESHOLDS.items():
+        if col not in lsoa.columns:
+            continue
+        n_services_available += 1
+        vals = pd.to_numeric(lsoa[col], errors="coerce")
+        # Gaussian decay: full credit at 0m, 50% at threshold
+        score = np.exp(-np.log(2) * (vals / threshold) ** 2)
+        score = score.fillna(0)  # No destination within search radius = zero
+        cov_col = f"_cov_{name}"
+        lsoa[cov_col] = score
+        coverage_cols.append(cov_col)
+
+    if coverage_cols:
+        # Mean coverage across all service types (0–1)
+        lsoa["local_coverage"] = lsoa[coverage_cols].mean(axis=1)
+        # Convert to 0–100 score directly (already a meaningful 0–1 scale)
+        lsoa["nepi_access"] = lsoa["local_coverage"] * 100
+        print(f"\n  Access surface: {n_services_available} services, "
+              f"Gaussian decay, median coverage = {lsoa['local_coverage'].median():.1%}")
+        # Per-service medians
+        for cov_col in coverage_cols:
+            short = cov_col.replace("_cov_", "")
+            print(f"    {short:<20s}: {lsoa[cov_col].median():.2f}")
     else:
-        # Fall back to accessibility z-score (shifted to positive)
+        # Fallback to accessibility z-score if no nearest-distance columns
         acc = lsoa["accessibility"]
         lsoa["nepi_access"] = _score_direct(acc)
+        print("  Access surface: fallback to accessibility z-score (no nearest-distance cols)")
 
     # --- Composite: equal-weighted mean of three surfaces ---
     surface_cols = ["nepi_form", "nepi_mobility", "nepi_access"]
