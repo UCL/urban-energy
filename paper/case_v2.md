@@ -46,7 +46,10 @@ The building physics of this relationship are well understood. Compact dwelling 
 heat loss per unit of floor area (Rode et al., 2014). The transport dimension has been
 documented since Newman and Kenworthy (1989) showed the inverse relationship between urban
 density and per-capita fuel consumption, refined by Ewing and Cervero (2010) into the
-insight that destination accessibility matters more than density per se.
+insight that destination accessibility matters more than density per se — a finding
+confirmed by Stevens' (2017) systematic review of over sixty studies, which showed
+destination accessibility consistently outperforms density as a predictor of travel
+behaviour.
 
 What is missing is a framework that integrates all three dimensions into a single,
 policy-relevant metric — and does so at a spatial resolution fine enough to inform
@@ -111,17 +114,35 @@ All data sources are open and publicly available:
 
 ### 2.3 Energy aggregation
 
-Building energy is derived from DESNZ postcode-level domestic energy statistics. Postcode
-values (mean kWh per meter for gas and electricity) are assigned to Output Areas via a
-spatial join of OS Code-Point Open postcode centroids to OA boundaries (99.3% match rate,
-median 6.3 postcodes per OA). The OA value is the meter-weighted mean across constituent
-postcodes.
+Building energy is derived from DESNZ Subnational Consumption Statistics (December 2025
+edition; DESNZ, 2025). Gas consumption is based on Annual Quantities (AQ) compiled by
+Xoserve from meter readings taken 6–18 months apart, covering mid-May 2024 to mid-May
+2025. Gas figures are weather-corrected by Xoserve using National Grid's demand forecasting
+methodology, which adjusts for regional temperature, wind speed, and trend factors.
+Electricity consumption is based on Meter Point Administration Numbers (MPAN) from energy
+suppliers, covering January to December 2024. Electricity is not weather-corrected.
 
-Gas data is weather-corrected by DESNZ; electricity is not. Off-gas-grid properties (~15%
-of English homes, concentrated in rural/detached areas) appear only in the electricity
-component, underestimating their heating energy. Communal and district heating (affecting
-flats disproportionately) is not captured in individual meter data. Both biases compress
-the observed Form gradient; the true gradient may be larger.
+Domestic meters are classified by a 73,200 kWh/yr Annual Quantity threshold. This
+misclassifies some small commercial premises as domestic and some large domestic consumers
+as non-domestic. Postcodes with fewer than 5 meters are suppressed for disclosure control,
+as are postcodes where the top 2 meters account for >90% of total consumption.
+Approximately 1% of meters are unallocated due to missing or invalid postcode information.
+
+Postcode-level values (mean kWh per meter for gas and electricity) are assigned to Output
+Areas via a spatial join of OS Code-Point Open postcode centroids to OA boundaries (99.3%
+match rate, median 6.3 postcodes per OA). The OA value is the meter-weighted mean across
+constituent postcodes.
+
+Two systematic measurement gaps affect the Form surface. First, approximately 15% of
+English properties are not connected to the gas grid (DESNZ, 2025, §2.4); their heating
+energy (oil, LPG, solid fuel) does not appear in the gas consumption data — only their
+electricity is captured. These properties are concentrated in rural and detached-dominant
+areas, meaning the Form surface underestimates heating energy for detached-dominant OAs.
+Second, communal and district heating schemes serve a building through a single non-domestic
+meter (typically exceeding the 73,200 kWh threshold), meaning individual flats' heating
+energy is absent from the domestic statistics. This disproportionately affects flat-dominant
+OAs. Both biases compress the observed Form gradient; the true gradient between flat- and
+detached-dominant neighbourhoods is likely larger than reported.
 
 ### 2.4 Transport energy estimation
 
@@ -461,8 +482,12 @@ the NEPI does not make this claim. It rates neighbourhoods, as building EPCs rat
 
 Residential self-selection remains a plausible alternative explanation: households that
 prefer driving may sort into detached suburbs (Mokhtarian & Cao, 2008; Cao, Mokhtarian &
-Handy, 2009). Whether the gradient arises from morphology directly or from the sorting
-patterns that morphology induces, the planning implication is the same: compact forms are
+Handy, 2009). Stevens (2017), reviewing over sixty empirical studies, found that controlling
+for self-selection attenuates the built environment effect on driving by roughly 5–25% but
+does not eliminate it; the residual effect, operating through destination accessibility and
+street network design, is consistently significant. Whether the gradient arises from
+morphology directly or from the sorting patterns that morphology induces, the planning
+implication is the same: compact forms are
 associated with lower total energy expenditure and higher local access. Planners control
 neighbourhood morphology, not household preferences.
 
@@ -505,6 +530,9 @@ Bound, J., Brown, C. & Mathiowetz, N. (2001). Measurement error in survey data. 
 Cao, X., Mokhtarian, P.L. & Handy, S.L. (2009). Examining the impacts of residential
 self-selection on travel behaviour. *Transport Reviews*, 29(3), 359–395.
 
+DESNZ (2025). Subnational Consumption Statistics: Methodology and Guidance Booklet.
+Department for Energy Security and Net Zero, December 2025.
+
 Ewing, R. & Cervero, R. (2010). Travel and the built environment: A meta-analysis.
 *JAPA*, 76(3), 265–294.
 
@@ -528,6 +556,9 @@ Sociological Review*, 15(3), 351–357.
 
 Rode, P. et al. (2014). Cities and energy: Urban morphology and residential heat-energy
 demand. *Environment and Planning B*, 41(1), 138–162.
+
+Stevens, M.R. (2017). Does compact development make people drive less? *Journal of
+Planning Literature*, 32(3), 184–211.
 
 Wakefield, J. (2008). Ecologic studies revisited. *Annual Review of Public Health*, 29,
 75–90.
