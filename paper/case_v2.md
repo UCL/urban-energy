@@ -5,16 +5,17 @@
 Decarbonisation policy targets buildings and vehicles as separate technology problems, but
 a household's total energy expenditure is jointly shaped by built form, transport dependence,
 and local access to services. We propose the Neighbourhood Energy Performance Index (NEPI),
-an open-data scorecard that rates each neighbourhood on three surfaces — Form, Mobility,
-and Access — and composites them into an A–G band analogous to a building EPC. Applying
-the index to 175,425 Output Areas across 4,922 English Built-Up Areas using metered energy
+an open-data scorecard that rates each neighbourhood on three surfaces — Form (building
+energy), Mobility (transport energy), and Access (the empirical energy penalty for poor
+walkable service coverage) — all expressed in kWh per household per year. Applying the
+index to 175,425 Output Areas across 4,922 English Built-Up Areas using metered energy
 data, Census 2021, and network-based accessibility analysis, we find that the median
-flat-dominant neighbourhood scores Band C (composite 78) while the median detached-dominant
-neighbourhood scores Band E (composite 41). The gradient is steepest on the Access surface,
-where flat-dominant areas achieve 86% walkable service coverage compared to 55% for
-detached-dominant areas — a dimension that building retrofit and vehicle electrification
-cannot address. The index is constructed entirely from open data sources and can be computed
-for every neighbourhood in England.
+flat-dominant neighbourhood costs 15,892 kWh/hh/yr (Band A) while the median
+detached-dominant neighbourhood costs 26,996 kWh/hh/yr (Band F) — a gap of 11,104 kWh
+decomposed as Form 46%, Mobility 42%, Access 14%. The access penalty (1,505 kWh/hh/yr for
+detached areas) is the surface that building retrofit and vehicle electrification cannot
+address. The index is constructed entirely from open data sources and can be computed for
+every neighbourhood in England.
 
 ## 1. Introduction
 
@@ -209,31 +210,30 @@ population size, making them a natural unit for neighbourhood-level analysis.
 
 All data sources are open and publicly available:
 
-| Source | Granularity | Variable | Role in NEPI |
-| ------ | ----------- | -------- | ------------ |
-| DESNZ domestic energy (2024) | Postcode | Metered gas + electricity (kWh/meter) | **Form** surface |
-| Census 2021 TS044 | OA | Accommodation type counts | Stratification |
-| Census 2021 TS058/TS061 | OA | Commute distance bands + travel mode | **Mobility** surface |
-| Census 2021 TS045 | OA | Car ownership | Mobility control |
-| Census 2021 TS011 | OA | Household deprivation dimensions | Deprivation control |
-| Census 2021 TS001/TS017 | OA | Population, household count/size | Denominators |
-| OS Open Roads | National | Road network geometry | Network analysis |
-| OS Open UPRN | National | Address-level geocoding | OA assignment |
-| OS Built Up Areas | National | Settlement boundaries | Processing units |
-| FSA Register | Point | Food establishments (~500k) | Access: food/services |
-| NaPTAN | Point | Public transport stops (~434k) | Access: bus, rail |
-| GIAS (DfE) | Point | Schools (~25k) | Access: education |
-| NHS ODS | Point | GP practices, pharmacies, hospitals (~24k) | Access: health |
-| OS Open Greenspace | Polygon | Parks and recreation areas | Access: greenspace |
-| IoD 2025 (MHCLG) | LSOA | Index of Multiple Deprivation (7 domains) | Income control |
-| DVLA vehicle licensing | LSOA | Registered vehicles by fuel type | Fleet composition |
+| Source                       | Granularity | Variable                                   | Role in NEPI          |
+| ---------------------------- | ----------- | ------------------------------------------ | --------------------- |
+| DESNZ domestic energy (2024) | Postcode    | Metered gas + electricity (kWh/meter)      | **Form** surface      |
+| Census 2021 TS044            | OA          | Accommodation type counts                  | Stratification        |
+| Census 2021 TS058/TS061      | OA          | Commute distance bands + travel mode       | **Mobility** surface  |
+| Census 2021 TS045            | OA          | Car ownership                              | Mobility control      |
+| Census 2021 TS011            | OA          | Household deprivation dimensions           | Deprivation control   |
+| Census 2021 TS001/TS017      | OA          | Population, household count/size           | Denominators          |
+| OS Open Roads                | National    | Road network geometry                      | Network analysis      |
+| OS Open UPRN                 | National    | Address-level geocoding                    | OA assignment         |
+| OS Built Up Areas            | National    | Settlement boundaries                      | Processing units      |
+| FSA Register                 | Point       | Food establishments (~500k)                | Access: food/services |
+| NaPTAN                       | Point       | Public transport stops (~434k)             | Access: bus, rail     |
+| GIAS (DfE)                   | Point       | Schools (~25k)                             | Access: education     |
+| NHS ODS                      | Point       | GP practices, pharmacies, hospitals (~24k) | Access: health        |
+| OS Open Greenspace           | Polygon     | Parks and recreation areas                 | Access: greenspace    |
+| IoD 2025 (MHCLG)             | LSOA        | Index of Multiple Deprivation (7 domains)  | Income control        |
+| DVLA vehicle licensing       | LSOA        | Registered vehicles by fuel type           | Fleet composition     |
 
 ### 2.3 Energy aggregation
 
 Building energy is derived from DESNZ Subnational Consumption Statistics (December 2025
 edition; DESNZ, 2025). Gas consumption is based on Annual Quantities (AQ) compiled by
-Xoserve from meter readings taken 6–18 months apart, covering mid-May 2024 to mid-May
-2025. Gas figures are weather-corrected by Xoserve using National Grid's demand forecasting
+Xoserve from meter readings taken 6–18 months apart, covering mid-May 2024 to mid-May 2025. Gas figures are weather-corrected by Xoserve using National Grid's demand forecasting
 methodology, which adjusts for regional temperature, wind speed, and trend factors.
 Electricity consumption is based on Meter Point Administration Numbers (MPAN) from energy
 suppliers, covering January to December 2024. Electricity is not weather-corrected.
@@ -280,17 +280,17 @@ The Access surface measures what share of a household's essential service needs 
 within walking distance. It is computed from network-based nearest distances to nine service
 types, each with a defined walking-distance threshold:
 
-| Service type | Source | Threshold (m) | Rationale |
-| ------------ | ------ | ------------: | --------- |
-| Food (restaurant) | FSA Register | 800 | ~10 min walk |
-| Food (takeaway) | FSA Register | 800 | ~10 min walk |
-| Food (pub) | FSA Register | 800 | ~10 min walk |
-| GP practice | NHS ODS | 1,200 | ~15 min walk |
-| Pharmacy | NHS ODS | 1,000 | ~12 min walk |
-| School | GIAS (DfE) | 1,200 | ~15 min walk |
-| Green space | OS Open Greenspace | 1,000 | ~12 min walk |
-| Bus stop | NaPTAN | 800 | ~10 min walk |
-| Hospital (outpatient) | NHS ODS | 2,000 | ~25 min walk |
+| Service type          | Source             | Threshold (m) | Rationale    |
+| --------------------- | ------------------ | ------------: | ------------ |
+| Food (restaurant)     | FSA Register       |           800 | ~10 min walk |
+| Food (takeaway)       | FSA Register       |           800 | ~10 min walk |
+| Food (pub)            | FSA Register       |           800 | ~10 min walk |
+| GP practice           | NHS ODS            |         1,200 | ~15 min walk |
+| Pharmacy              | NHS ODS            |         1,000 | ~12 min walk |
+| School                | GIAS (DfE)         |         1,200 | ~15 min walk |
+| Green space           | OS Open Greenspace |         1,000 | ~12 min walk |
+| Bus stop              | NaPTAN             |           800 | ~10 min walk |
+| Hospital (outpatient) | NHS ODS            |         2,000 | ~25 min walk |
 
 For each service in each OA, the nearest network distance (d) is converted to a coverage
 score via Gaussian decay:
@@ -306,29 +306,33 @@ percentage (0–100%).
 
 ### 2.6 The NEPI scoring framework
 
-Each OA receives three surface scores:
+All three NEPI surfaces are expressed in a common unit — **kWh per household per year**:
 
-| Surface | Raw metric | Scoring method | Scale |
-| ------- | ---------- | -------------- | ----- |
-| **Form** | Metered building kWh/hh | Inverted national percentile rank | 0–100 |
-| **Mobility** | Estimated transport kWh/hh | Inverted national percentile rank | 0–100 |
-| **Access** | Mean service coverage (%) | Direct (already 0–100%) | 0–100 |
+| Surface | Raw metric | Unit | Source |
+| ------- | ---------- | ---- | ------ |
+| **Form** | Metered building energy | kWh/hh/yr | DESNZ postcode data |
+| **Mobility** | Estimated transport energy | kWh/hh/yr | Census TS058/TS061 × ECUK intensities |
+| **Access** | Empirical access energy penalty | kWh/hh/yr | OLS: transport energy ~ coverage + controls |
 
-The Form and Mobility surfaces are scored by national percentile rank (inverted: the
-lowest-energy OA scores 100). The Access surface is already a natural 0–100 scale
-(percentage of services walkable).
+The Access surface is the empirical energy cost of poor walkable service coverage: the
+additional transport energy predicted by the OLS model (Section 3.3) relative to a compact
+reference level (85% coverage, the flat-dominant OA median). OAs that already meet or exceed
+the reference receive zero penalty.
 
-The **composite NEPI** is the unweighted mean of the three surface scores, banded A–G:
+The **composite NEPI** is the sum of the three surfaces — the total neighbourhood energy
+cost in kWh/hh/yr. Using a common energy unit eliminates the need for arbitrary surface
+weighting: the surfaces weight themselves by their energy magnitude. A–G bands are assigned
+by national percentile position of the composite (lower total = better band):
 
-| Band | Score range | Interpretation |
-| ---- | ----------: | -------------- |
-| A | 92–100 | Highest neighbourhood energy efficiency |
-| B | 81–91 | |
-| C | 69–80 | |
-| D | 55–68 | |
-| E | 39–54 | |
-| F | 21–38 | |
-| G | 0–20 | Lowest neighbourhood energy efficiency |
+| Band | Percentile range | Interpretation |
+| ---- | ---------------: | -------------- |
+| A | 0–8th | Lowest neighbourhood energy cost |
+| B | 8–19th | |
+| C | 19–36th | |
+| D | 36–60th | |
+| E | 60–81st | |
+| F | 81–95th | |
+| G | 95–100th | Highest neighbourhood energy cost |
 
 ### 2.7 Stratification
 
@@ -342,12 +346,12 @@ is tested.
 4,922 English Built-Up Areas (of 7,147 total; pipeline in progress), yielding 175,425
 Output Areas after filtering (population > 10, ≥ 5 UPRNs, valid metered energy).
 
-| Dominant type | N OAs |
-| ------------- | ----: |
-| Flat | 33,931 |
-| Terraced | 44,408 |
+| Dominant type |  N OAs |
+| ------------- | -----: |
+| Flat          | 33,931 |
+| Terraced      | 44,408 |
 | Semi-detached | 58,348 |
-| Detached | 38,738 |
+| Detached      | 38,738 |
 
 ## 3. Results
 
@@ -359,10 +363,10 @@ Output Areas after filtering (population > 10, ≥ 5 UPRNs, valid metered energy
 
 | Dwelling type | Building energy (kWh/hh) | kWh/person |
 | ------------- | -----------------------: | ---------: |
-| Flat | 10,766 | 5,144 |
-| Terraced | 13,022 | 5,357 |
-| Semi-detached | 13,888 | 5,809 |
-| Detached | 15,835 | 6,750 |
+| Flat          |                   10,766 |      5,144 |
+| Terraced      |                   13,022 |      5,357 |
+| Semi-detached |                   13,888 |      5,809 |
+| Detached      |                   15,835 |      6,750 |
 
 Detached-dominant OAs use 1.47× the metered building energy of flat-dominant OAs per
 household (1.31× per person). The per-person compression reflects smaller household sizes
@@ -373,11 +377,11 @@ in flat-dominant areas (2.1 vs 2.4 persons/hh).
 ![Figure 2: Building + transport energy](../stats/figures/oa/fig2_mobility_penalty.png)
 
 | Dwelling type | Commute (kWh/hh) | Overall est. (kWh/hh) | Total (overall, kWh/hh) |
-| ------------- | ----------------: | --------------------: | ----------------------: |
-| Flat | 663 | 4,003 | 14,769 |
-| Terraced | 1,098 | 6,630 | 19,651 |
-| Semi-detached | 1,275 | 7,698 | 21,586 |
-| Detached | 1,498 | 9,045 | 24,879 |
+| ------------- | ---------------: | --------------------: | ----------------------: |
+| Flat          |              663 |                 4,003 |                  14,769 |
+| Terraced      |            1,098 |                 6,630 |                  19,651 |
+| Semi-detached |            1,275 |                 7,698 |                  21,586 |
+| Detached      |            1,498 |                 9,045 |                  24,879 |
 
 Adding transport widens the gradient to 1.68× (overall scenario). Private commute energy
 rises from 509 kWh/hh (flat) to 1,461 (detached), ratio 2.87×. Public commute energy runs
@@ -391,15 +395,15 @@ in the opposite direction: 154 → 36 kWh/hh. Car ownership: 0.67 → 1.61 cars/
 
 Median service coverage scores (Gaussian-decayed, 0–1):
 
-| Service | Flat | Terraced | Semi | Detached |
-| ------- | ---: | -------: | ---: | -------: |
-| Food (restaurant) | 0.92 | 0.84 | 0.69 | 0.49 |
-| Food (takeaway) | 0.87 | 0.84 | 0.70 | 0.34 |
-| GP practice | 0.82 | 0.74 | 0.57 | 0.29 |
-| Pharmacy | 0.82 | 0.75 | 0.61 | 0.34 |
-| School | 0.91 | 0.90 | 0.85 | 0.73 |
-| Green space | 0.94 | 0.93 | 0.90 | 0.86 |
-| Bus stop | 0.97 | 0.96 | 0.95 | 0.92 |
+| Service           |      Flat |  Terraced |      Semi |  Detached |
+| ----------------- | --------: | --------: | --------: | --------: |
+| Food (restaurant) |      0.92 |      0.84 |      0.69 |      0.49 |
+| Food (takeaway)   |      0.87 |      0.84 |      0.70 |      0.34 |
+| GP practice       |      0.82 |      0.74 |      0.57 |      0.29 |
+| Pharmacy          |      0.82 |      0.75 |      0.61 |      0.34 |
+| School            |      0.91 |      0.90 |      0.85 |      0.73 |
+| Green space       |      0.94 |      0.93 |      0.90 |      0.86 |
+| Bus stop          |      0.97 |      0.96 |      0.95 |      0.92 |
 | **Mean coverage** | **85.8%** | **80.4%** | **70.7%** | **54.9%** |
 
 Bus stops and greenspace are accessible almost everywhere. The gradient is driven by
@@ -409,35 +413,23 @@ detached-dominant areas.
 
 ### 3.2 The NEPI scorecard
 
-![Figure 4: NEPI scorecard](../stats/figures/nepi/fig_nepi_scorecard.png)
+![Figure 4: NEPI scorecard — stacked kWh by housing type](../stats/figures/nepi/fig_nepi_scorecard.png)
 
-| Type | Form | Mobility | Access | Composite | Band |
-| ---- | ---: | -------: | -----: | --------: | :--: |
-| Flat | 81.7 | 82.4 | 85.8 | 78.3 | **C** |
-| Terraced | 55.8 | 54.1 | 80.4 | 61.4 | **D** |
-| Semi | 44.7 | 42.8 | 70.7 | 52.2 | **E** |
-| Detached | 25.2 | 30.0 | 55.2 | 41.0 | **E** |
+| Type | Form (kWh/hh) | Mobility (kWh/hh) | Access penalty (kWh/hh) | **Total (kWh/hh)** | Band |
+| ---- | ------------: | -----------------: | ----------------------: | ------------------: | :--: |
+| Flat | 10,766 | 4,412 | 0 | **15,892** | **A** |
+| Terraced | 13,022 | 6,944 | 229 | **20,842** | **D** |
+| Semi | 13,888 | 7,886 | 725 | **23,161** | **D** |
+| Detached | 15,835 | 9,122 | 1,505 | **26,996** | **F** |
 
-The median flat-dominant OA scores Band C; the median detached-dominant OA scores Band E.
-The gradient is present on all three surfaces but is steepest on Access (85.8 → 55.2,
-a 30.6-point gap) and shallowest on Mobility (82.4 → 30.0 — though this is scored by
-percentile rank, not absolute coverage, so the gap reflects distributional position).
+The median flat-dominant OA scores Band A (15,892 kWh/hh total); the median
+detached-dominant OA scores Band F (26,996 kWh/hh). The total gap is 11,104 kWh/hh/yr
+(ratio 1.70×), decomposed as: Form 5,069 kWh (46% of gap), Mobility 4,710 kWh (42%),
+Access penalty 1,505 kWh (14%). All three surfaces are in kWh, so the composite has direct
+physical meaning — it is the total neighbourhood energy cost per household, and the surfaces
+weight themselves by their energy magnitude without arbitrary scaling.
 
 ![Figure 5: NEPI band distribution by housing type](../stats/figures/nepi/fig_nepi_bands.png)
-
-Band distribution:
-
-| Type | A | B | C | D | E | F | G |
-| ---- | -: | -: | -: | -: | -: | -: | -: |
-| Flat | 10.2% | 23.9% | 25.4% | 24.1% | 13.0% | 3.1% | 0.3% |
-| Terraced | 0.2% | 4.9% | 16.5% | 30.8% | 31.9% | 14.4% | 1.2% |
-| Semi | 0.0% | 0.6% | 4.7% | 19.6% | 39.3% | 31.2% | 4.6% |
-| Detached | 0.0% | 0.0% | 0.6% | 4.9% | 23.9% | 47.6% | 23.0% |
-
-34% of flat-dominant OAs are Band A or B. Zero detached-dominant OAs are. 71% of
-detached-dominant OAs are Band F or G.
-
-![Figure 6: NEPI radar by housing type](../stats/figures/nepi/fig_nepi_radar.png)
 
 ### 3.3 The access energy penalty
 
@@ -451,12 +443,12 @@ population density, household size, deprivation, building age, and IMD income do
 robust standard errors). The local coverage coefficient is strongly significant across all
 four transport outcomes:
 
-| Observed behaviour | β(coverage) | t-stat | R² | N |
-| ------------------ | ----------: | -----: | -: | -: |
-| Car commute share | −0.321 | −130 | 0.282 | 173,812 |
-| Walk+cycle share | +0.098 | +89 | 0.262 | 173,812 |
-| Cars per household | −0.653 | −155 | 0.714 | 173,812 |
-| Transport energy (kWh/hh) | −5,155 | −78 | 0.293 | 173,812 |
+| Observed behaviour        | β(coverage) | t-stat |    R² |       N |
+| ------------------------- | ----------: | -----: | ----: | ------: |
+| Car commute share         |      −0.321 |   −130 | 0.282 | 173,812 |
+| Walk+cycle share          |      +0.098 |    +89 | 0.262 | 173,812 |
+| Cars per household        |      −0.653 |   −155 | 0.714 | 173,812 |
+| Transport energy (kWh/hh) |      −5,155 |    −78 | 0.293 | 173,812 |
 
 The cars-per-household model is particularly strong (R² = 0.71): a 10 percentage-point
 improvement in coverage is associated with 0.065 fewer cars per household, controlling for
@@ -468,12 +460,12 @@ the median of flat-dominant OAs):
 
 ![Figure 7: Empirical access penalty](../stats/figures/nepi/fig_empirical_penalty.png)
 
-| Type | Coverage | Predicted transport | At 85% reference | Penalty (kWh/hh/yr) | Excess cars/hh |
-| ---- | -------: | ------------------: | ---------------: | ------------------: | -------------: |
-| Flat | 85.8% | 5,773 | 5,699 | −42 | −0.01 |
-| Terraced | 80.5% | 6,885 | 6,491 | +232 | +0.03 |
-| Semi | 70.8% | 7,850 | 7,051 | +730 | +0.09 |
-| Detached | 55.4% | 9,630 | 8,086 | **+1,525** | +0.19 |
+| Type     | Coverage | Predicted transport | At 85% reference | Penalty (kWh/hh/yr) | Excess cars/hh |
+| -------- | -------: | ------------------: | ---------------: | ------------------: | -------------: |
+| Flat     |    85.8% |               5,773 |            5,699 |                 −42 |          −0.01 |
+| Terraced |    80.5% |               6,885 |            6,491 |                +232 |          +0.03 |
+| Semi     |    70.8% |               7,850 |            7,051 |                +730 |          +0.09 |
+| Detached |    55.4% |               9,630 |            8,086 |          **+1,525** |          +0.19 |
 
 Detached-dominant OAs incur an empirical access penalty of 1,525 kWh/hh/yr — the additional
 transport energy attributable to poor local coverage, estimated from observed behaviour.
@@ -490,11 +482,11 @@ which is set by street layout and land-use configuration.
 
 ![Figure 7: Three-surface composite](../stats/figures/oa/fig7_three_surface_composite.png)
 
-| Surface | Flat (kWh/hh) | Detached (kWh/hh) | Ratio |
-| ------- | ------------: | -----------------: | ----: |
-| Building energy | 10,766 | 15,835 | 1.47× |
-| Total energy (overall est.) | 14,769 | 24,879 | 1.68× |
-| kWh per access unit | 3,237 | 8,743 | 2.70× |
+| Surface                     | Flat (kWh/hh) | Detached (kWh/hh) | Ratio |
+| --------------------------- | ------------: | ----------------: | ----: |
+| Building energy             |        10,766 |            15,835 | 1.47× |
+| Total energy (overall est.) |        14,769 |            24,879 | 1.68× |
+| kWh per access unit         |         3,237 |             8,743 | 2.70× |
 
 Each additional surface widens the gradient because transport and access correlate with
 morphology in the same direction as building energy. This widening is a descriptive
@@ -522,12 +514,12 @@ not only at type-group medians.
 
 All key Flat/Detached median ratios bootstrapped with 10,000 resamples:
 
-| Metric | Ratio | 95% CI |
-| ------ | ----: | -----: |
-| Building kWh/hh | 0.675 | [0.672, 0.678] |
+| Metric                 | Ratio |         95% CI |
+| ---------------------- | ----: | -------------: |
+| Building kWh/hh        | 0.675 | [0.672, 0.678] |
 | Total kWh/hh (overall) | 0.607 | [0.604, 0.610] |
-| kWh per access unit | 0.371 | [0.368, 0.375] |
-| Cars/hh | 0.418 | [0.415, 0.421] |
+| kWh per access unit    | 0.371 | [0.368, 0.375] |
+| Cars/hh                | 0.418 | [0.415, 0.421] |
 
 All intervals are narrow. With 175,425 OAs, descriptive medians are precisely estimated
 under iid assumption. Spatial autocorrelation means the effective sample size is smaller;
@@ -539,11 +531,11 @@ inferential confidence intervals.
 ![Figure 10: Plurality sensitivity](../stats/figures/oa/fig8_plurality_sensitivity.png)
 
 | Threshold | N total | Building (F/D) | Total (F/D) | kWh/Access (F/D) |
-| --------- | ------: | -------------: | ----------: | ----------------: |
-| Plurality | 175,425 | 0.675 | 0.607 | 0.371 |
-| 40% | ~146k | 0.636 | 0.576 | 0.347 |
-| 50% | ~112k | 0.588 | 0.534 | 0.305 |
-| 60% | ~78k | 0.532 | 0.489 | 0.260 |
+| --------- | ------: | -------------: | ----------: | ---------------: |
+| Plurality | 175,425 |          0.675 |       0.607 |            0.371 |
+| 40%       |   ~146k |          0.636 |       0.576 |            0.347 |
+| 50%       |   ~112k |          0.588 |       0.534 |            0.305 |
+| 60%       |    ~78k |          0.532 |       0.489 |            0.260 |
 
 The gradient **steepens** at every threshold (building: 1.47× → 1.88× at 60%). This is
 consistent with attenuation from classification noise in mixed OAs (Bound et al., 2001):
@@ -554,9 +546,9 @@ larger gap between housing types.
 
 | Scalar | Flat total | Det total | Ratio | Det transport share |
 | -----: | ---------: | --------: | ----: | ------------------: |
-| 1.0× | 11,429 | 17,332 | 0.660 | 8.4% |
-| 6.04× | 14,769 | 24,879 | 0.593 | 36.3% |
-| 10.0× | 17,396 | 31,312 | 0.556 | 47.9% |
+|   1.0× |     11,429 |    17,332 | 0.660 |                8.4% |
+|  6.04× |     14,769 |    24,879 | 0.593 |               36.3% |
+|  10.0× |     17,396 |    31,312 | 0.556 |               47.9% |
 
 The qualitative pattern is stable from 1× to 10×.
 
@@ -603,11 +595,11 @@ The policy applications are:
 
 ### 5.2 What technology can and cannot offset
 
-| Layer | Gradient | Intervention | Offset potential | Timescale |
-| ----- | -------: | ------------ | ---------------- | --------- |
-| Form | 1.47× | Heat pump, insulation | High | 10–20 yrs |
-| Mobility | 2.26× | EV electrification | Partial — reduces intensity, not distance | 10–15 yrs |
-| Access | 1.56× (coverage) | Land-use reconfiguration | Low — requires changing distances | 50–100+ yrs |
+| Layer    |         Gradient | Intervention             | Offset potential                          | Timescale   |
+| -------- | ---------------: | ------------------------ | ----------------------------------------- | ----------- |
+| Form     |            1.47× | Heat pump, insulation    | High                                      | 10–20 yrs   |
+| Mobility |            2.26× | EV electrification       | Partial — reduces intensity, not distance | 10–15 yrs   |
+| Access   | 1.56× (coverage) | Land-use reconfiguration | Low — requires changing distances         | 50–100+ yrs |
 
 Building retrofit and fleet electrification can compress the Form and Mobility gaps on
 technology replacement timescales. The Access gap is set by street layout and land-use
@@ -658,89 +650,90 @@ where planning intervention has the most to offer.
 The NEPI is constructed from open data, is reproducible, and can be updated as new data
 becomes available. It provides a framework for integrating building energy, transport, and
 access into a single neighbourhood-level metric, complementing building-level EPCs with a
-place-level equivalent. The index is deliberately simple: three surfaces, equal weights,
-A–G bands. Refinement of the weighting, the service thresholds, and the transport
-estimation method are directions for future work. The core finding — that neighbourhood
+place-level equivalent. By expressing all three surfaces in kWh/hh/yr, the composite
+requires no arbitrary weighting — the surfaces weight themselves by their energy magnitude.
+Refinement of the service thresholds, the transport estimation method, and the access
+penalty model are directions for future work. The core finding — that neighbourhood
 form shapes energy performance across all three surfaces, and that the hardest surface to
 fix is the least visible to current policy — is robust to the methodological choices tested.
 
 ## References
 
-Banister, D. (2011). Cities, mobility and climate change. *Journal of Transport Geography*,
+Banister, D. (2011). Cities, mobility and climate change. _Journal of Transport Geography_,
 19(6), 1538–1546.
 
 Bettencourt, L.M.A. et al. (2007). Growth, innovation, scaling, and the pace of life in
-cities. *PNAS*, 104(17), 7301–7306.
+cities. _PNAS_, 104(17), 7301–7306.
 
 Bound, J., Brown, C. & Mathiowetz, N. (2001). Measurement error in survey data. In
-*Handbook of Econometrics*, Vol. 5, 3705–3843.
+_Handbook of Econometrics_, Vol. 5, 3705–3843.
 
-BRE (2012). *BREEAM Communities Technical Manual.* Building Research Establishment, Watford.
+BRE (2012). _BREEAM Communities Technical Manual._ Building Research Establishment, Watford.
 
 Cao, X., Mokhtarian, P.L. & Handy, S.L. (2009). Examining the impacts of residential
-self-selection on travel behaviour. *Transport Reviews*, 29(3), 359–395.
+self-selection on travel behaviour. _Transport Reviews_, 29(3), 359–395.
 
 Carr, L.J., Dunsiger, S.I. & Marcus, B.H. (2011). Validation of Walk Score for estimating
-access to walkable amenities. *British Journal of Sports Medicine*, 45(14), 1144–1148.
+access to walkable amenities. _British Journal of Sports Medicine_, 45(14), 1144–1148.
 
 Cervero, R. & Kockelman, K. (1997). Travel demand and the 3Ds: Density, diversity, and
-design. *Transportation Research Part D*, 2(3), 199–219.
+design. _Transportation Research Part D_, 2(3), 199–219.
 
 DESNZ (2025). Subnational Consumption Statistics: Methodology and Guidance Booklet.
 Department for Energy Security and Net Zero, December 2025.
 
 Ewing, R. & Cervero, R. (2010). Travel and the built environment: A meta-analysis.
-*JAPA*, 76(3), 265–294.
+_JAPA_, 76(3), 265–294.
 
 Few, J. et al. (2023). The over-prediction of energy use by EPCs in Great Britain: A
-comparison of EPC-modelled and metered primary energy consumption. *Energy & Buildings*,
+comparison of EPC-modelled and metered primary energy consumption. _Energy & Buildings_,
 288, 113024.
 
 Fotheringham, A.S. & Wong, D.W.S. (1991). The modifiable areal unit problem in
-multivariate statistical analysis. *Environment and Planning A*, 23(7), 1025–1044.
+multivariate statistical analysis. _Environment and Planning A_, 23(7), 1025–1044.
 
 Geurs, K.T. & van Wee, B. (2004). Accessibility evaluation of land-use and transport
-strategies: Review and research directions. *Journal of Transport Geography*, 12(2),
+strategies: Review and research directions. _Journal of Transport Geography_, 12(2),
 127–140.
 
 Greenland, S. (2001). Ecologic versus individual-level sources of bias in ecologic
-estimates of contextual health effects. *International Journal of Epidemiology*, 30(6),
+estimates of contextual health effects. _International Journal of Epidemiology_, 30(6),
 1343–1350.
 
-Hansen, W.G. (1959). How accessibility shapes land use. *Journal of the American Institute
-of Planners*, 25(2), 73–76.
+Hansen, W.G. (1959). How accessibility shapes land use. _Journal of the American Institute
+of Planners_, 25(2), 73–76.
 
-Jacobs, J. (2000). *The Nature of Economies*. Random House.
+Jacobs, J. (2000). _The Nature of Economies_. Random House.
 
 Kavgic, M. et al. (2010). A review of bottom-up building stock models for energy
-consumption in the residential sector. *Building and Environment*, 45(7), 1683–1697.
+consumption in the residential sector. _Building and Environment_, 45(7), 1683–1697.
 
 Mokhtarian, P.L. & Cao, X. (2008). Examining the impacts of residential self-selection
-on travel behavior. *Transport Reviews*, 28(3), 359–395.
+on travel behavior. _Transport Reviews_, 28(3), 359–395.
 
-Newman, P. & Kenworthy, J. (1989). *Cities and Automobile Dependence*. Gower.
+Newman, P. & Kenworthy, J. (1989). _Cities and Automobile Dependence_. Gower.
 
 Norman, J., MacLean, H.L. & Kennedy, C.A. (2006). Comparing high and low residential
-density: Life-cycle analysis of energy use and greenhouse gas emissions. *Journal of Urban
-Planning and Development*, 132(1), 10–21.
+density: Life-cycle analysis of energy use and greenhouse gas emissions. _Journal of Urban
+Planning and Development_, 132(1), 10–21.
 
-Robinson, W.S. (1950). Ecological correlations and the behavior of individuals. *American
-Sociological Review*, 15(3), 351–357.
+Robinson, W.S. (1950). Ecological correlations and the behavior of individuals. _American
+Sociological Review_, 15(3), 351–357.
 
 Rode, P. et al. (2014). Cities and energy: Urban morphology and residential heat-energy
-demand. *Environment and Planning B*, 41(1), 138–162.
+demand. _Environment and Planning B_, 41(1), 138–162.
 
-Simons, G. (2024). cityseer: Urban analysis with network-based methods. *Environment and
-Planning B*, forthcoming.
+Simons, G. (2024). cityseer: Urban analysis with network-based methods. _Environment and
+Planning B_, forthcoming.
 
 Steadman, P., Evans, S. & Liddiard, R. (2020). Building stock energy modelling in the UK:
-The 3DStock method and the London Building Stock Model. *Buildings & Cities*, 1(1), 100–119.
+The 3DStock method and the London Building Stock Model. _Buildings & Cities_, 1(1), 100–119.
 
-Stevens, M.R. (2017). Does compact development make people drive less? *Journal of
-Planning Literature*, 32(3), 184–211.
+Stevens, M.R. (2017). Does compact development make people drive less? _Journal of
+Planning Literature_, 32(3), 184–211.
 
-USGBC, Congress for the New Urbanism & NRDC (2009). *LEED for Neighborhood Development
-Rating System.* U.S. Green Building Council.
+USGBC, Congress for the New Urbanism & NRDC (2009). _LEED for Neighborhood Development
+Rating System._ U.S. Green Building Council.
 
-Wakefield, J. (2008). Ecologic studies revisited. *Annual Review of Public Health*, 29,
+Wakefield, J. (2008). Ecologic studies revisited. _Annual Review of Public Health_, 29,
 75–90.
