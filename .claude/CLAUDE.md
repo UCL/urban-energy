@@ -118,7 +118,7 @@ temp/
 
 ### Sample
 
-All 7,147 English Built-Up Areas at Output Area resolution (pipeline in progress; 2,847 BUAs / 171,238 OAs processed as of 2026-03-19). Each OA contains ~130 households.
+All 7,147 English Built-Up Areas at Output Area resolution (pipeline in progress; 4,922 BUAs / 179,004 OAs processed as of 2026-03-19). Each OA contains ~130 households.
 
 ### Primary stratification
 

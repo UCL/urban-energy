@@ -28,9 +28,9 @@ housing type and energy consumption.
 
 The analysis covers 2,844 English Built-Up Areas at Output Area (OA) resolution.
 
-- **Geography:** 2,844 English BUAs (of 7,147 total — pipeline in progress)
-- **Unit:** Output Area (168,225 OAs after filtering)
-- **Sample by dominant type:** Flat 33,812 / Terraced 43,627 / Semi-detached 56,517 / Detached 34,269
+- **Geography:** 4,922 English BUAs (of 7,147 total — pipeline in progress)
+- **Unit:** Output Area (175,425 OAs after filtering)
+- **Sample by dominant type:** Flat 33,931 / Terraced 44,408 / Semi-detached 58,348 / Detached 38,738
 - **Stratification:** Dominant Census 2021 accommodation type (TS044) per OA by plurality share
 - **Energy model:** Metered building energy (DESNZ 2024 postcode data, aggregated to OA) + estimated commute energy (Census 2021 distance × mode × energy intensity)
 - **Access model:** Cityseer network analysis — gravity-weighted land-use counts at 800m pedestrian catchment
@@ -82,16 +82,16 @@ Median OA values:
 
 | Dwelling type | Building energy (kWh/hh) | Building energy (kWh/person) |
 | ------------- | -----------------------: | ---------------------------: |
-| Flat          | 10,766                   | 5,144                        |
-| Terraced      | 13,021                   | 5,351                        |
-| Semi-detached | 13,906                   | 5,813                        |
-| Detached      | 15,953                   | 6,797                        |
+| Flat          |                   10,766 |                        5,144 |
+| Terraced      |                   13,022 |                        5,357 |
+| Semi-detached |                   13,888 |                        5,809 |
+| Detached      |                   15,835 |                        6,750 |
 
 Observations.
 
-- Building energy is higher in detached-dominant OAs than in flat-dominant OAs (ratio 1.48x
-  per household, 1.32x per person).
-- The gradient is steeper at OA level than previously observed at LSOA level (1.48x vs
+- Building energy is higher in detached-dominant OAs than in flat-dominant OAs (ratio 1.47x
+  per household, 1.31x per person).
+- The gradient is steeper at OA level than previously observed at LSOA level (1.47x vs
   1.28x), consistent with reduced within-unit type mixing at finer spatial resolution.
 - Per-person readings are compressed because household size varies (2.1 persons in
   flat-dominant OAs, 2.4 in detached-dominant).
@@ -112,18 +112,18 @@ Median OA values:
 
 | Dwelling type | Commute transport (kWh/hh) | Overall transport est. (kWh/hh) | Total (commute base, kWh/hh) | Total (overall est., kWh/hh) |
 | ------------- | -------------------------: | ------------------------------: | ---------------------------: | ---------------------------: |
-| Flat          | 662                        | 3,996                           | 11,427                       | 14,762                       |
-| Terraced      | 1,091                      | 6,591                           | 14,112                       | 19,611                       |
-| Semi-detached | 1,262                      | 7,625                           | 15,168                       | 21,530                       |
-| Detached      | 1,456                      | 8,796                           | 17,409                       | 24,749                       |
+| Flat          |                        663 |                           4,003 |                       11,429 |                       14,769 |
+| Terraced      |                      1,098 |                           6,630 |                       14,119 |                       19,651 |
+| Semi-detached |                      1,275 |                           7,698 |                       15,163 |                       21,586 |
+| Detached      |                      1,498 |                           9,045 |                       17,332 |                       24,879 |
 
 Observations.
 
 - Adding estimated transport energy widens the morphology gradient (this widening reflects
   the addition of a correlated dimension, not a multiplicative causal chain). Under the commute
-  estimate, total energy rises from 11,427 kWh/hh (flat) to 17,409 kWh/hh (detached),
-  a 52% gap. Under the overall-travel scenario, 14,762 → 24,749 kWh/hh (68% gap).
-- Private commute energy: 508 kWh/hh (flat) → 1,419 kWh/hh (detached), ratio 2.79x.
+  estimate, total energy rises from 11,429 kWh/hh (flat) to 17,332 kWh/hh (detached),
+  a 52% gap. Under the overall-travel scenario, 14,769 → 24,879 kWh/hh (68% gap).
+- Private commute energy: 509 kWh/hh (flat) → 1,461 kWh/hh (detached), ratio 2.87x.
   Public commute energy runs in the opposite direction: 154 → 38 kWh/hh.
 - Car ownership: 0.67 cars/hh (flat) → 1.61 cars/hh (detached).
 
@@ -168,12 +168,12 @@ The basket defines annual trip demand by destination type using observed nationa
 
 | Category                    | Annual trips/person | Source                    |
 | --------------------------- | ------------------: | ------------------------- |
-| Local food/services (proxy) | 167.0               | DfT NTS 2024 shopping     |
-| GP                          | 6.6                 | NHS England appointments  |
-| Pharmacy                    | 7.2                 | NHSBSA prescriptions      |
-| School                      | 59.2                | DfE pupil headcount       |
-| Green space                 | 85.0                | DfT NTS 2024 walk trips   |
-| Hospital                    | 2.0                 | NHS outpatient attendance |
+| Local food/services (proxy) |               167.0 | DfT NTS 2024 shopping     |
+| GP                          |                 6.6 | NHS England appointments  |
+| Pharmacy                    |                 7.2 | NHSBSA prescriptions      |
+| School                      |                59.2 | DfE pupil headcount       |
+| Green space                 |                85.0 | DfT NTS 2024 walk trips   |
+| Hospital                    |                 2.0 | NHS outpatient attendance |
 
 These rates are applied uniformly across all OAs. In practice, trip rates vary by household
 type, income, and location; the uniform assumption is a simplification.
@@ -199,18 +199,18 @@ Median OA values (penalty under overall-travel scenario):
 
 | Type          | Trip budget (trips/hh/yr) | Local trips | Extra travel trips | Local coverage | Access penalty (kWh/hh/yr) |
 | ------------- | ------------------------: | ----------: | -----------------: | -------------: | -------------------------: |
-| Flat          | 671                       | 520         | 120                | 82.3%          | 273                        |
-| Terraced      | 785                       | 569         | 196                | 75.7%          | 572                        |
-| Semi-detached | 791                       | 483         | 305                | 61.6%          | 1,015                      |
-| Detached      | 785                       | 354         | 426                | 44.9%          | 1,605                      |
+| Flat          |                       671 |         520 |                120 |          82.2% |                        275 |
+| Terraced      |                       785 |         569 |                196 |          75.6% |                        581 |
+| Semi-detached |                       791 |         483 |                305 |          61.4% |                      1,028 |
+| Detached      |                       785 |         354 |                426 |          45.2% |                      1,629 |
 
 Observations.
 
 - Trip budgets are similar across types (household size accounts for the variation).
 - The difference is how much of the budget is met locally. Detached-dominant OAs meet
   45% of trips locally vs 82% for flat-dominant — a 3.55x ratio in extra travel trips.
-- The associated access energy penalty is 5.88x higher in detached-dominant OAs (1,605
-  vs 273 kWh/hh/yr under the overall-travel scenario).
+- The associated access energy penalty is 5.92x higher in detached-dominant OAs (1,629
+  vs 275 kWh/hh/yr under the overall-travel scenario).
 - These penalty estimates are conditional on the basket specification (trip rates,
   half-distances, energy intensities). They should be interpreted as model outputs
   illustrating the morphology gradient, not as precise measurements.
@@ -240,7 +240,7 @@ Observations.
 
 ![Figure 8: Energy vs local trip coverage (KDE)](../stats/figures/basket_oa/fig_basket_oa_scatter_energy_vs_basket.png)
 
-- The morphology-energy-access pattern holds across the full distribution of 168,225 OAs,
+- The morphology-energy-access pattern holds across the full distribution of 175,425 OAs,
   not only at type-group medians.
 - Compact typologies cluster toward higher local trip coverage and lower total energy.
 
@@ -249,11 +249,11 @@ Observations.
 The gradient across all three surfaces, expressed as the ratio of detached-dominant to
 flat-dominant OA medians:
 
-| Surface | Flat (kWh/hh) | Detached (kWh/hh) | Ratio |
-| ------- | ------------: | -----------------: | ----: |
-| Building energy | 10,766 | 15,953 | 1.48x |
-| Total energy (overall est.) | 14,762 | 24,749 | 1.68x |
-| Access energy penalty | 273 | 1,605 | 5.88x |
+| Surface                     | Flat (kWh/hh) | Detached (kWh/hh) | Ratio |
+| --------------------------- | ------------: | ----------------: | ----: |
+| Building energy             |        10,766 |            15,835 | 1.47x |
+| Total energy (overall est.) |        14,769 |            24,879 | 1.68x |
+| Access energy penalty       |           275 |             1,629 | 5.92x |
 
 These ratios describe different normalisations of the same underlying gradient, not a
 multiplicative causal chain. The widening reflects the addition of successive dimensions
@@ -266,11 +266,11 @@ pattern in the data, not a tested causal mechanism.
 
 The morphology gradient intersects energy policy at three layers:
 
-| Layer | Gradient | Intervention | Offset potential | Timescale |
-| ----- | -------: | ------------ | ---------------- | --------- |
-| Building | 1.48x | Heat pump, insulation | High — addresses envelope efficiency | 10–20 yrs |
-| Transport | 2.20x | EV electrification | Partial — reduces intensity, not distance or trip count | 10–15 yrs |
-| Access | 5.88x | Land-use reconfiguration | Low — requires changing distance to destinations | 50–100+ yrs (street geometry); shorter for service placement |
+| Layer     | Gradient | Intervention             | Offset potential                                        | Timescale                                                    |
+| --------- | -------: | ------------------------ | ------------------------------------------------------- | ------------------------------------------------------------ |
+| Building  |    1.47x | Heat pump, insulation    | High — addresses envelope efficiency                    | 10–20 yrs                                                    |
+| Transport |    2.26x | EV electrification       | Partial — reduces intensity, not distance or trip count | 10–15 yrs                                                    |
+| Access    |    5.92x | Land-use reconfiguration | Low — requires changing distance to destinations        | 50–100+ yrs (street geometry); shorter for service placement |
 
 The access penalty is descriptive and conditional on current land-use configurations. Land-use
 planning interventions — neighbourhood centres, GP branch surgeries, school placement
@@ -298,7 +298,7 @@ implies an average dwelling life of over 1,000 years at current replacement rate
   meaning their heating energy is underestimated. Communal and district heating schemes
   are not captured in standard meter data and disproportionately affect flats, meaning
   flat-dominant OA heating energy is also underestimated. Both biases compress the
-  observed building energy gradient; the true gradient may be larger than 1.48x.
+  observed building energy gradient; the true gradient may be larger than 1.47x.
 - Census 2021 travel data reflects pandemic-affected behaviour (21 March 2021, during
   the third national lockdown). ONS quality assessments indicate that TS058 and TS061 are
   the Census topics most affected by pandemic conditions. Work-from-home rates were
@@ -351,16 +351,16 @@ implies an average dwelling life of over 1,000 years at current replacement rate
 
 All key Flat/Detached median ratios were bootstrapped with 10,000 resamples:
 
-| Metric | Flat median | Detached median | Ratio | 95% CI |
-| ------ | ----------: | --------------: | ----: | -----: |
-| Building kWh/hh | 10,766 | 15,953 | 0.675 | [0.672, 0.678] |
-| Total kWh/hh (commute) | 11,623 | 17,554 | 0.662 | [0.659, 0.665] |
-| Total kWh/hh (overall) | 15,566 | 25,639 | 0.607 | [0.604, 0.610] |
-| Transport kWh/hh (overall) | 4,401 | 8,869 | 0.496 | [0.492, 0.502] |
-| kWh per access unit | 3,242 | 8,728 | 0.371 | [0.368, 0.375] |
-| Cars/hh | 0.67 | 1.61 | 0.418 | [0.415, 0.421] |
+| Metric                     | Flat median | Detached median | Ratio |         95% CI |
+| -------------------------- | ----------: | --------------: | ----: | -------------: |
+| Building kWh/hh            |      10,766 |          15,953 | 0.675 | [0.672, 0.678] |
+| Total kWh/hh (commute)     |      11,623 |          17,554 | 0.662 | [0.659, 0.665] |
+| Total kWh/hh (overall)     |      15,566 |          25,639 | 0.607 | [0.604, 0.610] |
+| Transport kWh/hh (overall) |       4,401 |           8,869 | 0.496 | [0.492, 0.502] |
+| kWh per access unit        |       3,242 |           8,728 | 0.371 | [0.368, 0.375] |
+| Cars/hh                    |        0.67 |            1.61 | 0.418 | [0.415, 0.421] |
 
-All intervals are narrow. With 168,225 OAs, the medians are precisely estimated.
+All intervals are narrow. With 175,425 OAs, the medians are precisely estimated.
 
 ### B. Plurality share sensitivity
 
@@ -369,11 +369,11 @@ no minimum). This test imposes progressively stricter thresholds, dropping OAs w
 dominant type holds less than 40%, 50%, or 60% of households:
 
 | Threshold | N total | N Flat | N Detached | Building (F/D) | Total overall (F/D) | kWh/Access (F/D) |
-| --------- | ------: | -----: | ---------: | -------------: | ------------------: | ----------------: |
-| Plurality | 168,225 | 33,812 | 34,269     | 0.675          | 0.607               | 0.371             |
-| 40%       | 145,536 | 26,966 | 31,124     | 0.636          | 0.576               | 0.347             |
-| 50%       | 112,378 | 20,721 | 25,340     | 0.588          | 0.534               | 0.305             |
-| 60%       | 77,657  | 15,449 | 18,085     | 0.532          | 0.489               | 0.260             |
+| --------- | ------: | -----: | ---------: | -------------: | ------------------: | ---------------: |
+| Plurality | 168,225 | 33,812 |     34,269 |          0.675 |               0.607 |            0.371 |
+| 40%       | 145,536 | 26,966 |     31,124 |          0.636 |               0.576 |            0.347 |
+| 50%       | 112,378 | 20,721 |     25,340 |          0.588 |               0.534 |            0.305 |
+| 60%       |  77,657 | 15,449 |     18,085 |          0.532 |               0.489 |            0.260 |
 
 The gradient **steepens** at every threshold. At 60% dominant share:
 
@@ -394,11 +394,11 @@ This test varies the scalar from 1x (commute only) to 10x:
 
 | Scalar | Flat total (kWh/hh) | Detached total (kWh/hh) | Ratio (F/D) | Det transport share |
 | -----: | ------------------: | ----------------------: | ----------: | ------------------: |
-| 1.0x   | 11,494              | 17,421                  | 0.660       | 8.4%                |
-| 4.0x   | 13,412              | 21,779                  | 0.616       | 26.7%               |
-| 6.04x  | 14,762              | 24,749                  | 0.597       | 35.6%               |
-| 8.0x   | 16,046              | 27,592                  | 0.582       | 42.3%               |
-| 10.0x  | 17,330              | 30,434                  | 0.569       | 47.9%               |
+|   1.0x |              11,494 |                  17,421 |       0.660 |                8.4% |
+|   4.0x |              13,412 |                  21,779 |       0.616 |               26.7% |
+|  6.04x |              14,762 |                  24,749 |       0.597 |               35.6% |
+|   8.0x |              16,046 |                  27,592 |       0.582 |               42.3% |
+|  10.0x |              17,330 |                  30,434 |       0.569 |               47.9% |
 
 The gradient increases monotonically with the scalar because transport energy correlates
 with morphology in the same direction as building energy. Even at 1x (commute only, the
@@ -412,13 +412,14 @@ OAs at the periphery of Built-Up Areas may have artificially depressed accessibi
 scores because the cityseer network search is truncated at the BUA boundary. This test
 flags OAs in the bottom 10% of network density within each type as "edge" OAs:
 
-| Metric | Interior (N=151,401) | Edge (N=16,824) | Difference |
-| ------ | -------------------: | ---------------: | ---------: |
-| Building kWh/hh | 13,517 | 12,925 | -4.4% |
-| Total kWh/hh (overall) | 21,226 | 22,022 | +3.7% |
-| Accessibility (z) | higher | lower | as expected |
+| Metric                 | Interior (N=151,401) | Edge (N=16,824) |  Difference |
+| ---------------------- | -------------------: | --------------: | ----------: |
+| Building kWh/hh        |               13,517 |          12,925 |       -4.4% |
+| Total kWh/hh (overall) |               21,226 |          22,022 |       +3.7% |
+| Accessibility (z)      |               higher |           lower | as expected |
 
 Building energy Flat/Detached ratio:
+
 - All OAs: 0.675
 - Interior only: 0.680
 - **Change: +0.7%**
@@ -436,6 +437,7 @@ IMD 2025 income domain score, and BUA fixed effects (2,843 dummies). HC1 robust 
 errors.
 
 Key findings:
+
 - Housing type shares (pct_detached, pct_flat, pct_terraced; semi = reference)
   remain significant after all controls.
 - Building age and IMD income domain both predict building energy independently of
