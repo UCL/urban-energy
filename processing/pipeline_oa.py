@@ -34,7 +34,7 @@ from scipy.spatial import cKDTree  # type: ignore[unresolved-import]
 
 warnings.filterwarnings("ignore", message="DataFrame is highly fragmented")
 
-from pipeline_lsoa import (  # noqa: E402
+from archive.pipeline_lsoa import (  # noqa: E402
     _MORPH_MEAN_COLS,
     _MORPH_SUM_COLS,
     _TS001_POP,
@@ -287,13 +287,16 @@ def run_stage2_network(
     transport_buf = transport[transport.intersects(buffered_bounds)].copy()
     bus_types = ["BCT", "BCS", "BCE", "BCQ", "BST"]
     rail_types = ["RSE", "RLY", "PLT", "MET"]
-    bus_mask = transport_buf["stop_type"].isin(bus_types)
-    rail_mask = transport_buf["stop_type"].isin(rail_types)
-    transport_buf.loc[bus_mask, "landuse"] = "bus"
-    transport_buf.loc[rail_mask, "landuse"] = "rail"
-    transport_tagged = transport_buf[transport_buf["landuse"].notna()]
-    landuse_parts.append(transport_tagged[["geometry", "landuse"]])
-    print(f"    Transport: bus={bus_mask.sum()}, rail={rail_mask.sum()}")
+    if len(transport_buf) > 0:
+        bus_mask = transport_buf["stop_type"].isin(bus_types)
+        rail_mask = transport_buf["stop_type"].isin(rail_types)
+        transport_buf.loc[bus_mask, "landuse"] = "bus"
+        transport_buf.loc[rail_mask, "landuse"] = "rail"
+        transport_tagged = transport_buf[transport_buf["landuse"].notna()]
+        landuse_parts.append(transport_tagged[["geometry", "landuse"]])
+        print(f"    Transport: bus={bus_mask.sum()}, rail={rail_mask.sum()}")
+    else:
+        print("    Transport: bus=0, rail=0")
 
     # Schools
     schools_path = PATHS.get("schools")

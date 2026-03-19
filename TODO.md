@@ -22,8 +22,8 @@ The analysis has been overhauled from LSOA level (18 cities, 3,678 units) to OA 
 - [x] OA analysis scripts (`stats/proof_of_concept_oa.py`, `stats/oa_figures.py`, `stats/basket_index_oa.py`)
 - [x] Publication figures regenerated for 94-BUA sample
 - [ ] Complete national pipeline (7,147 BUAs — running)
-- [ ] Write case narrative (`paper/case_oa.md`)
-- [ ] Reconcile `paper/main.tex` with OA results
+- [x] Write case narrative (`paper/case_v2.md`)
+- [ ] Reconcile `paper/archive/main.tex` with OA results
 
 ### Key Scripts
 
@@ -56,16 +56,19 @@ uv run python stats/build_case_oa.py       # regenerate figures from completed B
 
 ## Case One: LSOA Reference (archived)
 
-The original LSOA-level proof of concept (18 cities, 3,678 LSOAs) is preserved as a reference.
+The original LSOA-level proof of concept (18 cities, 3,678 LSOAs) is preserved in archive directories.
 
 | Script | Purpose |
-|--------|---------|
-| `stats/build_case.py` | Regenerate LSOA case-one figures |
-| `stats/lsoa_figures.py` | LSOA three-surfaces figures |
-| `stats/basket_index_v1.py` | LSOA basket case |
-| `stats/proof_of_concept_lsoa.py` | LSOA analysis |
-| `processing/pipeline_lsoa.py` | LSOA pipeline (old cityseer API) |
-| `paper/case_v1.md` | LSOA case narrative |
+| ------ | ------- |
+| `stats/archive/build_case.py` | Regenerate LSOA case-one figures |
+| `stats/archive/lsoa_figures.py` | LSOA three-surfaces figures |
+| `stats/archive/basket_index_v1.py` | LSOA basket case |
+| `stats/archive/proof_of_concept_lsoa.py` | LSOA analysis |
+| `stats/archive/diagnostic_fig1b.py` | LSOA confounder diagnostics |
+| `processing/archive/pipeline_lsoa.py` | LSOA pipeline (old cityseer API) |
+| `paper/archive/case_v1.md` | LSOA case narrative |
+| `paper/archive/main.tex` | Stale LaTeX paper |
+| `stats/figures/archive_lsoa/` | LSOA figures and tables |
 
 ---
 
@@ -87,8 +90,8 @@ The original LSOA-level proof of concept (18 cities, 3,678 LSOAs) is preserved a
 
 ### Paper
 
-- [ ] Write `paper/case_oa.md` (OA-level narrative)
-- [ ] Reconcile `paper/main.tex` with OA results
+- [x] Write `paper/case_v2.md` (OA-level narrative)
+- [ ] Reconcile `paper/archive/main.tex` with OA results
 - [ ] Formal methods section
 - [ ] Finalise `references.bib`
 

@@ -13,9 +13,15 @@ This project investigates the relationship between urban form (morphology, densi
 urban-energy/
 ├── src/urban_energy/          # Python package (paths.py centralises storage config)
 ├── data/                      # Data acquisition and preprocessing scripts
-├── processing/                # Derived metric computation (morphology, network, LSOA pipeline)
+├── processing/                # OA-level pipeline (pipeline_oa.py)
+│   └── archive/               # Archived LSOA pipeline
 ├── stats/                     # Statistical analysis and figure generation
-├── paper/                     # Academic paper, literature review, data methodology
+│   ├── figures/oa/            # Active OA-level figures (fig1-fig8)
+│   ├── figures/basket_oa/     # OA basket figures and tables
+│   ├── figures/archive_lsoa/  # Archived LSOA figures
+│   └── archive/               # Archived LSOA analysis scripts
+├── paper/                     # Academic paper
+│   └── archive/               # Archived LSOA case and stale LaTeX
 ├── docs/                      # Archived working notes (v0 methodology, roadmap, log)
 ├── tests/                     # Test suite (framework configured, tests pending)
 ├── temp/                      # Processing outputs (on external storage, not in git)
@@ -26,18 +32,17 @@ urban-energy/
 
 | Script | Purpose |
 |--------|---------|
-| `stats/build_case.py` | Regenerate all case-one figures and tables |
-| `processing/pipeline_lsoa.py` | 3-stage LSOA integration pipeline |
+| `stats/build_case_oa.py` | Regenerate all OA-level figures and tables |
+| `processing/pipeline_oa.py` | National OA integration pipeline (7,147 BUAs) |
 | `processing/process_morphology.py` | Building shape metrics from LiDAR + OS footprints |
 
 ### Canonical documents
 
 | File | Status |
 |------|--------|
-| `paper/case_v1.md` | **Current** — 9-step proof-of-concept narrative |
+| `paper/case_v2.md` | **Current** — OA-level analysis with robustness (IMRaD transition in progress) |
 | `paper/data.md` | **Current** — data source methodology |
 | `paper/literature_review.md` | Current — thematic literature review |
-| `paper/main.tex` | **Stale** — not reconciled with case_v1.md |
 | `paper/references.bib` | Partial |
 | `TODO.md` | Development status and forward plan |
 
@@ -47,7 +52,8 @@ External storage at `/Volumes/1TB/urban-energy` (hardcoded in `src/urban_energy/
 
 ```
 temp/
-├── processing/combined/lsoa_integrated.gpkg   ← Final integrated LSOA dataset
+├── processing/combined/oa_integrated.gpkg     ← Final integrated OA dataset (national)
+├── processing/{bua_name}/oa_integrated.gpkg   ← Per-BUA OA outputs
 ├── boundaries/built_up_areas.gpkg
 ├── lidar/building_heights.gpkg
 ├── morphology/buildings_morphology.gpkg
@@ -112,31 +118,32 @@ temp/
 
 ### Sample
 
-18 English cities (OS Built-Up Areas), 3,678 LSOAs:
-- **Original 8:** Manchester, Bristol, Milton Keynes, York, Cambridge, Stevenage, Burnley, Canterbury
-- **Expansion 10:** Birmingham, Leeds, Sheffield, Liverpool, Newcastle, Nottingham, Leicester, Plymouth, Southampton, Brighton
+All 7,147 English Built-Up Areas at Output Area resolution (pipeline in progress; 2,847 BUAs / 171,238 OAs processed as of 2026-03-19). Each OA contains ~130 households.
 
 ### Primary stratification
 
-`dominant_type` — plurality accommodation type from Census TS044 per LSOA:
-- Flat-dominant: 712 LSOAs
-- Terraced-dominant: 1,209 LSOAs
-- Semi-detached-dominant: 1,473 LSOAs
-- Detached-dominant: 284 LSOAs
+`dominant_type` — plurality accommodation type from Census TS044 per OA:
+
+- Flat-dominant: 33,812 OAs
+- Terraced-dominant: 43,627 OAs
+- Semi-detached-dominant: 56,517 OAs
+- Detached-dominant: 34,269 OAs
 
 ### Three energy surfaces
 
-1. **Thermal (building):** DESNZ metered gas + electricity per household/capita
+1. **Thermal (building):** DESNZ metered gas + electricity (postcode-level, aggregated to OA)
 2. **Mobility (transport):** Census commute distance (TS058) × mode (TS061) × energy intensity (road: 0.399, rail: 0.178 kWh/pkm)
 3. **Accessibility (return):** Cityseer network centrality + gravity-weighted land-use counts at 800m walk
 
-### The compounding effect
+### Key results (OA level, 168,225 OAs)
 
-Each normalisation widens the efficiency gap:
-- kWh/m² → modest (~1.04x)
-- kWh/capita → widens (~1.76x)
-- kWh/capita/accessibility → widens further (~2.79x)
-- With basket penalty → 3.5x between detached-dominant and flat-dominant LSOAs
+The gradient widens across surfaces (Flat-dominant → Detached-dominant medians):
+
+- Building energy: 10,766 → 15,953 kWh/hh (1.48x)
+- Total energy (overall scenario): 14,762 → 24,749 kWh/hh (1.68x)
+- Energy per unit access: 3,242 → 8,728 kWh/access (2.69x)
+
+Plurality sensitivity: gradient steepens at stricter thresholds (1.88x at 60%), confirming the headline is conservative.
 
 ## Core Thesis: The Trophic Layers Framework
 
@@ -289,7 +296,7 @@ uv run python data/download_naptan.py          # NaPTAN transport
 uv run python data/download_scaling.py         # BRES + GVA
 
 # Analysis
-uv run python stats/build_case.py              # Regenerate all case-one figures
+uv run python stats/build_case_oa.py           # Regenerate all OA-level figures
 
 # Git workflow
 git status                   # Check changes
