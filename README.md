@@ -12,6 +12,10 @@ Cities are conduits that capture energy and recycle it through layers of human i
 
 The Neighbourhood Energy Performance Index (NEPI) is an interactive tool that predicts household energy costs from neighbourhood morphology. Four XGBoost models predict Form (building energy), Mobility (transport energy), car ownership, and commute distance from planner-controllable inputs.
 
+### Live demo
+
+**[https://UCL.github.io/urban-energy/](https://UCL.github.io/urban-energy/)**
+
 ### Static version (no server required)
 
 Two files, runs in any browser:
