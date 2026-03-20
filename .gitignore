@@ -132,3 +132,4 @@ _minted-*/
 *.dpth
 *.pdf
 \!stats/nepi_static/*.json
+!docs/*.json
