@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEPI Planning Tool</title>
+<style>
+  :root {
+    --bg: #0e1117; --surface: #1a1d24; --border: #2d3139;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.5; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 1rem; }
+  h1 { font-size: 1.6rem; margin-bottom: 0.3rem; }
+  h2 { font-size: 1.1rem; color: var(--muted); margin: 1rem 0 0.5rem; }
+  .banner { background: #3b2a00; border: 1px solid #5a4000; border-radius: 8px;
+    padding: 0.6rem 1rem; margin-bottom: 1rem; font-size: 0.85rem; color: #f0c040; }
+  .layout { display: grid; grid-template-columns: 280px 1fr; gap: 1.5rem; }
+  .sidebar { background: var(--surface); border-radius: 10px; padding: 1.2rem;
+    border: 1px solid var(--border); }
+  .main { min-width: 0; }
+
+  /* Sliders */
+  .slider-group { margin-bottom: 1rem; }
+  .slider-label { font-size: 0.8rem; color: var(--muted); margin-bottom: 2px;
+    display: flex; justify-content: space-between; }
+  .slider-label span { color: var(--text); font-weight: 600; }
+  input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+  .morph-label { font-size: 0.85rem; font-weight: 600; color: var(--accent);
+    text-align: center; margin: 4px 0 8px; }
+  .morph-ends { display: flex; justify-content: space-between;
+    font-size: 0.75rem; color: var(--muted); }
+  hr { border: none; border-top: 1px solid var(--border); margin: 0.8rem 0; }
+
+  /* Results row */
+  .results { display: flex; align-items: center; gap: 1.5rem;
+    margin-bottom: 0.8rem; flex-wrap: wrap; }
+  .band-badge { width: 80px; height: 80px; border-radius: 10px; display: flex;
+    align-items: center; justify-content: center; font-size: 40px; font-weight: 700;
+    color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); flex-shrink: 0; }
+  .metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; flex: 1; }
+  .metric { text-align: center; }
+  .metric .value { font-size: 1.3rem; font-weight: 700; }
+  .metric .label { font-size: 0.7rem; color: var(--muted); }
+  .interpretation { font-size: 0.8rem; color: var(--muted);
+    margin-bottom: 1rem; line-height: 1.4; }
+
+  /* Charts */
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+  .chart-box { background: var(--surface); border-radius: 8px; padding: 0.8rem;
+    border: 1px solid var(--border); }
+  .chart-box h3 { font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--muted); }
+  .contrib-bar { display: flex; align-items: center; margin: 3px 0; font-size: 0.75rem; }
+  .contrib-label { width: 130px; text-align: right; padding-right: 8px;
+    color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .contrib-track { flex: 1; height: 16px; position: relative; }
+  .contrib-fill { height: 100%; border-radius: 3px; position: absolute; top: 0; }
+  .contrib-val { width: 55px; text-align: right; font-size: 0.7rem; color: var(--muted); padding-left: 4px; }
+
+  /* Comparison */
+  .comp-row { display: flex; align-items: center; margin: 4px 0; }
+  .comp-label { width: 100px; text-align: right; padding-right: 8px;
+    font-size: 0.8rem; color: var(--muted); }
+  .comp-badge { width: 28px; height: 22px; border-radius: 4px; display: flex;
+    align-items: center; justify-content: center; font-size: 0.7rem;
+    font-weight: 700; color: white; margin-right: 6px; flex-shrink: 0; }
+  .comp-bar-track { flex: 1; height: 20px; display: flex; border-radius: 3px; overflow: hidden; }
+  .comp-bar-form { background: #3498db; height: 100%; }
+  .comp-bar-mob { background: #e67e22; height: 100%; }
+  .comp-kwh { width: 80px; font-size: 0.75rem; color: var(--muted); padding-left: 6px; }
+  .comp-legend { display: flex; gap: 1rem; justify-content: center;
+    font-size: 0.75rem; color: var(--muted); margin-top: 6px; }
+  .comp-legend span { display: flex; align-items: center; gap: 4px; }
+  .comp-legend .dot { width: 10px; height: 10px; border-radius: 2px; }
+  .highlight { outline: 2px solid var(--accent); outline-offset: -1px; border-radius: 3px; }
+
+  /* About */
+  .about { font-size: 0.78rem; color: var(--muted); line-height: 1.5;
+    margin-top: 1rem; max-width: 900px; }
+  .about p { margin-bottom: 0.5rem; }
+
+  .btn { background: var(--border); color: var(--text); border: none;
+    padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+  .btn:hover { background: #3d4148; }
+
+  @media (max-width: 768px) {
+    .layout { grid-template-columns: 1fr; }
+    .charts-row { grid-template-columns: 1fr; }
+    .metrics { grid-template-columns: repeat(3, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>NEPI Planning Tool</h1>
+  <div class="banner">
+    ⚠️ <strong>Proof of concept — experimental.</strong>
+    Predictions are indicative of direction and magnitude, not literal targets.
+    Models use monotonic constraints to enforce theoretically-grounded directionality.
+  </div>
+
+  <div class="layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <h2 style="margin-top:0">Neighbourhood Type</h2>
+      <div class="morph-ends"><span>Sprawl</span><span>Compact</span></div>
+      <div class="slider-group">
+        <input type="range" id="morph" min="0" max="100" value="50">
+        <div class="morph-label" id="morphLabel">Moderate-compact (terraced)</div>
+      </div>
+      <hr>
+      <h2>Individual Parameters</h2>
+      <p style="font-size:0.75rem;color:var(--muted);margin-bottom:8px">
+        Track morphology by default. Adjust for targeted interventions.</p>
+      <div class="slider-group">
+        <div class="slider-label">Amenity access <span id="coverageVal">71%</span></div>
+        <input type="range" id="coverage" min="0" max="100" value="71">
+      </div>
+      <div class="slider-group">
+        <div class="slider-label">Transit access <span id="transitVal">1.7</span></div>
+        <input type="range" id="transit" min="0" max="400" value="170">
+      </div>
+      <div class="slider-group">
+        <div class="slider-label">Building era <span id="yearVal">1958</span></div>
+        <input type="range" id="buildYear" min="1900" max="2025" value="1958" step="5">
+      </div>
+      <button class="btn" onclick="resetOverrides()" style="width:100%;margin-top:4px">
+        Reset to archetype</button>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+      <div class="results">
+        <div class="band-badge" id="bandBadge">D</div>
+        <div class="metrics">
+          <div class="metric"><div class="value" id="formVal">—</div><div class="label">Form (kWh)</div></div>
+          <div class="metric"><div class="value" id="mobVal">—</div><div class="label">Mobility (kWh)</div></div>
+          <div class="metric"><div class="value" id="totalVal">—</div><div class="label">Total (kWh)</div></div>
+          <div class="metric"><div class="value" id="carsVal">—</div><div class="label">Cars/hh</div></div>
+          <div class="metric"><div class="value" id="commuteVal">—</div><div class="label">Commute (km)</div></div>
+        </div>
+      </div>
+      <div class="interpretation" id="interp"></div>
+
+      <div class="charts-row">
+        <div class="chart-box">
+          <h3>Form — what drives building energy?</h3>
+          <div id="contribForm"></div>
+        </div>
+        <div class="chart-box">
+          <h3>Mobility — what drives transport energy?</h3>
+          <div id="contribMob"></div>
+        </div>
+      </div>
+
+      <div class="chart-box">
+        <h3>Comparison with national archetypes</h3>
+        <div id="compChart"></div>
+        <div class="comp-legend">
+          <span><div class="dot" style="background:#3498db"></div> Form (building)</span>
+          <span><div class="dot" style="background:#e67e22"></div> Mobility (transport)</span>
+        </div>
+      </div>
+
+      <div class="about">
+        <p><strong>How this works.</strong> The NEPI rates neighbourhoods on two energy costs —
+        Form (building energy) and Mobility (transport energy) — predicted from
+        planner-controllable inputs. The primary slider moves all inputs together along the
+        observed national gradient from sprawling detached suburbs (Band E, ~25,000 kWh/hh/yr)
+        to compact urban flats (Band B, ~16,000 kWh/hh/yr). Individual overrides let you test
+        targeted interventions.</p>
+        <p>Four XGBoost models with monotonic constraints predict Form energy, Mobility energy,
+        car ownership, and commute distance from 198,779 English Output Areas. Each model sees
+        only its causally relevant features: building era affects Form but not Mobility; transit
+        access affects Mobility but not Form.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// --- Model data loaded from external JSON ---
+let DATA = null;
+
+const BAND_COLORS = {
+  A:"#00845A", B:"#2C9F29", C:"#8CBF26", D:"#FCD800",
+  E:"#F0AB00", F:"#ED6F21", G:"#E3242B"
+};
+
+const FEATURE_LABELS = {
+  people_per_ha: "Pop. density",
+  pct_detached: "% Detached", pct_semi: "% Semi",
+  pct_terraced: "% Terraced", pct_flat: "% Flat",
+  local_coverage: "Amenity access", cc_bus_800_wt: "Bus access",
+  cc_rail_800_wt: "Rail access", median_build_year: "Building era"
+};
+
+const TYPE_POS = {Detached:0, Semi:0.33, Terraced:0.67, Flat:1.0};
+
+// --- XGBoost tree evaluator ---
+function predictTree(nodes, featureValues) {
+  let idx = 0;
+  while (true) {
+    const node = nodes[idx];
+    if (node.leaf !== undefined) return node.leaf;
+    const val = featureValues[node.f] || 0;
+    idx = val < node.t ? node.y : node.n;
+  }
+}
+
+function predictModel(modelData, featureValues) {
+  let total = modelData.base_score;
+  for (const tree of modelData.trees) {
+    total += predictTree(tree, featureValues);
+  }
+  return total;
+}
+
+// --- Archetype interpolation ---
+function interpolateArchetype(position) {
+  const archetypes = DATA.archetypes;
+  const weights = {};
+  let totalW = 0;
+  for (const [dtype, pos] of Object.entries(TYPE_POS)) {
+    const w = Math.exp(-0.5 * ((position - pos) / 0.2) ** 2);
+    weights[dtype] = w;
+    totalW += w;
+  }
+  const result = {};
+  const allFeatures = DATA.models.form.features.concat(
+    DATA.models.mobility.features, DATA.models.cars.features, DATA.models.commute.features
+  );
+  const uniqueFeats = [...new Set(allFeatures)];
+  for (const feat of uniqueFeats) {
+    let val = 0;
+    for (const [dtype, w] of Object.entries(weights)) {
+      val += (w / totalW) * (archetypes[dtype]?.[feat] || 0);
+    }
+    result[feat] = val;
+  }
+  // Normalise pct columns
+  const pctCols = ["pct_detached","pct_semi","pct_terraced","pct_flat"];
+  const pctSum = pctCols.reduce((s,c) => s + (result[c]||0), 0);
+  if (pctSum > 0) pctCols.forEach(c => result[c] = (result[c]/pctSum)*100);
+  return result;
+}
+
+function assignBand(totalKwh) {
+  const t = DATA.band_thresholds;
+  for (const band of ["A","B","C","D","E","F","G"]) {
+    if (totalKwh <= t[band].hi) return band;
+  }
+  return "G";
+}
+
+// --- Feature contribution (marginal) ---
+function featureContributions(modelName, featureValues) {
+  const model = DATA.models[modelName];
+  const basePred = predictModel(model, featureValues);
+  const arch = interpolateArchetype(0.5); // mid-point as reference
+  const refValues = {};
+  for (const f of model.features) refValues[f] = arch[f];
+  const refPred = predictModel(model, refValues);
+  const contribs = [];
+  for (const f of model.features) {
+    const modified = {...refValues, [f]: featureValues[f]};
+    const modPred = predictModel(model, modified);
+    contribs.push({feature: f, value: modPred - refPred,
+      label: FEATURE_LABELS[f] || f, featureVal: featureValues[f]});
+  }
+  return contribs.sort((a,b) => Math.abs(b.value) - Math.abs(a.value));
+}
+
+// --- Rendering ---
+function fmt(n) { return Math.round(n).toLocaleString(); }
+
+function renderContribs(containerId, contribs) {
+  const el = document.getElementById(containerId);
+  const maxAbs = Math.max(...contribs.map(c => Math.abs(c.value)), 1);
+  el.innerHTML = contribs.map(c => {
+    const pct = Math.abs(c.value) / maxAbs * 100;
+    const color = c.value > 0 ? "#e06060" : "#4090d0";
+    const sign = c.value > 0 ? "+" : "";
+    return `<div class="contrib-bar">
+      <div class="contrib-label" title="${c.label}">${c.label}</div>
+      <div class="contrib-track">
+        <div class="contrib-fill" style="width:${pct}%;background:${color};
+          ${c.value < 0 ? 'right:0' : 'left:0'}"></div>
+      </div>
+      <div class="contrib-val">${sign}${fmt(c.value)}</div>
+    </div>`;
+  }).join("");
+}
+
+function renderComparison(formKwh, mobKwh) {
+  const el = document.getElementById("compChart");
+  const scenarios = [];
+  for (const [dtype, pos] of Object.entries(TYPE_POS)) {
+    const arch = interpolateArchetype(pos);
+    const f = predictModel(DATA.models.form, arch);
+    const m = predictModel(DATA.models.mobility, arch);
+    scenarios.push({name: dtype, form: f, mob: m, total: f+m});
+  }
+  scenarios.push({name: "Your scenario", form: formKwh, mob: mobKwh,
+    total: formKwh + mobKwh, highlight: true});
+  const maxTotal = Math.max(...scenarios.map(s => s.total));
+
+  el.innerHTML = scenarios.map(s => {
+    const band = assignBand(s.total);
+    const bc = BAND_COLORS[band];
+    const formW = (s.form / maxTotal * 100) * 0.75;
+    const mobW = (s.mob / maxTotal * 100) * 0.75;
+    const hl = s.highlight ? ' highlight' : '';
+    return `<div class="comp-row">
+      <div class="comp-label">${s.name}</div>
+      <div class="comp-badge" style="background:${bc}">${band}</div>
+      <div class="comp-bar-track${hl}">
+        <div class="comp-bar-form" style="width:${formW}%"></div>
+        <div class="comp-bar-mob" style="width:${mobW}%"></div>
+      </div>
+      <div class="comp-kwh">${fmt(s.total)} kWh</div>
+    </div>`;
+  }).join("");
+}
+
+// --- Main update ---
+let overridesActive = {};
+
+function update() {
+  const morphVal = parseInt(document.getElementById("morph").value) / 100;
+  const arch = interpolateArchetype(morphVal);
+
+  // Morph label
+  let label = "Sprawl (detached)";
+  if (morphVal >= 0.83) label = "Compact (flat-dominant)";
+  else if (morphVal >= 0.50) label = "Moderate-compact (terraced)";
+  else if (morphVal >= 0.17) label = "Moderate-sprawl (semi-detached)";
+  document.getElementById("morphLabel").textContent = label;
+
+  // Build feature values with overrides
+  const fv = {...arch};
+  const covSlider = parseInt(document.getElementById("coverage").value);
+  const transitSlider = parseInt(document.getElementById("transit").value) / 100;
+  const yearSlider = parseInt(document.getElementById("buildYear").value);
+
+  fv.local_coverage = covSlider / 100;
+  fv.cc_bus_800_wt = transitSlider * 0.86;
+  fv.cc_rail_800_wt = transitSlider * 0.14;
+  fv.median_build_year = yearSlider;
+
+  // Update slider labels
+  document.getElementById("coverageVal").textContent = covSlider + "%";
+  document.getElementById("transitVal").textContent = transitSlider.toFixed(1);
+  document.getElementById("yearVal").textContent = yearSlider;
+
+  // Predict
+  const formKwh = predictModel(DATA.models.form, fv);
+  const mobKwh = predictModel(DATA.models.mobility, fv);
+  const cars = predictModel(DATA.models.cars, fv);
+  const commute = predictModel(DATA.models.commute, fv);
+  const total = formKwh + mobKwh;
+  const band = assignBand(total);
+
+  // Update display
+  document.getElementById("formVal").textContent = fmt(formKwh);
+  document.getElementById("mobVal").textContent = fmt(mobKwh);
+  document.getElementById("totalVal").textContent = fmt(total);
+  document.getElementById("carsVal").textContent = cars.toFixed(2);
+  document.getElementById("commuteVal").textContent = commute.toFixed(1);
+
+  const badge = document.getElementById("bandBadge");
+  badge.textContent = band;
+  badge.style.background = BAND_COLORS[band];
+
+  // Interpretation
+  const formShare = (formKwh / total * 100).toFixed(0);
+  document.getElementById("interp").innerHTML =
+    `<strong>Band ${band}</strong> — ${fmt(total)} kWh/hh/yr ` +
+    `(Form ${formShare}%, Mobility ${100-formShare}%). ` +
+    `Predicted ${cars.toFixed(1)} cars/hh, ${commute.toFixed(1)} km commute.`;
+
+  // Feature contributions
+  renderContribs("contribForm", featureContributions("form", fv));
+  renderContribs("contribMob", featureContributions("mobility", fv));
+
+  // Comparison
+  renderComparison(formKwh, mobKwh);
+}
+
+function resetOverrides() {
+  const morphVal = parseInt(document.getElementById("morph").value) / 100;
+  const arch = interpolateArchetype(morphVal);
+  const tc = (arch.cc_bus_800_wt || 0) + (arch.cc_rail_800_wt || 0);
+  document.getElementById("coverage").value = Math.round((arch.local_coverage || 0.5) * 100);
+  document.getElementById("transit").value = Math.round(tc * 100);
+  document.getElementById("buildYear").value = Math.round(arch.median_build_year || 1965);
+  update();
+}
+
+// Auto-update overrides when morph changes
+document.getElementById("morph").addEventListener("input", function() {
+  resetOverrides();
+});
+
+// Update on any slider change
+["coverage","transit","buildYear"].forEach(id => {
+  document.getElementById(id).addEventListener("input", update);
+});
+
+// --- Load model data and start ---
+fetch("nepi_models.json")
+  .then(r => r.json())
+  .then(d => { DATA = d; update(); })
+  .catch(e => {
+    document.querySelector(".main").innerHTML =
+      `<p style="color:#e06060">Failed to load models: ${e.message}<br>
+       Make sure nepi_models.json is in the same directory.</p>`;
+  });
+</script>
+</body>
+</html>
