@@ -1,27 +1,28 @@
 # Urban Energy: Development Status
 
-**Last updated:** 2026-03-18
+**Last updated:** 2026-03-20
 
 ---
 
-## Case Two: OA-Level National Analysis (in progress)
+## Case Two: OA-Level National Analysis (complete)
 
 The analysis has been overhauled from LSOA level (18 cities, 3,678 units) to OA level (national, all 7,147 English BUAs). The pipeline uses the new CityNetwork API (cityseer 4.25.0b3) with `from_geopandas`, consolidated land-use accessibility, and centroid-based sampling.
 
 ### Current state
 
-- **94 BUAs processed** → 67,263 OAs (of ~178k total)
-- **National pipeline running** — processing largest BUAs first, skip-if-exists for restarts
-- Compounding confirmed at OA level: **1.55x** (thermal) → **1.83x** (mobility) → **2.69x** (access)
+- **6,687 BUAs processed** → 198,779 OAs (of 203,018 loaded; filtered for valid data)
+- **National pipeline complete** — all figures, tables, and paper updated
+- Compounding confirmed at OA level: **1.46x** (thermal) → **1.67x** (mobility) → **2.68x** (access)
 
 ### Pipeline
 
 - [x] New data sources: IMD 2025, DESNZ postcode energy, DVLA vehicles
-- [x] Postcode → OA energy aggregation (178,355 OAs nationally)
+- [x] Postcode → OA energy aggregation (203,018 OAs nationally)
 - [x] OA pipeline with CityNetwork API (`processing/pipeline_oa.py`)
 - [x] OA analysis scripts (`stats/proof_of_concept_oa.py`, `stats/oa_figures.py`, `stats/basket_index_oa.py`)
-- [x] Publication figures regenerated for 94-BUA sample
-- [ ] Complete national pipeline (7,147 BUAs — running)
+- [x] Complete national pipeline (6,687 of 7,147 BUAs)
+- [x] Publication figures regenerated for national dataset
+- [x] NEPI scorecard and access penalty model regenerated
 - [x] Write case narrative (`paper/case_v2.md`)
 - [ ] Reconcile `paper/archive/main.tex` with OA results
 
@@ -31,25 +32,31 @@ The analysis has been overhauled from LSOA level (18 cities, 3,678 units) to OA 
 |--------|---------|
 | `processing/pipeline_oa.py` | National OA pipeline (CityNetwork API, all BUAs) |
 | `stats/build_case_oa.py` | Regenerate all OA figures |
+| `stats/nepi.py` | NEPI scorecard and band figures |
+| `stats/access_penalty_model.py` | Empirical access energy penalty |
 | `stats/proof_of_concept_oa.py` | Core OA analysis and data loading |
 | `stats/oa_figures.py` | Three-surfaces publication figures |
 | `stats/basket_index_oa.py` | Basket case: access penalty |
 
-### Key Results (94 BUAs, 67,263 OAs)
+### Key Results (6,687 BUAs, 198,779 OAs)
 
 | Surface | Flat | Detached | Ratio |
 |---------|-----:|---------:|------:|
-| Building kWh/hh | 10,852 | 16,865 | 1.55x |
-| Transport kWh/hh (overall) | 4,131 | 7,556 | 1.83x |
-| kWh per unit access | 3,337 | 8,964 | **2.69x** |
+| Building kWh/hh | 10,755 | 15,713 | 1.46x |
+| Transport kWh/hh (overall) | 4,150 | 9,185 | 2.21x |
+| Total kWh/hh (overall) | 14,906 | 24,898 | 1.67x |
+| kWh per unit access | 3,292 | 8,820 | **2.68x** |
 
-Dominant type: Flat 18,460 / Terraced 20,941 / Semi 21,304 / Detached 6,558
+Dominant type: Flat 36,502 / Terraced 50,592 / Semi 65,986 / Detached 45,699
 
-### Running the national pipeline
+NEPI scorecard: Flat Band A (15,982 kWh) / Detached Band F (26,897 kWh)
+
+### Running the analysis
 
 ```bash
-uv run python processing/pipeline_oa.py    # all 7,147 BUAs (skip-if-exists)
-uv run python stats/build_case_oa.py       # regenerate figures from completed BUAs
+uv run python stats/build_case_oa.py       # regenerate all OA figures and tables
+uv run python stats/nepi.py                # regenerate NEPI scorecard
+uv run python stats/access_penalty_model.py # regenerate access penalty model
 ```
 
 ---

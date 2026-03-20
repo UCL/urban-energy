@@ -267,13 +267,24 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
     print("LOADING OA DATA")
     print("=" * 70)
 
-    # Validate columns
+    # Validate columns (probe first row for column discovery)
     _probe = gpd.read_file(DATA_PATH, rows=1)
     available = set(_probe.columns)
     del _probe
     _validate_columns(available)
 
-    lsoa = gpd.read_file(DATA_PATH)
+    # Select only the columns we actually use (814 → ~55)
+    _extra_raw = [
+        "city", "n_uprns", "median_build_year", "oa_sv",
+        "_oa_area_km2", "epc_coverage", "lsoa_gva_millions",
+    ]
+    _imd_cols = [c for c in available if "imd_income" in c.lower() and "score" in c.lower()]
+    _nearest_cols = [c for c in available if c.endswith("_nearest_max_4800")]
+    _columns_needed = sorted(
+        {*_REQUIRED, *_OPTIONAL, *_extra_raw, *_imd_cols, *_nearest_cols} & available
+    )
+
+    lsoa = gpd.read_file(DATA_PATH, columns=_columns_needed)
     print(f"  Loaded {len(lsoa):,} OAs ({len(lsoa.columns)} columns)")
 
     if cities and "city" in lsoa.columns:
@@ -950,12 +961,42 @@ def print_energy_decomposition(lsoa: pd.DataFrame) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _demean_by_group(
+    df: pd.DataFrame,
+    cols: list[str],
+    group_col: str,
+) -> pd.DataFrame:
+    """
+    Within-group demean columns (Frisch-Waugh-Lovell theorem).
+
+    Subtracts group means from each column, enabling fixed-effect
+    absorption without materialising dummy variables.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Data with `cols` and `group_col`.
+    cols : list[str]
+        Columns to demean.
+    group_col : str
+        Grouping variable (e.g. 'city').
+
+    Returns
+    -------
+    pd.DataFrame
+        Demeaned columns (same index as input).
+    """
+    group_means = df.groupby(group_col)[cols].transform("mean")
+    return df[cols] - group_means
+
+
 def _run_ols(
     df: pd.DataFrame,
     y_col: str,
     x_cols: list[str],
     label: str,
     cluster_col: str | None = None,
+    fe_col: str | None = None,
 ) -> sm.regression.linear_model.RegressionResultsWrapper | None:
     """
     Run OLS with HC1 robust SEs.
@@ -965,16 +1006,38 @@ def _run_ols(
     cluster_col : str or None
         If provided, also fits with cluster-robust SEs and stores
         the clustered result as ``model._clustered_fit``.
+    fe_col : str or None
+        If provided, absorb this categorical as a fixed effect via
+        within-group demeaning (Frisch-Waugh-Lovell). Coefficients
+        for x_cols are identical to explicit dummy inclusion.
     """
-    extra_cols = [cluster_col] if cluster_col and cluster_col not in [y_col] + x_cols else []
+    extra_cols: list[str] = []
+    if cluster_col and cluster_col not in [y_col] + x_cols:
+        extra_cols.append(cluster_col)
+    if fe_col and fe_col not in [y_col] + x_cols + extra_cols:
+        extra_cols.append(fe_col)
     cols = [y_col] + x_cols + extra_cols
     sub = df[cols].dropna()
     if len(sub) < len(x_cols) + 10:
         print(f"  {label}: insufficient data (N={len(sub)})")
         return None
-    y = sub[y_col]
-    X = sm.add_constant(sub[x_cols])
+
+    if fe_col:
+        # Absorb fixed effects via within-group demeaning
+        demeaned = _demean_by_group(sub, [y_col] + x_cols, fe_col)
+        y = demeaned[y_col]
+        X = demeaned[x_cols]  # no constant in demeaned model
+    else:
+        y = sub[y_col]
+        X = sm.add_constant(sub[x_cols])
+
     result = sm.OLS(y, X).fit(cov_type="HC1")
+
+    if fe_col:
+        n_groups = sub[fe_col].nunique()
+        result._n_fe_groups = n_groups  # type: ignore[attr-defined]
+        result._fe_col = fe_col  # type: ignore[attr-defined]
+
     # Also fit with BUA-clustered SEs if requested
     if cluster_col and cluster_col in sub.columns:
         groups = sub[cluster_col]
@@ -1062,17 +1125,14 @@ def run_regressions(lsoa: pd.DataFrame) -> None:
     if imd_col:
         controls.append(imd_col[0])
 
-    # City fixed effects
-    city_dummies: list[str] = []
-    if "city" in lsoa.columns and lsoa["city"].nunique() > 1:
-        dummies = pd.get_dummies(lsoa["city"], prefix="city", drop_first=True)
-        dummies = dummies.astype(int)
-        city_dummies = list(dummies.columns)
-        lsoa = pd.concat([lsoa, dummies], axis=1)
+    # City fixed effects — absorbed via demeaning (Frisch-Waugh-Lovell)
+    # to avoid materialising 6,000+ dummy columns
+    has_city_fe = "city" in lsoa.columns and lsoa["city"].nunique() > 1
+    n_city_fe = lsoa["city"].nunique() - 1 if has_city_fe else 0
 
     substantive = form + density + controls
     print(f"\n  Substantive controls: {substantive}")
-    print(f"  City FE: {len(city_dummies)} dummies")
+    print(f"  City FE: {n_city_fe} groups (absorbed via demeaning)")
 
     # --- Helper to print model with VIF ---
     def _print_full_model(
@@ -1099,12 +1159,10 @@ def run_regressions(lsoa: pd.DataFrame) -> None:
                 f"{m.pvalues[var]:>8.1e} "
                 f"{_sigstars(m.pvalues[var])}"
             )
-        if city_dummies:
-            n_sig = sum(
-                1 for v in city_dummies
-                if v in m.pvalues and m.pvalues[v] < 0.05
-            )
-            print(f"  ({len(city_dummies)} city dummies, {n_sig} sig at p<0.05)")
+        n_fe = getattr(m, "_n_fe_groups", 0)
+        fe_name = getattr(m, "_fe_col", None)
+        if n_fe:
+            print(f"  ({n_fe} {fe_name} FE absorbed via demeaning; R² is within-group)")
 
         # BUA-clustered SE comparison
         clustered = getattr(m, "_clustered_fit", None)
@@ -1161,13 +1219,13 @@ def run_regressions(lsoa: pd.DataFrame) -> None:
     a3 = _run_ols(lsoa, "log_building_kwh_per_hh", form + density + controls, "A3")
     _print_model(a3, "A3 +Controls")
     a4 = None
-    if city_dummies:
+    if has_city_fe:
         a4 = _run_ols(
             lsoa, "log_building_kwh_per_hh",
-            form + density + controls + city_dummies, "A4",
-            cluster_col="city",
+            form + density + controls, "A4",
+            cluster_col="city", fe_col="city",
         )
-        _print_model(a4, "A4 +City FE")
+        _print_model(a4, "A4 +City FE (demeaned)")
     best_a = a4 or a3 or a2 or a1
     _print_full_model(best_a, "A: Full model (building energy)", show_vif=True)
 
@@ -1185,13 +1243,13 @@ def run_regressions(lsoa: pd.DataFrame) -> None:
     b3 = _run_ols(lsoa, "accessibility", form + density + controls, "B3")
     _print_model(b3, "B3 +Controls")
     b4 = None
-    if city_dummies:
+    if has_city_fe:
         b4 = _run_ols(
             lsoa, "accessibility",
-            form + density + controls + city_dummies, "B4",
-            cluster_col="city",
+            form + density + controls, "B4",
+            cluster_col="city", fe_col="city",
         )
-        _print_model(b4, "B4 +City FE")
+        _print_model(b4, "B4 +City FE (demeaned)")
     best_b = b4 or b3 or b2 or b1
     _print_full_model(best_b, "B: Full model (accessibility)", show_vif=True)
 
@@ -1204,11 +1262,9 @@ def run_regressions(lsoa: pd.DataFrame) -> None:
     print("  Models A and B above decompose the two channels separately.")
     print(f"  {'=' * 60}")
 
-    c_vars = form + density + controls
-    if city_dummies:
-        c_vars = c_vars + city_dummies
-    c1 = _run_ols(lsoa, "log_access_per_kwh", c_vars, "C1",
-                  cluster_col="city")
+    c_fe = "city" if has_city_fe else None
+    c1 = _run_ols(lsoa, "log_access_per_kwh", form + density + controls, "C1",
+                  cluster_col="city", fe_col=c_fe)
     _print_full_model(c1, "C: Composite model (access/kWh)")
 
     # =================================================================
@@ -1221,10 +1277,9 @@ def run_regressions(lsoa: pd.DataFrame) -> None:
     print(f"  {'=' * 60}")
 
     mediator_vars = form + density + controls + ["cars_per_hh"]
-    if city_dummies:
-        mediator_vars = mediator_vars + city_dummies
+    d_fe = "city" if has_city_fe else None
     d1 = _run_ols(lsoa, "log_building_kwh_per_hh", mediator_vars, "D1",
-                  cluster_col="city")
+                  cluster_col="city", fe_col=d_fe)
     _print_full_model(d1, "D: Building energy + cars/hh (mediator)")
 
 
@@ -1404,15 +1459,21 @@ def run_gva_stratified(lsoa: pd.DataFrame) -> None:
 # ---------------------------------------------------------------------------
 
 
-def run_spatial_diagnostics(max_n: int = 50_000) -> None:
+def run_spatial_diagnostics(
+    lsoa: pd.DataFrame,
+    max_n: int = 50_000,
+) -> None:
     """
     Compute Global Moran's I for key variables using Queen contiguity.
 
-    Loads geometry from the GeoPackage (retained for this diagnostic only).
+    Loads only geometry + key columns from the GeoPackage (avoids full
+    reload of the 814-column dataset).
     Uses a random subsample if N > max_n for computational feasibility.
 
     Parameters
     ----------
+    lsoa : pd.DataFrame
+        OA data (for column availability checks).
     max_n : int
         Maximum OAs for spatial weights computation.
     """
@@ -1427,7 +1488,15 @@ def run_spatial_diagnostics(max_n: int = 50_000) -> None:
         print("  esda/libpysal not available — skipping spatial diagnostics")
         return
 
-    gdf = gpd.read_file(DATA_PATH)
+    # Load only geometry + the few columns needed for Moran's I
+    _probe = gpd.read_file(DATA_PATH, rows=1)
+    _avail = set(_probe.columns)
+    del _probe
+    spatial_cols = ["OA21CD", "oa_total_mean_kwh", "cc_density_800"]
+    fsa_cols_src = [c for c in _avail if c.startswith("cc_fsa_") and c.endswith("_800_wt")]
+    spatial_cols.extend(fsa_cols_src)
+    spatial_cols = [c for c in spatial_cols if c in _avail]
+    gdf = gpd.read_file(DATA_PATH, columns=spatial_cols)
     # Basic filters matching load_and_aggregate
     gdf = gdf[gdf["OA21CD"].notna()].copy()
     gdf["oa_total_mean_kwh"] = pd.to_numeric(
@@ -1959,7 +2028,7 @@ def main(cities: list[str] | None = None) -> None:
     run_plurality_sensitivity(lsoa)
     run_nts_sensitivity(lsoa)
     run_edge_diagnostic(lsoa)
-    run_spatial_diagnostics()
+    run_spatial_diagnostics(lsoa)
 
     # Save machine-readable results
     results = _collect_results(lsoa)

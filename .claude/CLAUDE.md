@@ -118,16 +118,16 @@ temp/
 
 ### Sample
 
-All 7,147 English Built-Up Areas at Output Area resolution (pipeline in progress; 4,922 BUAs / 179,004 OAs processed as of 2026-03-19). Each OA contains ~130 households.
+All 7,147 English Built-Up Areas at Output Area resolution (6,687 BUAs / 198,779 OAs processed as of 2026-03-20). Each OA contains ~130 households.
 
 ### Primary stratification
 
 `dominant_type` — plurality accommodation type from Census TS044 per OA:
 
-- Flat-dominant: 33,812 OAs
-- Terraced-dominant: 43,627 OAs
-- Semi-detached-dominant: 56,517 OAs
-- Detached-dominant: 34,269 OAs
+- Flat-dominant: 36,502 OAs
+- Terraced-dominant: 50,592 OAs
+- Semi-detached-dominant: 65,986 OAs
+- Detached-dominant: 45,699 OAs
 
 ### Three energy surfaces
 
@@ -139,11 +139,11 @@ All 7,147 English Built-Up Areas at Output Area resolution (pipeline in progress
 
 The gradient widens across surfaces (Flat-dominant → Detached-dominant medians):
 
-- Building energy: 10,766 → 15,953 kWh/hh (1.48x)
-- Total energy (overall scenario): 14,762 → 24,749 kWh/hh (1.68x)
-- Energy per unit access: 3,242 → 8,728 kWh/access (2.69x)
+- Building energy: 10,755 → 15,713 kWh/hh (1.46x)
+- Total energy (overall scenario): 14,906 → 24,898 kWh/hh (1.67x)
+- Energy per unit access: 3,292 → 8,820 kWh/access (2.68x)
 
-Plurality sensitivity: gradient steepens at stricter thresholds (1.88x at 60%), confirming the headline is conservative.
+Plurality sensitivity: gradient steepens at stricter thresholds (1.84x at 60%), confirming the headline is conservative.
 
 ## Core Thesis: The Trophic Layers Framework
 
