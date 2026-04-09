@@ -2,8 +2,8 @@
 
 > **ARCHIVED SNAPSHOT.** Day-to-day working log from the LSOA-era proof of concept
 > (Case One). Frozen in place as a research diary; the current development status lives
-> in [TODO.md](../TODO.md), and the canonical narrative is
-> [paper/case_v2.md](../paper/case_v2.md). Internal cross-references may be stale.
+> in [README.md](../README.md), and the canonical narrative is
+> [PAPER.md](../PAPER.md). Internal cross-references may be stale.
 
 **Purpose:** Track detailed progress, experiments, decisions, and learnings. This
 complements the (now-archived) RESEARCH_FRAMEWORK.md which maintained the big picture

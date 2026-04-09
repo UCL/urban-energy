@@ -2,7 +2,7 @@
 
 > **ARCHIVED SNAPSHOT.** These are early-stage working notes from the LSOA-era proof of
 > concept (Case One). The current canonical methodology lives in
-> [paper/case_v2.md](../paper/case_v2.md) §3 and [paper/data.md](../paper/data.md), and
+> [PAPER.md](../PAPER.md) §3, and
 > the project is now an OA-level national study delivered as the Neighbourhood Energy
 > Performance Index (NEPI). Internal cross-references in this file may be stale.
 

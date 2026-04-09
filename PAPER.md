@@ -200,13 +200,13 @@ question being asked.
 
 ## 3. Data and Methods
 
-### 2.1 Unit of analysis
+### 3.1 Unit of analysis
 
 The Output Area (OA) is the finest geography at which Census 2021 data is published (~130
 households, ~330 people). OAs are designed to be socially homogeneous and of consistent
 population size, making them a natural unit for neighbourhood-level analysis.
 
-### 2.2 Data sources
+### 3.2 Data sources
 
 All data sources are open and publicly available:
 
@@ -229,7 +229,7 @@ All data sources are open and publicly available:
 | IoD 2025 (MHCLG)             | LSOA        | Index of Multiple Deprivation (7 domains)  | Income control        |
 | DVLA vehicle licensing       | LSOA        | Registered vehicles by fuel type           | Fleet composition     |
 
-### 2.3 Energy aggregation
+### 3.3 Energy aggregation
 
 Building energy is derived from DESNZ Subnational Consumption Statistics (December 2025
 edition; DESNZ, 2025). Gas consumption is based on Annual Quantities (AQ) compiled by
@@ -260,7 +260,21 @@ energy is absent from the domestic statistics. This disproportionately affects f
 OAs. Both biases compress the observed Form gradient; the true gradient between flat- and
 detached-dominant neighbourhoods is likely larger than reported.
 
-### 2.4 Transport energy estimation
+EPC-derived energy estimates were considered as an alternative dependent variable but
+rejected for three reasons. First, EPCs are required only at sale or rental, so coverage
+is systematically lower for long-term owner-occupied stock — predominantly detached and
+semi-detached houses, the very types central to this analysis. Second, EPC energy figures
+are SAP model outputs under standardised occupancy assumptions, and Few et al. (2023) show
+systematic over-prediction of metered consumption that varies by dwelling type and age;
+because older buildings concentrate in dense urban areas, this bias would artificially
+inflate the apparent thermal advantage of compact stock. Third, mixed-use buildings (flats
+above shops, converted commercial premises) appear inconsistently across the domestic and
+non-domestic EPC registers, introducing a spatial bias in exactly the part of the housing
+spectrum under study. EPC data is retained only for `CONSTRUCTION_AGE_BAND` (median build
+year per OA, used as a NEPI Form-model feature) and as a cross-check on Census TS044
+classification.
+
+### 3.4 Transport energy estimation
 
 Commute energy is estimated from Census 2021 TS058 (commute distance, 8 bands with
 midpoint imputation) and TS061 (travel mode), annualised at 220 workdays × return trip,
@@ -274,7 +288,7 @@ Census 2021 was conducted on 21 March 2021 during the third national lockdown. W
 rates were ~3× pre-pandemic levels; public transport use was depressed ~50% (ONS, 2023).
 The commute data reflects pandemic-affected behaviour.
 
-### 2.5 Access surface: walkable service coverage
+### 3.5 Access surface: walkable service coverage
 
 The Access surface measures what share of a household's essential service needs can be met
 within walking distance. It is computed from network-based nearest distances to nine service
@@ -304,7 +318,7 @@ Where no destination exists within the 4,800m cityseer search radius, coverage i
 The OA's Access score is the mean coverage across all nine services, expressed as a
 percentage (0–100%).
 
-### 2.6 The NEPI scoring framework
+### 3.6 The NEPI scoring framework
 
 All three NEPI surfaces are expressed in a common unit — **kWh per household per year**:
 
@@ -315,7 +329,7 @@ All three NEPI surfaces are expressed in a common unit — **kWh per household p
 | **Access**   | Empirical access energy penalty | kWh/hh/yr | OLS: transport energy ~ coverage + controls |
 
 The Access surface is the empirical energy cost of poor walkable service coverage: the
-additional transport energy predicted by the OLS model (Section 3.3) relative to a compact
+additional transport energy predicted by the OLS model (Section 4.3) relative to a compact
 reference level (85% coverage, the flat-dominant OA median). OAs that already meet or exceed
 the reference receive zero penalty.
 
@@ -334,14 +348,14 @@ by national percentile position of the composite (lower total = better band):
 | F    |          81–95th |                                   |
 | G    |         95–100th | Highest neighbourhood energy cost |
 
-### 2.7 Stratification
+### 3.7 Stratification
 
 Each OA is assigned a dominant housing type by plurality share of Census TS044
 accommodation categories (Detached, Semi-detached, Terraced, Flat). The plurality
 classification uses no minimum threshold; sensitivity to stricter thresholds (40–60%)
 is tested.
 
-### 2.8 Sample
+### 3.8 Sample
 
 6,687 English Built-Up Areas (of 7,147 total), yielding 198,779
 Output Areas after filtering (population > 10, ≥ 5 UPRNs, valid metered energy).
@@ -353,13 +367,13 @@ Output Areas after filtering (population > 10, ≥ 5 UPRNs, valid metered energy
 | Semi-detached | 65,986 |
 | Detached      | 45,699 |
 
-## 3. Results
+## 4. Results
 
-### 3.1 The three energy surfaces
+### 4.1 The three energy surfaces
 
 **Surface 1: Form (building energy).**
 
-![Figure 1: Building energy by dominant housing type](../stats/figures/oa/fig1_building_energy.png)
+![Figure 1: Building energy by dominant housing type](stats/figures/oa/fig1_building_energy.png)
 
 | Dwelling type | Building energy (kWh/hh) | kWh/person |
 | ------------- | -----------------------: | ---------: |
@@ -374,7 +388,7 @@ in flat-dominant areas (2.1 vs 2.4 persons/hh).
 
 **Surface 2: Mobility (transport energy).**
 
-![Figure 2: Building + transport energy](../stats/figures/oa/fig2_mobility_penalty.png)
+![Figure 2: Building + transport energy](stats/figures/oa/fig2_mobility_penalty.png)
 
 | Dwelling type | Commute (kWh/hh) | Overall est. (kWh/hh) | Total (overall, kWh/hh) |
 | ------------- | ---------------: | --------------------: | ----------------------: |
@@ -387,11 +401,11 @@ Adding transport widens the gradient to 1.67× (overall scenario). Private commu
 rises from 534 kWh/hh (flat) to 1,485 (detached), ratio 2.78×. Public commute energy runs
 in the opposite direction: 153 → 36 kWh/hh. Car ownership: 0.69 → 1.64 cars/hh.
 
-![Figure 2b: Private vs public transport decomposition](../stats/figures/oa/fig2b_private_public_transport.png)
+![Figure 2b: Private vs public transport decomposition](stats/figures/oa/fig2b_private_public_transport.png)
 
 **Surface 3: Access (walkable service coverage).**
 
-![Figure 3: Accessibility by housing type](../stats/figures/oa/fig5_access_bar.png)
+![Figure 3: Accessibility by housing type](stats/figures/oa/fig5_access_bar.png)
 
 Median service coverage scores (Gaussian-decayed, 0–1):
 
@@ -411,9 +425,9 @@ healthcare (GP: 0.82 → 0.32), food retail (takeaway: 0.87 → 0.35), and pharm
 (0.81 → 0.36). These are the services that collapse beyond walking distance in
 detached-dominant areas.
 
-### 3.2 The NEPI scorecard
+### 4.2 The NEPI scorecard
 
-![Figure 4: NEPI scorecard — stacked kWh by housing type](../stats/figures/nepi/fig_nepi_scorecard.png)
+![Figure 4: NEPI scorecard — stacked kWh by housing type](stats/figures/nepi/fig_nepi_scorecard.png)
 
 | Type     | Form (kWh/hh) | Mobility (kWh/hh) | Access penalty (kWh/hh) | **Total (kWh/hh)** | Band  |
 | -------- | ------------: | ----------------: | ----------------------: | -----------------: | :---: |
@@ -429,9 +443,9 @@ Access penalty 1,519 kWh (14%). All three surfaces are in kWh, so the composite 
 physical meaning — it is the total neighbourhood energy cost per household, and the surfaces
 weight themselves by their energy magnitude without arbitrary scaling.
 
-![Figure 5: NEPI band distribution by housing type](../stats/figures/nepi/fig_nepi_bands.png)
+![Figure 5: NEPI band distribution by housing type](stats/figures/nepi/fig_nepi_bands.png)
 
-### 3.3 The access energy penalty
+### 4.3 The access energy penalty
 
 The access surface has a direct energy interpretation. Where services are beyond walking
 distance, households must drive or take public transport to reach them. Rather than
@@ -458,7 +472,7 @@ The **access energy penalty** is the difference between each OA's predicted tran
 at its actual coverage and the predicted value at the compact reference level (85% coverage,
 the median of flat-dominant OAs):
 
-![Figure 7: Empirical access penalty](../stats/figures/nepi/fig_empirical_penalty.png)
+![Figure 7: Empirical access penalty](stats/figures/nepi/fig_empirical_penalty.png)
 
 | Type     | Coverage | Predicted transport | At 85% reference | Penalty (kWh/hh/yr) | Excess cars/hh |
 | -------- | -------: | ------------------: | ---------------: | ------------------: | -------------: |
@@ -473,7 +487,7 @@ If detached-dominant OAs had the same walkable service coverage as flat-dominant
 predicted transport energy would fall by 1,543 kWh/hh and they would own 0.19 fewer cars
 per household.
 
-![Figure 8: Coverage vs observed transport energy](../stats/figures/nepi/fig_coverage_vs_transport.png)
+![Figure 8: Coverage vs observed transport energy](stats/figures/nepi/fig_coverage_vs_transport.png)
 
 This penalty is structural: it is determined by the distance between homes and services,
 which is set by street layout and land-use configuration.
@@ -510,9 +524,9 @@ kWh/hh. The convergence of three independent estimates (direct service: 262, emp
 associated with substantially higher transport energy, of which specific service trips are
 a modest component and general car dependence is the dominant mechanism.
 
-### 3.4 The three-surface decomposition
+### 4.4 The three-surface decomposition
 
-![Figure 7: Three-surface composite](../stats/figures/oa/fig7_three_surface_composite.png)
+![Figure 7: Three-surface composite](stats/figures/oa/fig7_three_surface_composite.png)
 
 | Surface                     | Flat (kWh/hh) | Detached (kWh/hh) | Ratio |
 | --------------------------- | ------------: | ----------------: | ----: |
@@ -524,25 +538,25 @@ Each additional surface widens the gradient because transport and access correla
 morphology in the same direction as building energy. This widening is a descriptive
 pattern, not a multiplicative causal chain.
 
-### 3.5 Deprivation stratification
+### 4.5 Deprivation stratification
 
-![Figure 8: Deprivation gradient](../stats/figures/basket_oa/fig_basket_oa_deprivation_gradient.png)
+![Figure 8: Deprivation gradient](stats/figures/basket_oa/fig_basket_oa_deprivation_gradient.png)
 
 The morphology gradient in NEPI scores is present within each deprivation quintile (Census
 TS011). This is consistent with a morphological interpretation but does not rule out
 confounding: TS011 is a coarse composite that does not capture income, tenure, or
 preferences directly.
 
-### 3.6 Distribution-wide pattern
+### 4.6 Distribution-wide pattern
 
-![Figure 9: Energy vs coverage scatter](../stats/figures/basket_oa/fig_basket_oa_scatter_energy_vs_basket.png)
+![Figure 9: Energy vs coverage scatter](stats/figures/basket_oa/fig_basket_oa_scatter_energy_vs_basket.png)
 
 The morphology-energy-access pattern holds across the full distribution of 198,779 OAs,
 not only at type-group medians.
 
-## 4. Robustness
+## 5. Robustness
 
-### 4.1 Bootstrap confidence intervals
+### 5.1 Bootstrap confidence intervals
 
 All key Flat/Detached median ratios bootstrapped with 10,000 resamples:
 
@@ -558,9 +572,9 @@ under iid assumption. Spatial autocorrelation means the effective sample size is
 these CIs should be interpreted as precision of the descriptive comparison, not as
 inferential confidence intervals.
 
-### 4.2 Plurality share sensitivity
+### 5.2 Plurality share sensitivity
 
-![Figure 10: Plurality sensitivity](../stats/figures/oa/fig8_plurality_sensitivity.png)
+![Figure 10: Plurality sensitivity](stats/figures/oa/fig8_plurality_sensitivity.png)
 
 | Threshold | N total | Building (F/D) | Total (F/D) | kWh/Access (F/D) |
 | --------- | ------: | -------------: | ----------: | ---------------: |
@@ -574,7 +588,7 @@ consistent with attenuation from classification noise in mixed OAs (Bound et al.
 the plurality estimate is conservative. The NEPI scores for purer OAs would show an even
 larger gap between housing types.
 
-### 4.3 NTS distance scalar sensitivity
+### 5.3 NTS distance scalar sensitivity
 
 | Scalar | Flat total | Det total | Ratio | Det transport share |
 | -----: | ---------: | --------: | ----: | ------------------: |
@@ -584,13 +598,13 @@ larger gap between housing types.
 
 The qualitative pattern is stable from 1× to 10×.
 
-### 4.4 Edge effects
+### 5.4 Edge effects
 
 Excluding OAs in the bottom 10% of network density within each type changes the building
 energy gradient by less than 1% (0.684 → 0.689). The 2,400m road network buffer applied
 during processing prevents meaningful truncation bias.
 
-### 4.5 Census 2011 pre-pandemic validation
+### 5.5 Census 2011 pre-pandemic validation
 
 Census 2021 was conducted during the third national lockdown (21 March 2021), raising the
 concern that the morphology-transport gradient reflects pandemic-distorted behaviour rather
@@ -615,7 +629,7 @@ commuting, the transport energy ratio was 2.00× (detached/flat), compared to 1.
 the COVID-affected 2021 data. The 2021 analysis is therefore conservative: the true
 steady-state gradient is likely closer to the 2011 figure.
 
-### 4.6 Origin-destination commute distances
+### 5.6 Origin-destination commute distances
 
 Census 2021 origin-destination workplace flows (ODWP01EW) record 1.76 million commuter
 flows between 7,264 English MSOAs. Computing Euclidean distances between MSOA centroids
@@ -631,7 +645,7 @@ midpoints). The slight compression reflects the loss of within-MSOA variation wh
 MSOA distance is applied to all constituent OAs. The band-midpoint approach is retained for
 the NEPI because it captures OA-level variation, despite underestimating absolute distances.
 
-### 4.7 Regression with controls
+### 5.7 Regression with controls
 
 OLS regressions with progressive controls (housing type shares with semi as reference,
 log population density, household size, deprivation, building age, IMD income domain,
@@ -643,9 +657,9 @@ Cars per household is treated as a mediator (morphology → car ownership → tr
 rather than a confounder: including it absorbs a substantial portion of the mobility
 gradient, consistent with the mechanism being partly mediated through vehicle dependence.
 
-## 5. Discussion
+## 6. Discussion
 
-### 5.1 The NEPI as a policy tool
+### 6.1 The NEPI as a policy tool
 
 The NEPI provides a neighbourhood-level energy rating constructed entirely from open data.
 Unlike building EPCs, which rate the dwelling envelope, the NEPI rates the place —
@@ -666,7 +680,7 @@ The policy applications are:
 - **Health and equity.** The Access surface directly measures proximity to GP practices,
   pharmacies, and greenspace — services with health implications beyond energy.
 
-### 5.2 What technology can and cannot offset
+### 6.2 What technology can and cannot offset
 
 | Layer    |         Gradient | Intervention             | Offset potential                          | Timescale   |
 | -------- | ---------------: | ------------------------ | ----------------------------------------- | ----------- |
@@ -681,7 +695,7 @@ school placement) can reduce the access penalty without altering street geometry
 underlying network structure turns over on generational timescales: 38% of English housing
 predates 1946 (BRE Trust, 2020).
 
-### 5.3 Ecological inference
+### 6.3 Ecological inference
 
 This is a descriptive ecological study. The NEPI documents neighbourhood-level performance,
 not household-level causal effects. Morphology is an area-level property: street layout,
@@ -701,7 +715,7 @@ implication is the same: compact forms are
 associated with lower total energy expenditure and higher local access. Planners control
 neighbourhood morphology, not household preferences.
 
-### 5.4 Limitations
+### 6.4 Limitations
 
 - Building energy from DESNZ postcode data. Off-gas-grid (~15% of homes) and communal
   heating (disproportionately flats) both compress the Form gradient.
@@ -711,7 +725,7 @@ neighbourhood morphology, not household preferences.
 - Spatial autocorrelation is present. OLS standard errors are anti-conservative; BUA-clustered
   SEs partially address this.
 
-## 6. Conclusion
+## 7. Conclusion
 
 The Neighbourhood Energy Performance Index rates every Output Area in England on three
 surfaces of energy performance: the thermal efficiency of the built form, transport energy

@@ -3,8 +3,8 @@
 > **ARCHIVED SNAPSHOT.** This roadmap predates the OA-level pivot. Many of the items
 > below have since been resolved by the national pipeline, the NEPI scorecard, the
 > empirical access penalty model, and the planning tool. The current development status
-> lives in [TODO.md](../TODO.md); the canonical paper is
-> [paper/case_v2.md](../paper/case_v2.md). Internal links in this file may be stale.
+> lives in [README.md](../README.md); the canonical paper is
+> [PAPER.md](../PAPER.md). Internal links in this file may be stale.
 
 Development roadmap for strengthening the hypotheses, methods, and analytical framing of
 the early-stage (LSOA, Case One) project.
@@ -12,13 +12,13 @@ the early-stage (LSOA, Case One) project.
 **Status:** Early-stage development (frozen)
 **Last updated:** 2026-02-06
 
-See [TODO.md](../TODO.md) for the current implementation-level task list.
+See [README.md](../README.md) for the current development status.
 
 ---
 
 ## 1. Hypotheses
 
-The current hypotheses (H1-H3 in [stats/README.md](../stats/README.md)) are well-structured and testable. The following areas would sharpen them further.
+The current hypotheses (H1-H3, since superseded by the OA-level NEPI framing — see [PAPER.md](../PAPER.md)) are well-structured and testable. The following areas would sharpen them further.
 
 ### 1.1 Theoretical grounding
 
