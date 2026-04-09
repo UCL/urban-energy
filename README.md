@@ -1,24 +1,26 @@
 # Urban Energy
 
-Investigating the relationship between urban form and per-capita energy consumption across English Built-Up Areas at Output Area (OA) level.
+Investigating the relationship between urban form and per-capita energy consumption across English Built-Up Areas at Output Area (OA) level. The output is the **Neighbourhood Energy Performance Index (NEPI)** — a place-level rating analogous to a building EPC, computed entirely from open data.
 
 ## Thesis
 
 Cities are conduits that capture energy and recycle it through layers of human interaction. The measure of urban efficiency is not how much energy a neighbourhood consumes, but how many transactions, connections, and transformations that energy enables before it dissipates. Sprawling morphologies consume more energy per capita and deliver less city per unit of energy consumed.
 
-**Key result (198,779 OAs across 6,687 BUAs):** The compounding efficiency gap widens at each surface: 1.46x (building) to 1.67x (total energy) to 2.68x (energy per unit access) between detached-dominant and flat-dominant OAs.
+**Key result (198,779 OAs across 6,687 BUAs):** The median flat-dominant OA scores **Band A** (15,982 kWh/hh/yr); the median detached-dominant OA scores **Band F** (26,897 kWh/hh/yr). The 10,915 kWh/hh/yr gap decomposes as Form 45% / Mobility 43% / Access 14%. The compounding gradient widens at each surface — 1.46x (building) → 1.67x (total energy) → 2.68x (energy per unit access).
+
+The full case is in [paper/case_v2.md](paper/case_v2.md). Development status and forward work in [TODO.md](TODO.md).
 
 ## NEPI Planning Tool
 
-The Neighbourhood Energy Performance Index (NEPI) is an interactive tool that predicts household energy costs from neighbourhood morphology. Four XGBoost models predict Form (building energy), Mobility (transport energy), car ownership, and commute distance from planner-controllable inputs.
+The NEPI is also delivered as an interactive tool that predicts household energy costs from neighbourhood morphology. Four XGBoost models with monotonic constraints predict Form (building energy), Mobility (transport energy), car ownership, and commute distance from planner-controllable inputs (density, built form mix, walkable amenity access, transit access, building era).
 
 ### Live demo
 
-**[https://UCL.github.io/urban-energy/](https://UCL.github.io/urban-energy/)**
+**[https://UCL.github.io/urban-energy/](https://UCL.github.io/urban-energy/)** — static build deployed via GitHub Pages from [docs/](docs/).
 
 ### Static version (no server required)
 
-Two files, runs in any browser:
+Two files (`index.html` + `nepi_models.json`) — runs in any browser, no Python:
 
 ```bash
 cd stats/nepi_static
@@ -26,7 +28,7 @@ python3 -m http.server 8501
 # Open http://localhost:8501
 ```
 
-Host on GitHub Pages, any static file server, or open locally.
+The same files are mirrored in [docs/](docs/) for GitHub Pages hosting. Host on any static file server, or open locally.
 
 ### Streamlit version (interactive, with SHAP explanations)
 
@@ -38,18 +40,36 @@ uv run streamlit run stats/nepi_app.py     # launch interactive app
 ### Reproducing from scratch
 
 ```bash
-# 1. Process OA data (requires external storage + raw data)
+# 0. Install + configure
+uv sync
+echo "URBAN_ENERGY_DATA_DIR=$(pwd)/temp" > .env
+
+# 1. Acquire and prepare raw data (see data/README.md for full setup)
+uv run python data/download_census.py
+uv run python data/download_energy_postcode.py
+uv run python data/download_imd.py
+uv run python data/download_vehicles.py
+uv run python data/download_fsa.py
+uv run python data/download_naptan.py
+uv run python data/prepare_gias.py
+uv run python data/prepare_nhs.py
+uv run python data/process_boundaries.py
+uv run python data/process_lidar.py
+uv run python data/build_postcode_oa_lookup.py
+uv run python data/aggregate_energy_oa.py
+
+# 2. Run the national OA pipeline (all 7,147 BUAs, skip-if-exists)
 uv run python processing/pipeline_oa.py
 
-# 2. Regenerate all figures, tables, and NEPI scores
+# 3. Regenerate all OA figures, tables, NEPI scorecard, and access penalty model
 uv run python stats/build_case_oa.py
 uv run python stats/nepi.py
 uv run python stats/access_penalty_model.py
 
-# 3. Train NEPI planning tool models
+# 4. Train the NEPI planning-tool XGBoost models
 uv run python stats/nepi_model.py
 
-# 4. Export models for static tool
+# 5. Export trained models to JSON for the static tool
 uv run python -c "
 import json, xgboost as xgb, sys
 sys.path.insert(0, 'stats')
@@ -83,7 +103,10 @@ with open(OUT, 'w') as f: json.dump({'models': models, 'band_thresholds': bands,
 print(f'Exported {OUT} ({OUT.stat().st_size/1024:.0f} KB)')
 "
 
-# 5. Launch static tool
+# 6. Mirror the static build into docs/ for GitHub Pages
+cp stats/nepi_static/index.html stats/nepi_static/nepi_models.json docs/
+
+# 7. Launch the static tool locally
 cd stats/nepi_static && python3 -m http.server 8501
 ```
 
@@ -91,13 +114,16 @@ cd stats/nepi_static && python3 -m http.server 8501
 
 | Folder | Purpose |
 | ------ | ------- |
-| [data/](data/README.md) | Data acquisition (Census, DESNZ, EPC, LiDAR, FSA, NaPTAN, GIAS, NHS ODS) |
-| [processing/](processing/README.md) | Building morphology + OA aggregation pipeline |
-| [stats/](stats/README.md) | Statistical analysis and figure generation (OA level) |
-| [stats/nepi_model.py](stats/nepi_model.py) | XGBoost model training, SHAP, prediction API |
+| [data/](data/README.md) | Data acquisition (Census 2021/2011, DESNZ postcode energy, EPC, LiDAR, FSA, NaPTAN, GIAS, NHS ODS, IMD25, DVLA) |
+| [processing/](processing/README.md) | Building morphology + national OA pipeline (CityNetwork API) |
+| [stats/](stats/README.md) | Statistical analysis, NEPI scorecard, access penalty model, planning-tool models |
+| [stats/nepi.py](stats/nepi.py) | NEPI scorecard (Form / Mobility / Access) and band figures |
+| [stats/access_penalty_model.py](stats/access_penalty_model.py) | Empirical OLS access-energy penalty |
+| [stats/nepi_model.py](stats/nepi_model.py) | XGBoost training (form / mobility / cars / commute) with SHAP |
 | [stats/nepi_app.py](stats/nepi_app.py) | Streamlit interactive planning tool |
-| [stats/nepi_static/](stats/nepi_static/) | Static HTML planning tool (hostable anywhere) |
-| [paper/](paper/README.md) | Academic paper and literature review |
+| [stats/nepi_static/](stats/nepi_static/) | Static HTML planning tool (mirrored to [docs/](docs/)) |
+| [paper/](paper/README.md) | Case narrative ([case_v2.md](paper/case_v2.md)), data methodology, literature review |
+| [notes/](notes/) | Archived v0 working notes (LSOA-era methodology snapshots) |
 
 ## Quick Start
 
@@ -124,16 +150,17 @@ $URBAN_ENERGY_DATA_DIR/
 └── cache/        # download caches
 ```
 
-Output: figures in `stats/figures/oa/` and `stats/figures/basket_oa/`, NEPI in `stats/figures/nepi/`, narrative in `paper/case_v2.md`.
+Output: figures in [stats/figures/oa/](stats/figures/oa/) and [stats/figures/basket_oa/](stats/figures/basket_oa/), NEPI in [stats/figures/nepi/](stats/figures/nepi/), narrative in [paper/case_v2.md](paper/case_v2.md).
 
 ## Archived Work
 
 The original LSOA-level analysis (18 cities, 3,678 LSOAs) is preserved in archive directories:
 
-- `stats/archive/` -- LSOA analysis scripts
-- `stats/figures/archive_lsoa/` -- LSOA figures
-- `processing/archive/` -- LSOA pipeline
-- `paper/archive/` -- LSOA case narrative and stale LaTeX
+- [stats/archive/](stats/archive/) — LSOA analysis scripts
+- [stats/figures/archive_lsoa/](stats/figures/archive_lsoa/) — LSOA figures
+- [processing/archive/](processing/archive/) — LSOA pipeline (still imported by `pipeline_oa.py` for shared morphology constants)
+- [paper/archive/](paper/archive/) — LSOA case narrative and stale LaTeX
+- [notes/](notes/) — v0 working notes, methodology, roadmap
 
 ## License
 

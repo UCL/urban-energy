@@ -1,17 +1,24 @@
-# Research Roadmap
+# Research Roadmap (v0 — ARCHIVED)
 
-Development roadmap for strengthening the hypotheses, methods, and analytical framing of this project.
+> **ARCHIVED SNAPSHOT.** This roadmap predates the OA-level pivot. Many of the items
+> below have since been resolved by the national pipeline, the NEPI scorecard, the
+> empirical access penalty model, and the planning tool. The current development status
+> lives in [TODO.md](../TODO.md); the canonical paper is
+> [paper/case_v2.md](../paper/case_v2.md). Internal links in this file may be stale.
 
-**Status:** Early-stage development
+Development roadmap for strengthening the hypotheses, methods, and analytical framing of
+the early-stage (LSOA, Case One) project.
+
+**Status:** Early-stage development (frozen)
 **Last updated:** 2026-02-06
 
-See [TODO.md](TODO.md) for implementation-level tasks.
+See [TODO.md](../TODO.md) for the current implementation-level task list.
 
 ---
 
 ## 1. Hypotheses
 
-The current hypotheses (H1-H3 in [stats/README.md](stats/README.md)) are well-structured and testable. The following areas would sharpen them further.
+The current hypotheses (H1-H3 in [stats/README.md](../stats/README.md)) are well-structured and testable. The following areas would sharpen them further.
 
 ### 1.1 Theoretical grounding
 

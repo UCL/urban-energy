@@ -2,145 +2,176 @@
 
 ## Spatial Scale
 
-All analysis operates at **Lower Super Output Area (LSOA)** level — approximately 1,500
-residents and 650 households per unit, with ~33,000 LSOAs covering England.
+All analysis operates at **Output Area (OA)** level — the finest geography at which
+Census 2021 data is published, comprising approximately 130 households and 330 residents.
+England has 188,880 OAs, of which 198,779 enter the analysis after merging across all 6,687
+processed Built-Up Areas (some OAs intersect multiple BUAs). OAs are designed by ONS to be
+socially homogeneous and of consistent population size, making them the natural unit for
+neighbourhood-level analysis.
 
-The LSOA is not the natural grain of most variables used here. Census data is collected at
-Output Area (OA, ~125 households, ~180,000 units in England); street-network accessibility
-is computed at individual street nodes; EPC records are address-level (UPRN); FSA and
-NaPTAN data are point features. All of these have finer native resolution than LSOA.
+The earlier version of this study operated at LSOA level (~1,500 residents) because the
+DESNZ metered energy consumption was only published at LSOA. That binding constraint has
+since been relaxed: DESNZ now publishes **postcode-level** energy data, and the project
+constructs its own postcode → OA spatial lookup using OS Code-Point Open. The Form surface
+is therefore an OA-level meter-weighted mean across constituent postcodes (median ~6.3
+postcodes per OA, 99.3% match rate).
 
-**The binding constraint is metered domestic energy consumption.** DESNZ publishes gas and
-electricity consumption only at LSOA — it is not disaggregated to OA and cannot be
-reconstructed from available data. Because building energy is the primary dependent variable
-of the analysis, every other data source is aggregated upward to match it. The analysis
-scale is LSOA by necessity, not by preference.
-
-A secondary constraint applies to the deprivation robustness check. Stratifying
-simultaneously by deprivation quintile and housing type requires cross-tabulation at LSOA+
-to maintain stable cell sizes; OA cells would be too small for reliable group means.
+The LSOA-level data and analysis is preserved in archive directories
+(`stats/archive/`, `paper/archive/case_v1.md`).
 
 ---
 
 ## Data Sources
 
 The table below lists every variable used in the analysis: what it measures, its source,
-its native spatial scale, and how it is brought to LSOA.
+its native spatial scale, and how it is brought to OA.
 
-| Variable                                                | What it measures                                                                       | Source                                                                                       | Native scale          | Derivation to LSOA                                                                                                                                                                                                                                            |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Building energy** (kWh/household)                     | Mean total domestic energy consumption — metered gas (weather-corrected) + electricity | DESNZ Sub-national Energy Statistics, consumption year 2023 (2010–2024 release, Dec 2025)    | LSOA (native)         | Direct join on LSOA21CD                                                                                                                                                                                                                                       |
-| **Transport energy** (kWh/household)                    | Estimated **commute** transport energy per household                                   | Derived from Census 2021 TS058 + TS061, mode-based (private/public), with ECUK intensities   | OA (Census inputs)    | OA commuter counts summed to LSOA; commute-energy computed at LSOA from derived commute-km and mode counts — see note                                                                                                                                         |
-| **Average commute distance** (km)                       | Weighted mean one-way commute distance                                                 | Census 2021, TS058                                                                           | OA                    | Each distance band assigned a midpoint km; weighted mean computed from OA counts summed to LSOA                                                                                                                                                               |
-| **Car commute share** (%)                               | Proportion of employed residents commuting by car or van                               | Census 2021, TS061                                                                           | OA                    | Car commuter count / total employed commuters; OA counts summed to LSOA before division                                                                                                                                                                       |
-| **Walk share** (%)                                      | Proportion commuting on foot                                                           | Census 2021, TS061                                                                           | OA                    | As above                                                                                                                                                                                                                                                      |
-| **Cycle share** (%)                                     | Proportion commuting by bicycle                                                        | Census 2021, TS061                                                                           | OA                    | As above                                                                                                                                                                                                                                                      |
-| **Cars per household**                                  | Mean vehicles available per household                                                  | Census 2021, TS045                                                                           | OA                    | Weighted mean (0 × none + 1 × one + 2 × two + 3 × three-plus) / total households; OA counts summed to LSOA                                                                                                                                                    |
-| **Housing type — % detached**                           | Share of dwellings that are detached houses                                            | Census 2021, TS044                                                                           | OA                    | Type counts summed across OAs within LSOA; proportion computed at LSOA                                                                                                                                                                                        |
-| **Housing type — % semi-detached**                      | Share of dwellings that are semi-detached houses                                       | Census 2021, TS044                                                                           | OA                    | As above                                                                                                                                                                                                                                                      |
-| **Housing type — % terraced**                           | Share of dwellings that are terraced houses                                            | Census 2021, TS044                                                                           | OA                    | As above                                                                                                                                                                                                                                                      |
-| **Housing type — % flat**                               | Share of dwellings in purpose-built flat blocks                                        | Census 2021, TS044                                                                           | OA                    | As above                                                                                                                                                                                                                                                      |
-| **Dominant housing type**                               | Mode dwelling type for LSOA stratification (Flat / Terraced / Semi / Detached)         | Census 2021, TS044                                                                           | OA → LSOA             | Plurality type from LSOA-level type proportions                                                                                                                                                                                                               |
-| **Population density** (persons/km²)                    | Residential population density                                                         | Census 2021, TS006 + TS001                                                                   | OA                    | OA area back-calculated from population / density; areas summed to LSOA; LSOA density = LSOA population / LSOA area                                                                                                                                           |
-| **Total population**                                    | Usual residents living in households                                                   | Census 2021, TS001                                                                           | OA                    | OA counts summed to LSOA                                                                                                                                                                                                                                      |
-| **Household count**                                     | Occupied household spaces                                                              | Census 2021, TS017                                                                           | OA                    | Total household spaces minus zero-person spaces; OA counts summed to LSOA                                                                                                                                                                                     |
-| **Deprivation** (% not deprived)                        | Proportion of households with no deprivation dimensions                                | Census 2021, TS011                                                                           | OA                    | OA counts summed to LSOA; proportion computed at LSOA                                                                                                                                                                                                         |
-| **Street network density** (cc_density_800)             | Count of reachable street network nodes within 800m network distance                   | OS Open Roads + cityseer                                                                     | Street node           | Computed per node by cityseer; each UPRN assigned to nearest node; mean across all UPRNs within LSOA                                                                                                                                                          |
-| **Street network harmonic closeness** (cc_harmonic_800) | Gravity-weighted inverse-distance sum to all reachable nodes within 800m               | OS Open Roads + cityseer                                                                     | Street node           | As above                                                                                                                                                                                                                                                      |
-| **Restaurant / café access** (cc_fsa_restaurant_800_wt) | Gravity-weighted count of restaurants and cafés within 800m walk                       | FSA Food Hygiene Register + cityseer                                                         | Point (establishment) | Gravity-weighted accessibility computed per node; mean across UPRNs within LSOA                                                                                                                                                                               |
-| **Pub / bar access** (cc_fsa_pub_800_wt)                | Gravity-weighted count of pubs and bars within 800m walk                               | FSA Food Hygiene Register + cityseer                                                         | Point                 | As above                                                                                                                                                                                                                                                      |
-| **Takeaway access** (cc_fsa_takeaway_800_wt)            | Gravity-weighted count of takeaways within 800m walk                                   | FSA Food Hygiene Register + cityseer                                                         | Point                 | As above                                                                                                                                                                                                                                                      |
-| **Bus stop access** (cc_bus_800_wt)                     | Gravity-weighted count of bus and coach stops within 800m walk                         | NaPTAN (DfT) + cityseer                                                                      | Point (stop)          | As above                                                                                                                                                                                                                                                      |
-| **Rail / metro access** (cc_rail_800_wt)                | Gravity-weighted count of rail and metro stations within 800m walk                     | NaPTAN (DfT) + cityseer                                                                      | Point (station)       | As above                                                                                                                                                                                                                                                      |
-| **Green space access** (cc_greenspace_800_wt)           | Gravity-weighted count of designated green space sites within 800m walk                | OS Open Greenspace + cityseer                                                                | Point (site centroid) | As above                                                                                                                                                                                                                                                      |
-| **Building S/V ratio** _(robustness check only)_        | Mean surface-to-volume ratio of residential buildings — physical compactness proxy     | Environment Agency LiDAR composite (2m resolution, 2000–2022) + OS Open Map Local footprints | Building polygon      | Building-level S/V computed from LiDAR-derived height × footprint area; UPRNs joined to enclosing building polygon; mean S/V across UPRNs within LSOA. Includes non-domestic buildings; used only to validate TS044 type gradient, not as a primary predictor |
-| **Median construction era**                             | Median build year of EPC-registered dwellings — proxy for insulation standard          | EPC Open Data (MHCLG), certificates from November 2021 onward                                | UPRN (address)        | Most recent EPC per UPRN selected; construction age band mapped to midpoint year; median across UPRNs within LSOA                                                                                                                                             |
+| Variable | What it measures | Source | Native scale | Derivation to OA |
+| -------- | ---------------- | ------ | ------------ | ---------------- |
+| **Form: building energy** (kWh/hh) | Mean total domestic energy consumption — metered gas (weather-corrected by Xoserve) + electricity | DESNZ Sub-national Postcode Statistics, December 2025 release (gas: mid-May 2024 to mid-May 2025; electricity: Jan–Dec 2024) | Postcode | Postcodes joined to OAs via OS Code-Point Open spatial join; OA value is the meter-weighted mean across constituent postcodes |
+| **Mobility: transport energy** (kWh/hh) | Estimated annual commute energy plus a national overall-travel scalar | Census 2021 TS058 + TS061; ECUK 2025 energy intensities; NTS 2024 total/commute scalar | OA (Census inputs) | TS058 distance bands → midpoint km; TS061 mode counts split into private/public; per-household commute energy = (private × 0.399 + public × 0.178) × 220 workdays × 2 returns / household count; multiplied by 6.04× to estimate overall travel |
+| **Average commute distance** (km) | Weighted mean one-way commute distance | Census 2021, TS058 | OA | Each distance band assigned a midpoint km; weighted mean from OA counts |
+| **Car commute share** (%) | Proportion of employed residents commuting by car or van | Census 2021, TS061 | OA | Car commuter count / total employed commuters at OA |
+| **Walk share / cycle share** (%) | Proportion commuting on foot or by bicycle | Census 2021, TS061 | OA | As above |
+| **Cars per household** | Mean vehicles available per household | Census 2021, TS045 | OA | Weighted mean (0×none + 1×one + 2×two + 3×three+) / total households at OA |
+| **Housing type shares** (%) | Share of dwellings that are detached / semi-detached / terraced / flat | Census 2021, TS044 | OA | Type counts / total accommodation per OA |
+| **Dominant housing type** | Plurality dwelling type for OA stratification (Flat / Terraced / Semi / Detached) | Census 2021, TS044 | OA | Plurality from OA-level type counts; sensitivity to 40–60% strict thresholds reported |
+| **Population density** (persons/ha) | Residential population density | Census 2021, TS006 | OA | Native at OA |
+| **Total population** | Usual residents living in households | Census 2021, TS001 | OA | Native at OA |
+| **Household count** | Occupied household spaces | Census 2021, TS017 | OA | Total household spaces minus zero-person spaces |
+| **Deprivation indices** | Income, employment, education, health, crime, barriers, living environment | IoD 2025 (MHCLG), File 7 | LSOA (2021) | Joined OA → LSOA via OA21CD lookup; income domain used as the primary OLS control |
+| **Vehicle fleet composition** | Cars by fuel type, ULEV/BEV share | DVLA Vehicle Licensing (VEH0125, VEH0135) | LSOA (2021) | Joined OA → LSOA via OA21CD lookup |
+| **Local service coverage** (0–1) | Walkable coverage of nine essential services via Gaussian decay over network distance | OS Open Roads + cityseer + FSA, NaPTAN, GIAS, NHS ODS, OS Open Greenspace | Network node | Each OA receives the meter-weighted mean over constituent UPRNs of the nearest-distance Gaussian-decayed coverage at each service-specific threshold (800–2,000 m); see case_v2.md §2.5 |
+| **Network centrality** | Closeness, harmonic, betweenness at 800/1600/3200/4800/9600 m | OS Open Roads + cityseer CityNetwork API | Network node | Computed per node and aggregated to OA |
+| **Building S/V ratio** *(robustness)* | Mean surface-to-volume ratio of residential buildings | LiDAR (2m, 2000–2022) + OS Open Map Local | Building polygon | Building-level S/V from LiDAR-derived height × footprint area; UPRNs joined to enclosing building polygon; mean across OA |
+| **Median construction era** | Median build year of EPC-registered dwellings | EPC Open Data (MHCLG), certificates from November 2021 onward | UPRN (address) | Most recent EPC per UPRN; construction age band → midpoint year; median across OA |
+| **Pre-pandemic commute** (validation) | Census 2011 commute distance and mode | Nomis QS701EW, QS702EW | OA (2011) | Joined to 2021 OAs where codes are unchanged; used for §4.5 validation |
+| **OD commute distance** (robustness) | Origin–destination workplace flows | Census 2021 ODWP01EW | MSOA→MSOA | Euclidean centroid distance per origin MSOA; assigned to constituent OAs; case_v2 §4.6 |
 
 ---
 
-## Why Not EPCs for Building Energy?
+## Why DESNZ Postcode Energy, not EPCs, for the Form Surface
 
 EPCs were considered but not used as the primary energy variable, for three reasons:
 
-1. **Coverage bias.** EPCs are required only at sale or rental, so coverage is systematically lower for long-term owner-occupied stock — predominantly detached and semi-detached houses — which are exactly the sprawling types central to this analysis.
+1. **Coverage bias.** EPCs are required only at sale or rental, so coverage is
+   systematically lower for long-term owner-occupied stock — predominantly detached and
+   semi-detached houses — which are exactly the sprawling types central to this analysis.
 
-2. **SAP is modelled, not metered.** EPC energy figures are outputs of the Standard Assessment Procedure under standardised occupancy assumptions. SAP systematically over-predicts energy use in poorly performing buildings (Few et al., 2023), and because older buildings concentrate in dense urban areas, this would artificially inflate the apparent thermal efficiency advantage of compact stock.
+2. **SAP is modelled, not metered.** EPC energy figures are outputs of the Standard
+   Assessment Procedure under standardised occupancy assumptions. Few et al. (2023)
+   demonstrate systematic over-prediction of metered consumption in EPC ratings, with the
+   performance gap varying by dwelling type and age. Because older buildings concentrate
+   in dense urban areas, this would artificially inflate the apparent thermal efficiency
+   advantage of compact stock.
 
-3. **Domestic/non-domestic ambiguity.** Mixed-use buildings — flats above shops, converted commercial premises — appear inconsistently across the domestic and non-domestic EPC registers. This ambiguity is more prevalent in compact, mixed-use areas, introducing a spatial bias in exactly the part of the housing spectrum under study.
+3. **Domestic/non-domestic ambiguity.** Mixed-use buildings — flats above shops,
+   converted commercial premises — appear inconsistently across the domestic and
+   non-domestic EPC registers. This ambiguity is more prevalent in compact, mixed-use
+   areas, introducing a spatial bias in exactly the part of the housing spectrum under
+   study.
 
-EPC data is retained for two secondary uses only: `CONSTRUCTION_AGE_BAND` to derive median build year per LSOA, and `PROPERTY_TYPE` to cross-validate the Census TS044 type classification.
+EPC data is retained for two secondary uses only: `CONSTRUCTION_AGE_BAND` to derive
+median build year per OA (a feature in the NEPI Form model), and `PROPERTY_TYPE` to
+cross-validate the Census TS044 type classification.
 
 ---
 
 ## Transport Energy Derivation
 
-Transport energy is not measured directly. It is estimated as **commute energy** from Census
-tables TS058 and TS061:
+Transport energy is not measured directly. It is estimated as **commute energy** from
+Census tables TS058 and TS061, then scaled to overall travel:
 
 1. **Commute distance distribution** (TS058): distance bands are mapped to midpoint km
    (e.g., "2km to less than 5km" → 3.5 km). Work-from-home and offshore/no-fixed-place
    categories are excluded from travelling-commuter distance.
 
 2. **Mode counts** (TS061): commuters are split into:
-   private modes = drive + passenger + taxi + motorcycle,
-   public modes = bus + train + metro/tram.
+   - private modes = drive + passenger + taxi + motorcycle
+   - public modes = bus + train + metro/tram
 
 3. **Annual commute distance**: travelling-commuter one-way distance × 2 (return) × 220
    workdays.
 
-4. **Energy conversion (mode-specific)**:
-   road passenger intensity = 34.3 ktoe / billion pkm,
-   rail passenger intensity = 15.3 ktoe / billion pkm
-   (ECUK 2025; converted to 0.399 and 0.178 kWh/pkm).
+4. **Mode-specific energy intensities** (ECUK 2025):
+   - road passenger intensity: 0.399 kWh/pkm
+   - rail passenger intensity: 0.178 kWh/pkm
 
-5. **Per-household transport energy**:
-   `(private commute energy + public commute energy) / household count`.
+5. **Per-household commute energy**:
+   `(private commute energy + public commute energy) / household count`
 
-**Limitation:** Census 2021 was conducted during residual COVID-19 disruption. Approximately
-31% of respondents recorded "works mainly from home" (zero commute kilometres). To the
-extent that home-working is concentrated in knowledge-economy occupations more prevalent in
-central, compact areas, this would understate the transport energy penalty of sprawl.
+6. **Overall travel scenario**: commute energy × 6.04 (NTS 2024 total distance / commute
+   distance ratio). Sensitivity reported across 1×–10× scalars (case_v2 §4.3).
 
-This metric represents commute energy only; it does not include non-commute trip purposes.
-For sensitivity, a secondary overall-travel scenario is reported by scaling commute energy
-with the NTS 2024 total-to-commute distance ratio (`6082/1007 = 6.04x`).
+**Limitations:**
+
+- Census 2021 was conducted on 21 March 2021 during the third national lockdown.
+  Approximately 31% of respondents recorded "works mainly from home". The pandemic
+  compresses the morphology gradient because work-from-home is concentrated in
+  knowledge-economy occupations more prevalent in compact areas. Pre-pandemic Census 2011
+  validation (case_v2 §4.5) shows the gradient was steeper before COVID (2.00× vs 1.70×).
+- Band-midpoint estimates systematically understate commute distance due to top-band
+  truncation; the absolute Mobility values are conservative. OD distance robustness check
+  in case_v2 §4.6 confirms the gradient is preserved when MSOA-to-MSOA distances replace
+  band midpoints.
+
+---
+
+## The Access Surface
+
+The Access surface is computed in two stages:
+
+1. **Local service coverage (0–1):** For each of nine essential services
+   (food restaurant, food takeaway, food pub, GP, pharmacy, school, greenspace, bus stop,
+   hospital), the network-based nearest distance is converted via Gaussian decay
+   (`exp(-ln(2) × (d / d_half)²)`) to a coverage score. The OA's coverage is the mean
+   across all nine services. Service-specific thresholds (800 m for food/bus, 1,000 m for
+   pharmacy/greenspace, 1,200 m for GP/school, 2,000 m for hospital) reflect canonical
+   walking-time benchmarks.
+
+2. **Empirical access penalty (kWh/hh/yr):** Rather than assuming trip rates and decay
+   parameters, the penalty is the difference between an OA's predicted transport energy
+   at its observed coverage and the predicted value at a compact reference (85% coverage,
+   the flat-dominant median). The OLS specification regresses transport energy on local
+   coverage with controls for log population density, household size, deprivation,
+   building age, and IMD income domain (HC1 robust standard errors). See `stats/access_penalty_model.py`.
+
+The empirical penalty (~1,540 kWh/hh/yr in detached-dominant OAs) converges with two
+independent estimates: a service-specific direct calculation (~262 kWh/hh) capturing only
+the nine modelled trips, and a fleet-based upper bound (~1,700 kWh/hh) from the 0.19
+excess cars per household predicted in detached areas at average annual mileage.
 
 ---
 
 ## Geographic Coverage
 
-18 English cities are included, selected to span the compact–sprawl typological spectrum and
-provide regional balance:
-
-| City                                                                                  | Character                                   |
-| ------------------------------------------------------------------------------------- | ------------------------------------------- |
-| Manchester, Birmingham, Leeds, Sheffield, Liverpool, Newcastle, Nottingham, Leicester | Large provincial cities — statistical power |
-| Bristol, Brighton, Southampton, Plymouth                                              | Southern / coastal — regional balance       |
-| York, Cambridge, Canterbury                                                           | Historic compact cities                     |
-| Milton Keynes, Stevenage                                                              | Post-war new towns — sprawl control         |
-| Burnley                                                                               | Northern mill town — dense terraced control |
-
-Analysis is restricted to built-up area extents as defined by OS Built Up Areas 2022
-(BUA22). LSOAs are included only where their centroid falls within a BUA boundary.
+All 6,687 English Built-Up Areas (of 7,147 total) are processed at OA level,
+yielding 198,779 OAs after filtering (population > 10, ≥5 UPRNs, valid metered energy).
+Built-Up Area boundaries are taken from OS Open Built Up Areas 2022 (BUA22), processed
+through `data/process_boundaries.py`.
 
 ---
 
 ## Accessibility Weighting
 
-All cityseer accessibility metrics use **gravity weighting**: destinations closer to a node
-contribute more than distant ones, following a negative exponential decay with the distance
-parameter set to the analysis radius (800m). The `_wt` suffix in column names denotes this
-gravity-weighted count, as opposed to a simple count of destinations within the threshold.
-The 800m radius corresponds to approximately a 10-minute walk at average pedestrian speed
-and represents the canonical pedestrian catchment used in walkability research.
+All cityseer accessibility metrics use **Gaussian decay** weighting: destinations closer
+to a node contribute more than distant ones, following a Gaussian function calibrated
+such that the weight is 0.5 at the service-specific threshold (e.g., 800 m for bus
+stops). Network distances reflect actual walking routes via OS Open Roads, computed by
+the cityseer 4.25 CityNetwork API (`from_geopandas`). The 800 m radius corresponds to
+approximately a 10-minute walk at average pedestrian speed and represents the canonical
+pedestrian catchment used in walkability research.
 
 ---
 
 ## Key Limitations
 
-| Limitation                | Nature                                                                              | Direction of effect                                                                                                                                             |
-| ------------------------- | ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Transport energy modelled | Transport energy is estimated from Census commute data, not measured directly       | Uncertainty is likely greater in sprawling areas where trip purposes are more varied; any underestimate of total car travel would understate the sprawl penalty |
-| COVID-19 commute data     | Census 2021 recorded unusually high home-working rates (31% works mainly from home) | Understates the transport energy penalty of sprawl; bias favours the null                                                                                       |
-| LiDAR vintage             | Composite survey 2000–2022; some buildings may have changed                         | Affects S/V robustness check only; not a primary variable                                                                                                       |
-| Temporal alignment        | Energy consumption year 2023; Census 2021; EPC certificates from 2021 onward        | Two-year gap between Census and energy data; structural patterns assumed stable                                                                                 |
+| Limitation | Nature | Direction of effect |
+| ---------- | ------ | ------------------- |
+| Postcode energy classification | Domestic/non-domestic split via 73,200 kWh/yr Annual Quantity threshold; communal heating served via single non-domestic meter | Compresses Form gradient — underestimates flat heating (communal) and detached heating (off-gas-grid, ~15% of homes) |
+| Transport energy modelled | Estimated from Census commute data plus a national NTS scalar, not measured directly | Uniform scalar likely understates the sprawl penalty; sensitivity reported |
+| COVID-19 commute data | Census 2021 recorded ~31% works-mainly-from-home rates | Compresses the transport gradient; 2011 validation shows true steady-state is steeper |
+| Gaussian decay thresholds | 800–2,000 m service-specific cut-offs are assumptions, not calibrated parameters | Sensitivity not yet exhaustively tested |
+| Spatial autocorrelation | OAs share regional context; OLS standard errors are anti-conservative | BUA-clustered SEs partially address; spatial models on the forward-work list |
+| Ecological inference | Area-level associations cannot be transposed to households | Acknowledged throughout; NEPI rates places, not households |
+| Temporal alignment | Energy 2024; Census 2021; EPC certificates from Nov-2021 onward | Three-year gap between Census and energy; structural patterns assumed stable |

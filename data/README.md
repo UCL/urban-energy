@@ -4,37 +4,78 @@ Download and initial processing scripts for raw data sources.
 
 **Scope:** Domestic (residential) buildings only. EPC data uses the "All domestic certificates" download; non-domestic EPCs are a separate dataset not included.
 
+All paths below are relative to `$URBAN_ENERGY_DATA_DIR` (configured in `.env`; defaults to `./temp/`). The `DATA_DIR`, `CACHE_DIR`, and `PROCESSING_DIR` constants are exported by [`src/urban_energy/paths.py`](../src/urban_energy/paths.py).
+
 ## Setup
 
-1. **Download OA Boundaries:** Go to [ONS Geoportal](https://geoportal.statistics.gov.uk/datasets/ons::output-areas-december-2021-boundaries-ew-bfe-v9/about), click Download → GeoPackage, save to `temp/`
-2. **Download Census topics:** Run `uv run python data/download_census.py`
-3. **Download Built Up Areas:** Go to [OS Data Hub](https://osdatahub.os.uk/downloads/open/BuiltUpAreas), download GeoPackage, extract to `temp/`
-4. **Process boundaries:** Run `uv run python data/process_boundaries.py`
-5. **Download OS Open Map Local:** Go to [OS Data Hub](https://osdatahub.os.uk/downloads/open/OpenMapLocal), download GeoPackage (GB), extract to `temp/os_open_local/`
-6. **Download EPC data:** Register at [epc.opendatacommunities.org](https://epc.opendatacommunities.org/), download "All domestic certificates", extract to `temp/epc/`
-7. **Process EPC data:** Run `uv run python data/process_epc.py`
-8. **Process LiDAR building heights:** Run `uv run python data/process_lidar.py`
-9. **Download FSA establishments:** Run `uv run python data/download_fsa.py`
-10. **Download NaPTAN transport stops:** Run `uv run python data/download_naptan.py`
-11. **Prepare GIAS schools:** Go to [GIAS Downloads](https://get-information-schools.service.gov.uk/Downloads), download **edubasealldata** CSV, save to `cache/gias/`, then run `uv run python data/prepare_gias.py`
-12. **Prepare NHS health facilities:** Go to [NHS ODS CSV Downloads](https://digital.nhs.uk/services/organisation-data-service/data-search-and-export/csv-downloads), download `ets.csv`, `epraccur.csv`, and `edispensary.csv`, save to `cache/nhs_ods/`, then run `uv run python data/prepare_nhs.py`
-13. **Download scaling data (BRES + GVA):** Run `uv run python data/download_scaling.py`
+The order matters where downstream scripts depend on previously prepared data
+(boundaries → LiDAR → morphology, postcodes → energy aggregation, etc.).
+
+### Manual downloads (one-off, no API)
+
+1. **OA Boundaries:** [ONS Geoportal](https://geoportal.statistics.gov.uk/datasets/ons::output-areas-december-2021-boundaries-ew-bfe-v9/about) → GeoPackage → save to `$DATA_DIR/`
+2. **Built Up Areas:** [OS Data Hub](https://osdatahub.os.uk/downloads/open/BuiltUpAreas) → GeoPackage → extract to `$DATA_DIR/OS_Open_Built_Up_Areas_GeoPackage/`
+3. **OS Open Map Local:** [OS Data Hub](https://osdatahub.os.uk/downloads/open/OpenMapLocal) → GeoPackage (GB) → extract to `$DATA_DIR/os_open_local/`
+4. **OS Open Roads:** [OS Data Hub](https://osdatahub.os.uk/downloads/open/OpenRoads) → GeoPackage (GB) → extract to `$DATA_DIR/oproad_gpkg_gb/`
+5. **OS Open Greenspace:** [OS Data Hub](https://osdatahub.os.uk/downloads/open/OpenGreenspace) → GeoPackage (GB) → extract to `$DATA_DIR/opgrsp_gpkg_gb/`
+6. **OS Open UPRN:** [OS Data Hub](https://osdatahub.os.uk/downloads/open/OpenUPRN) → GeoPackage → extract to `$DATA_DIR/osopenuprn_*/`
+7. **OS Code-Point Open:** [OS Data Hub](https://osdatahub.os.uk/downloads/open/CodePointOpen) → GeoPackage → extract to `$DATA_DIR/codepo_gpkg_gb/`
+8. **EPC data:** Register at [epc.opendatacommunities.org](https://epc.opendatacommunities.org/), download "All domestic certificates", extract to `$DATA_DIR/epc/`
+9. **GIAS schools:** [GIAS Downloads](https://get-information-schools.service.gov.uk/Downloads) → **edubasealldata** CSV → save to `$CACHE_DIR/gias/`
+10. **NHS facilities:** [NHS ODS CSV Downloads](https://digital.nhs.uk/services/organisation-data-service/data-search-and-export/csv-downloads) → download `ets.csv`, `epraccur.csv`, `edispensary.csv` → save to `$CACHE_DIR/nhs_ods/`
+
+### Scripted downloads + processing
+
+```bash
+# Boundaries and Census
+uv run python data/process_boundaries.py        # OS BUAs → built_up_areas.gpkg
+uv run python data/download_census.py           # Census 2021 (10 topic tables)
+uv run python data/download_census_2011.py      # Census 2011 commute (validation)
+
+# Building stock
+uv run python data/process_epc.py               # EPC → spatial parquet (UPRN-joined)
+uv run python data/process_lidar.py             # LiDAR DSM/DTM → building heights
+
+# Energy (postcode level → OA aggregation)
+uv run python data/download_energy_stats.py     # DESNZ LSOA-level energy (legacy)
+uv run python data/download_energy_postcode.py  # DESNZ postcode-level energy (primary)
+uv run python data/build_postcode_oa_lookup.py  # Postcode → OA21CD spatial lookup
+uv run python data/aggregate_energy_oa.py       # Postcode energy → OA (meter-weighted)
+
+# Deprivation, vehicles, scaling
+uv run python data/download_imd.py              # IoD 2025 (7 domains)
+uv run python data/download_vehicles.py         # DVLA VEH0125 + VEH0135
+uv run python data/download_scaling.py          # BRES + small-area GVA
+
+# Accessibility points
+uv run python data/download_fsa.py              # FSA food establishments
+uv run python data/download_naptan.py           # NaPTAN transport stops
+uv run python data/prepare_gias.py              # GIAS schools (after manual CSV)
+uv run python data/prepare_nhs.py               # NHS ODS (after manual CSVs + Code-Point)
+```
 
 ## Pipeline Outputs
 
-| Script                  | Output                                       | Description                                            |
-| ----------------------- | -------------------------------------------- | ------------------------------------------------------ |
-| `download_census.py`    | `temp/census_oa_joined.gpkg`                 | OA boundaries with 8 Census topic tables joined        |
-| `process_boundaries.py` | `temp/boundaries/built_up_areas.gpkg`        | Cleaned individual built-up area polygons              |
-|                         | `temp/boundaries/built_up_areas_merged.gpkg` | Merged conurbations (adjacent areas combined)          |
-| `process_epc.py`        | `temp/epc_domestic_cleaned.parquet`          | Deduplicated EPC records (tabular, no geometry)        |
-|                         | `temp/epc_domestic_spatial.gpkg`             | EPC records with UPRN point geometry                   |
-| `process_lidar.py`      | `temp/lidar/building_heights.gpkg`           | Building polygons with LiDAR-derived height statistics |
-| `download_fsa.py`       | `temp/fsa/fsa_establishments.gpkg`           | Eating/drinking establishments as walkability proxy    |
-| `download_naptan.py`    | `temp/transport/naptan_england.gpkg`         | Public transport access points (bus, rail, metro, etc) |
-| `prepare_gias.py`       | `temp/education/gias_schools.gpkg`           | Open schools and colleges (DfE GIAS register)          |
-| `prepare_nhs.py`        | `temp/health/nhs_facilities.gpkg`            | NHS hospitals, GP practices, pharmacies (ODS)          |
-| `download_scaling.py`   | `temp/statistics/lsoa_scaling.parquet`       | BRES workplace employment + small area GVA per LSOA    |
+All output paths are under `$URBAN_ENERGY_DATA_DIR/data/` (i.e. `$DATA_DIR`).
+
+| Script | Output | Description |
+| ------ | ------ | ----------- |
+| `download_census.py` | `statistics/census_oa_joined.gpkg` + per-table `census_ts*_oa.parquet` | OA boundaries with 10 Census 2021 topic tables joined |
+| `download_census_2011.py` | `statistics/census_2011_commute_oa.parquet` | Census 2011 QS701/QS702 commute (pre-pandemic validation) |
+| `process_boundaries.py` | `boundaries/built_up_areas.gpkg` + `built_up_areas_merged.gpkg` | Cleaned BUA polygons (and merged conurbations) |
+| `process_epc.py` | `epc/epc_domestic_spatial.parquet` | EPC records with UPRN point geometry |
+| `process_lidar.py` | `lidar/building_heights.gpkg` | Building polygons with LiDAR-derived height statistics |
+| `download_energy_stats.py` | `statistics/lsoa_energy_consumption.parquet` | DESNZ metered gas + electricity per LSOA (legacy) |
+| `download_energy_postcode.py` | `statistics/postcode_energy_consumption.parquet` | DESNZ metered gas + electricity per postcode (primary) |
+| `build_postcode_oa_lookup.py` | `statistics/postcode_oa_lookup.parquet` | Postcode → OA21CD spatial join |
+| `aggregate_energy_oa.py` | `statistics/oa_energy_consumption.parquet` | Postcode energy aggregated to OA via meter-weighted means |
+| `download_imd.py` | `statistics/lsoa_imd2025.parquet` | IoD 2025 (7 domains, ranks, deciles, denominators) |
+| `download_vehicles.py` | `statistics/lsoa_vehicles.parquet` | DVLA cars + ULEVs per LSOA |
+| `download_fsa.py` | `fsa/fsa_establishments.gpkg` | FSA food/drink establishments |
+| `download_naptan.py` | `transport/naptan_england.gpkg` | Public transport access points |
+| `prepare_gias.py` | `education/gias_schools.gpkg` | Open schools and colleges (DfE GIAS register) |
+| `prepare_nhs.py` | `health/nhs_facilities.gpkg` | NHS hospitals, GP practices, pharmacies (ODS) |
+| `download_scaling.py` | `statistics/lsoa_scaling.parquet` | BRES workplace employment + small area GVA per LSOA |
 
 ---
 
@@ -86,15 +127,15 @@ All CRS is EPSG:27700 (British National Grid) unless noted.
 
 All products from [OS Data Hub](https://osdatahub.os.uk/downloads/open).
 
-| Product            | Download Link                                                           | Local Path                                | Key Columns / Layers                                             |
-| ------------------ | ----------------------------------------------------------------------- | ----------------------------------------- | ---------------------------------------------------------------- |
-| OS Open UPRN       | [OpenUPRN](https://osdatahub.os.uk/downloads/open/OpenUPRN)             | `temp/osopenuprn_202601_gpkg/`            | UPRN, X_COORDINATE, Y_COORDINATE, LATITUDE, LONGITUDE            |
-| Code-Point Open    | [CodePointOpen](https://osdatahub.os.uk/downloads/open/CodePointOpen)   | `temp/codepo_gpkg_gb/`                    | Postcode, Eastings, Northings, Admin_district_code               |
-| Boundary-Line      | [BoundaryLine](https://osdatahub.os.uk/downloads/open/BoundaryLine)     | `temp/bdline_gpkg_gb/`                    | **Layers:** country, county, district_borough_unitary, parish    |
-| OS Open Greenspace | [OpenGreenspace](https://osdatahub.os.uk/downloads/open/OpenGreenspace) | `temp/opgrsp_gpkg_gb/`                    | id, function, distName                                           |
-| OS Open Roads      | [OpenRoads](https://osdatahub.os.uk/downloads/open/OpenRoads)           | `temp/oproad_gpkg_gb/`                    | **Layers:** road_link, road_node; class, roadFunction, formOfWay |
-| OS Open Map Local  | [OpenMapLocal](https://osdatahub.os.uk/downloads/open/OpenMapLocal)     | `temp/os_open_local/opmplc_gb.gpkg`       | **Layers:** building, road, woodland, surface_water_area         |
-| Built Up Areas     | [BuiltUpAreas](https://osdatahub.os.uk/downloads/open/BuiltUpAreas)     | `temp/OS_Open_Built_Up_Areas_GeoPackage/` | BUA22CD (GSS code), BUA22NM (name)                               |
+| Product | Download Link | Local Path (`$DATA_DIR/`) | Key Columns / Layers |
+| ------- | ------------- | ------------------------- | -------------------- |
+| OS Open UPRN | [OpenUPRN](https://osdatahub.os.uk/downloads/open/OpenUPRN) | `osopenuprn_*_gpkg/` | UPRN, X_COORDINATE, Y_COORDINATE, LATITUDE, LONGITUDE |
+| Code-Point Open | [CodePointOpen](https://osdatahub.os.uk/downloads/open/CodePointOpen) | `codepo_gpkg_gb/` | Postcode, Eastings, Northings, Admin_district_code |
+| Boundary-Line | [BoundaryLine](https://osdatahub.os.uk/downloads/open/BoundaryLine) | `bdline_gpkg_gb/` | **Layers:** country, county, district_borough_unitary, parish |
+| OS Open Greenspace | [OpenGreenspace](https://osdatahub.os.uk/downloads/open/OpenGreenspace) | `opgrsp_gpkg_gb/` | id, function, distName |
+| OS Open Roads | [OpenRoads](https://osdatahub.os.uk/downloads/open/OpenRoads) | `oproad_gpkg_gb/` | **Layers:** road_link, road_node; class, roadFunction, formOfWay |
+| OS Open Map Local | [OpenMapLocal](https://osdatahub.os.uk/downloads/open/OpenMapLocal) | `os_open_local/opmplc_gb.gpkg` | **Layers:** building, road, woodland, surface_water_area |
+| Built Up Areas | [BuiltUpAreas](https://osdatahub.os.uk/downloads/open/BuiltUpAreas) | `OS_Open_Built_Up_Areas_GeoPackage/` | BUA22CD (GSS code), BUA22NM (name) |
 
 ---
 
@@ -162,7 +203,7 @@ All products from [OS Data Hub](https://osdatahub.os.uk/downloads/open).
 uv run python data/process_lidar.py
 ```
 
-**Output:** `temp/lidar/building_heights.gpkg` — Building footprints with height statistics (min, max, mean, median, std) derived from nDSM.
+**Output:** `$DATA_DIR/lidar/building_heights.gpkg` — Building footprints with height statistics (min, max, mean, median, std) derived from nDSM.
 
 See [processing/README.md](../processing/README.md) for derived morphology metrics.
 
@@ -331,7 +372,7 @@ Hospitals, GP practices, and pharmacies as a **health accessibility** layer, cap
 | `northing`      | OS National Grid northing (from Code-Point) |
 | `geometry`      | Point geometry (EPSG:27700)                 |
 
-ODS records carry postcodes but not grid references. Easting/northing are derived by joining to OS Code-Point Open postcode centroids, which must already be present at `temp/codepo_gpkg_gb/`.
+ODS records carry postcodes but not grid references. Easting/northing are derived by joining to OS Code-Point Open postcode centroids, which must already be present at `$DATA_DIR/codepo_gpkg_gb/`.
 
 **Manual download:**
 
@@ -390,7 +431,7 @@ Supersedes IoD 2019. Uses **2021 Census LSOA boundaries** and 2024 LAD codes. NO
 uv run python data/download_imd.py
 ```
 
-**Output:** `temp/statistics/lsoa_imd2025.parquet` — 33,755 LSOAs × 56 columns (all scores, ranks, deciles, population denominators).
+**Output:** `$DATA_DIR/statistics/lsoa_imd2025.parquet` — 33,755 LSOAs × 56 columns (all scores, ranks, deciles, population denominators).
 
 ---
 
@@ -426,7 +467,7 @@ Same underlying meter data as the LSOA-level statistics (`download_energy_stats.
 uv run python data/download_energy_postcode.py
 ```
 
-**Output:** `temp/statistics/postcode_energy_consumption.parquet` — Joined gas + electricity with derived total and gas share.
+**Output:** `$DATA_DIR/statistics/postcode_energy_consumption.parquet` — Joined gas + electricity with derived total and gas share. Aggregated to OA via `build_postcode_oa_lookup.py` + `aggregate_energy_oa.py` to produce `$DATA_DIR/statistics/oa_energy_consumption.parquet`, the primary input to the Form surface.
 
 ---
 
@@ -465,27 +506,7 @@ Vehicle counts by body type, fuel type, and keepership at LSOA level on **2021 C
 uv run python data/download_vehicles.py
 ```
 
-**Output:** `temp/statistics/lsoa_vehicles.parquet` — Licensed cars and ULEV breakdown per LSOA for target quarter.
-
----
-
-## Pipeline Outputs (Updated)
-
-| Script | Output | Description |
-| --- | --- | --- |
-| `download_census.py` | `temp/census_oa_joined.gpkg` | OA boundaries with 8 Census topic tables joined |
-| `download_energy_stats.py` | `temp/statistics/lsoa_energy_consumption.parquet` | DESNZ metered gas + electricity per LSOA |
-| `download_energy_postcode.py` | `temp/statistics/postcode_energy_consumption.parquet` | DESNZ metered gas + electricity per postcode |
-| `download_imd.py` | `temp/statistics/lsoa_imd2025.parquet` | IoD 2025 all domains, ranks, deciles |
-| `download_vehicles.py` | `temp/statistics/lsoa_vehicles.parquet` | DVLA cars + ULEVs per LSOA |
-| `process_boundaries.py` | `temp/boundaries/built_up_areas.gpkg` | Cleaned individual built-up area polygons |
-| `process_epc.py` | `temp/epc_domestic_spatial.gpkg` | EPC records with UPRN point geometry |
-| `process_lidar.py` | `temp/lidar/building_heights.gpkg` | Building polygons with LiDAR-derived height statistics |
-| `download_fsa.py` | `temp/fsa/fsa_establishments.gpkg` | Eating/drinking establishments as walkability proxy |
-| `download_naptan.py` | `temp/transport/naptan_england.gpkg` | Public transport access points (bus, rail, metro, etc) |
-| `prepare_gias.py` | `temp/education/gias_schools.gpkg` | Open schools and colleges (DfE GIAS register) |
-| `prepare_nhs.py` | `temp/health/nhs_facilities.gpkg` | NHS hospitals, GP practices, pharmacies (ODS) |
-| `download_scaling.py` | `temp/statistics/lsoa_scaling.parquet` | BRES workplace employment + small area GVA per LSOA |
+**Output:** `$DATA_DIR/statistics/lsoa_vehicles.parquet` — Licensed cars and ULEV breakdown per LSOA for target quarter.
 
 ---
 
@@ -493,5 +514,5 @@ uv run python data/download_vehicles.py
 
 Once all data sources have been downloaded and processed:
 
-1. **Proceed to [processing/README.md](../processing/README.md)** — Compute derived metrics (building morphology, network accessibility)
-2. **Then to [stats/README.md](../stats/README.md)** — Statistical analysis (three surfaces, basket index, deprivation controls)
+1. **Proceed to [processing/README.md](../processing/README.md)** — Compute derived metrics (building morphology, network accessibility, OA aggregation)
+2. **Then to [stats/README.md](../stats/README.md)** — Statistical analysis, NEPI scorecard, planning tool

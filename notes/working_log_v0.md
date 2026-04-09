@@ -1,6 +1,13 @@
-# Working Log: Urban Form and Building Energy
+# Working Log: Urban Form and Building Energy (v0 — ARCHIVED)
 
-**Purpose:** Track detailed progress, experiments, decisions, and learnings. This complements the [RESEARCH_FRAMEWORK.md](RESEARCH_FRAMEWORK.md) which maintains the big picture.
+> **ARCHIVED SNAPSHOT.** Day-to-day working log from the LSOA-era proof of concept
+> (Case One). Frozen in place as a research diary; the current development status lives
+> in [TODO.md](../TODO.md), and the canonical narrative is
+> [paper/case_v2.md](../paper/case_v2.md). Internal cross-references may be stale.
+
+**Purpose:** Track detailed progress, experiments, decisions, and learnings. This
+complements the (now-archived) RESEARCH_FRAMEWORK.md which maintained the big picture
+during early-stage development.
 
 ---
 
