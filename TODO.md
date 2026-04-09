@@ -107,4 +107,4 @@ The original LSOA-level proof of concept (18 cities, 3,678 LSOAs) is preserved i
 - [ ] Add pytest test suite
 - [ ] Complete docstrings (NumPy style)
 - [ ] Run `uv run ty check`
-- [ ] Environment variable for `STORAGE_DIR`
+- [x] Environment variable for `URBAN_ENERGY_DATA_DIR`

@@ -38,9 +38,9 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from nepi import BAND_COLORS, BAND_PERCENTILES, compute_local_coverage  # noqa: E402
 from proof_of_concept_oa import build_accessibility, load_and_aggregate  # noqa: E402
-from urban_energy.paths import TEMP_DIR  # noqa: E402
+from urban_energy.paths import DATA_DIR  # noqa: E402
 
-MODEL_DIR = TEMP_DIR / "models" / "nepi"
+MODEL_DIR = DATA_DIR / "models" / "nepi"
 FIGURE_DIR = Path(__file__).parent / "figures" / "nepi"
 
 # ---------------------------------------------------------------------------

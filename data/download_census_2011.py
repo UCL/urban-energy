@@ -15,9 +15,9 @@ import numpy as np
 import pandas as pd
 import requests
 
-from urban_energy.paths import CACHE_DIR, TEMP_DIR
+from urban_energy.paths import CACHE_DIR, DATA_DIR
 
-OUTPUT_DIR = TEMP_DIR / "statistics"
+OUTPUT_DIR = DATA_DIR / "statistics"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 

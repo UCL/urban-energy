@@ -19,9 +19,9 @@ from tqdm import tqdm
 
 # Configuration
 from urban_energy.paths import CACHE_DIR as _CACHE_ROOT
-from urban_energy.paths import TEMP_DIR
+from urban_energy.paths import DATA_DIR
 
-OUTPUT_DIR = TEMP_DIR / "statistics"
+OUTPUT_DIR = DATA_DIR / "statistics"
 CACHE_DIR = _CACHE_ROOT / "census"
 
 # Input paths (manual downloads - filename varies by download)
@@ -75,18 +75,18 @@ def download_file(url: str, desc: str, timeout: int = 300) -> bytes:
 
 def download_oa_boundaries() -> gpd.GeoDataFrame:
     """Load OA boundaries from file (requires manual download)."""
-    matches = list(TEMP_DIR.glob(OA_BOUNDARIES_PATTERN))
+    matches = list(DATA_DIR.glob(OA_BOUNDARIES_PATTERN))
     if matches:
         path = matches[0]
         print(f"Loading OA boundaries from {path}")
         return gpd.read_file(path)
 
     raise FileNotFoundError(
-        f"OA boundaries not found matching {OA_BOUNDARIES_PATTERN} in {TEMP_DIR}\n\n"
+        f"OA boundaries not found matching {OA_BOUNDARIES_PATTERN} in {DATA_DIR}\n\n"
         f"Please download manually:\n"
         f"1. Go to: {OA_BOUNDARIES_URL}\n"
         f"2. Click 'Download' -> 'GeoPackage'\n"
-        f"3. Save to: {TEMP_DIR}/\n"
+        f"3. Save to: {DATA_DIR}/\n"
     )
 
 

@@ -50,10 +50,10 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 
-from urban_energy.paths import TEMP_DIR
+from urban_energy.paths import DATA_DIR, PROCESSING_DIR
 
-DATA_PATH = TEMP_DIR / "processing" / "combined" / "lsoa_integrated.gpkg"
-RESULTS_PATH = TEMP_DIR / "stats" / "results" / "poc_lsoa.json"
+DATA_PATH = PROCESSING_DIR / "combined" / "lsoa_integrated.gpkg"
+RESULTS_PATH = DATA_DIR / "stats" / "results" / "poc_lsoa.json"
 
 # ---------------------------------------------------------------------------
 # Census column names

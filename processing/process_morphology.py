@@ -63,11 +63,11 @@ from libpysal.graph import Graph
 from tqdm import tqdm
 
 # Configuration
-from urban_energy.paths import TEMP_DIR
+from urban_energy.paths import DATA_DIR
 
-BUILDINGS_PATH = TEMP_DIR / "lidar" / "building_heights.gpkg"
-BOUNDARIES_PATH = TEMP_DIR / "boundaries" / "built_up_areas.gpkg"
-OUTPUT_DIR = TEMP_DIR / "morphology"
+BUILDINGS_PATH = DATA_DIR / "lidar" / "building_heights.gpkg"
+BOUNDARIES_PATH = DATA_DIR / "boundaries" / "built_up_areas.gpkg"
+OUTPUT_DIR = DATA_DIR / "morphology"
 CACHE_DIR = OUTPUT_DIR / "cache"
 
 

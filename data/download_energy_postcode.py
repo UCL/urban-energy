@@ -33,9 +33,9 @@ import requests
 from tqdm import tqdm
 
 from urban_energy.paths import CACHE_DIR as _CACHE_ROOT
-from urban_energy.paths import TEMP_DIR
+from urban_energy.paths import DATA_DIR
 
-OUTPUT_DIR = TEMP_DIR / "statistics"
+OUTPUT_DIR = DATA_DIR / "statistics"
 CACHE_DIR = _CACHE_ROOT / "desnz_postcode"
 
 # DESNZ Postcode-Level Domestic Consumption URLs (2024 data, published 2025-12-18)

@@ -18,12 +18,12 @@ from shapely.ops import unary_union
 from shapely.validation import make_valid
 
 # Configuration
-from urban_energy.paths import TEMP_DIR
+from urban_energy.paths import DATA_DIR
 
 INPUT_PATH = (
-    TEMP_DIR / "OS_Open_Built_Up_Areas_GeoPackage" / "os_open_built_up_areas.gpkg"
+    DATA_DIR / "OS_Open_Built_Up_Areas_GeoPackage" / "os_open_built_up_areas.gpkg"
 )
-OUTPUT_DIR = TEMP_DIR / "boundaries"
+OUTPUT_DIR = DATA_DIR / "boundaries"
 
 # Buffer distance (metres) for merging adjacent built-up areas
 MERGE_BUFFER_DISTANCE = 100

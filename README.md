@@ -53,10 +53,9 @@ uv run python stats/nepi_model.py
 uv run python -c "
 import json, xgboost as xgb, sys
 sys.path.insert(0, 'stats')
-from nepi_model import MODEL_FEATURES
+from nepi_model import MODEL_DIR, MODEL_FEATURES
 from pathlib import Path
 
-MODEL_DIR = Path('/Volumes/1TB/urban-energy/temp/models/nepi')
 OUT = Path('stats/nepi_static/nepi_models.json')
 
 def extract(path, features):
@@ -106,11 +105,23 @@ cd stats/nepi_static && python3 -m http.server 8501
 # Install dependencies
 uv sync
 
+# Configure data directory (create .env in repo root)
+echo "URBAN_ENERGY_DATA_DIR=$(pwd)/temp" > .env
+
 # Regenerate all OA-level figures and tables
 uv run python stats/build_case_oa.py
 
 # Run the national OA pipeline (all 7,147 BUAs, skip-if-exists)
 uv run python processing/pipeline_oa.py
+```
+
+The `.env` file (gitignored) sets `URBAN_ENERGY_DATA_DIR` to the base of your data storage. The repo expects this layout underneath it:
+
+```text
+$URBAN_ENERGY_DATA_DIR/
+├── data/         # all datasets (statistics, boundaries, lidar, epc, …)
+├── processing/   # per-BUA pipeline outputs
+└── cache/        # download caches
 ```
 
 Output: figures in `stats/figures/oa/` and `stats/figures/basket_oa/`, NEPI in `stats/figures/nepi/`, narrative in `paper/case_v2.md`.

@@ -28,9 +28,9 @@ import requests
 from tqdm import tqdm
 
 from urban_energy.paths import CACHE_DIR as _CACHE_ROOT
-from urban_energy.paths import TEMP_DIR
+from urban_energy.paths import DATA_DIR
 
-OUTPUT_DIR = TEMP_DIR / "statistics"
+OUTPUT_DIR = DATA_DIR / "statistics"
 CACHE_DIR = _CACHE_ROOT / "scaling"
 
 # NOMIS API: ONS Small Area GVA (NM_2400_1)

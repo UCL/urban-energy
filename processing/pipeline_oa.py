@@ -44,15 +44,15 @@ from archive.pipeline_lsoa import (  # noqa: E402
     run_stage1_morphology,
 )
 
-from urban_energy.paths import TEMP_DIR  # noqa: E402
+from urban_energy.paths import DATA_DIR, PROCESSING_DIR  # noqa: E402
 
-OUTPUT_DIR = TEMP_DIR / "processing"
+OUTPUT_DIR = PROCESSING_DIR
 
 # OA-specific paths
 OA_PATHS = {
-    "energy_stats_oa": TEMP_DIR / "statistics" / "oa_energy_consumption.parquet",
-    "imd": TEMP_DIR / "statistics" / "lsoa_imd2025.parquet",
-    "vehicles": TEMP_DIR / "statistics" / "lsoa_vehicles.parquet",
+    "energy_stats_oa": DATA_DIR / "statistics" / "oa_energy_consumption.parquet",
+    "imd": DATA_DIR / "statistics" / "lsoa_imd2025.parquet",
+    "vehicles": DATA_DIR / "statistics" / "lsoa_vehicles.parquet",
 }
 
 # Analysis distances (meters, based on ~80m/min walking speed)

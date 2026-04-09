@@ -18,12 +18,12 @@ Output:
 
 import pandas as pd
 
-from urban_energy.paths import TEMP_DIR
+from urban_energy.paths import DATA_DIR
 
-OUTPUT_DIR = TEMP_DIR / "statistics"
+OUTPUT_DIR = DATA_DIR / "statistics"
 
-POSTCODE_ENERGY_PATH = TEMP_DIR / "statistics" / "postcode_energy_consumption.parquet"
-POSTCODE_OA_LOOKUP_PATH = TEMP_DIR / "statistics" / "postcode_oa_lookup.parquet"
+POSTCODE_ENERGY_PATH = DATA_DIR / "statistics" / "postcode_energy_consumption.parquet"
+POSTCODE_OA_LOOKUP_PATH = DATA_DIR / "statistics" / "postcode_oa_lookup.parquet"
 
 # Minimum total meters per OA for a stable estimate
 MIN_METERS_PER_OA = 5

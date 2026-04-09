@@ -34,9 +34,9 @@ import pandas as pd
 from shapely.geometry import Point
 
 from urban_energy.paths import CACHE_DIR as _CACHE_ROOT
-from urban_energy.paths import TEMP_DIR
+from urban_energy.paths import DATA_DIR
 
-OUTPUT_DIR = TEMP_DIR / "education"
+OUTPUT_DIR = DATA_DIR / "education"
 CACHE_DIR = _CACHE_ROOT / "gias"
 
 # Establishment status codes — include only open establishments

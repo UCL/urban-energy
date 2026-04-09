@@ -26,10 +26,10 @@ import pandas as pd
 import statsmodels.api as sm
 from scipy import stats as sp_stats
 
-from urban_energy.paths import TEMP_DIR
+from urban_energy.paths import DATA_DIR, PROCESSING_DIR
 
-DATA_PATH = TEMP_DIR / "processing" / "combined" / "oa_integrated.gpkg"
-RESULTS_PATH = TEMP_DIR / "stats" / "results" / "poc_oa.json"
+DATA_PATH = PROCESSING_DIR / "combined" / "oa_integrated.gpkg"
+RESULTS_PATH = DATA_DIR / "stats" / "results" / "poc_oa.json"
 
 # ---------------------------------------------------------------------------
 # Census column names

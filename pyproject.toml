@@ -35,6 +35,7 @@ dependencies = [
     "fpdf2>=2.8.6",
     "streamlit>=1.40",
     "scikit-learn>=1.6.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [project.optional-dependencies]

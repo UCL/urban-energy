@@ -30,13 +30,13 @@ from scipy.spatial import cKDTree  # type: ignore[unresolved-import]
 
 warnings.filterwarnings("ignore", message="DataFrame is highly fragmented")
 
-from urban_energy.paths import TEMP_DIR  # noqa: E402
+from urban_energy.paths import DATA_DIR, PROCESSING_DIR  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
-OUTPUT_DIR = TEMP_DIR / "processing"
+OUTPUT_DIR = PROCESSING_DIR
 
 # Study cities: BUA22CD -> short name
 CITIES: dict[str, str] = {
@@ -66,20 +66,20 @@ CITIES: dict[str, str] = {
 
 # Input paths
 PATHS = {
-    "boundaries": TEMP_DIR / "boundaries" / "built_up_areas.gpkg",
-    "buildings": TEMP_DIR / "lidar" / "building_heights.gpkg",
-    "morphology_cache": TEMP_DIR / "morphology" / "cache",
-    "census": TEMP_DIR / "statistics" / "census_oa_joined.gpkg",
-    "epc": TEMP_DIR / "epc" / "epc_domestic_spatial.parquet",
-    "uprn": TEMP_DIR / "osopenuprn_202601_gpkg" / "osopenuprn_202601.gpkg",
-    "roads": TEMP_DIR / "oproad_gpkg_gb" / "Data" / "oproad_gb.gpkg",
-    "fsa": TEMP_DIR / "fsa" / "fsa_establishments.gpkg",
-    "greenspace": TEMP_DIR / "opgrsp_gpkg_gb" / "Data" / "opgrsp_gb.gpkg",
-    "transport": TEMP_DIR / "transport" / "naptan_england.gpkg",
-    "energy_stats": TEMP_DIR / "statistics" / "lsoa_energy_consumption.parquet",
-    "scaling": TEMP_DIR / "statistics" / "lsoa_scaling.parquet",
-    "schools": TEMP_DIR / "education" / "gias_schools.gpkg",
-    "health": TEMP_DIR / "health" / "nhs_facilities.gpkg",
+    "boundaries": DATA_DIR / "boundaries" / "built_up_areas.gpkg",
+    "buildings": DATA_DIR / "lidar" / "building_heights.gpkg",
+    "morphology_cache": DATA_DIR / "morphology" / "cache",
+    "census": DATA_DIR / "statistics" / "census_oa_joined.gpkg",
+    "epc": DATA_DIR / "epc" / "epc_domestic_spatial.parquet",
+    "uprn": DATA_DIR / "osopenuprn_202601_gpkg" / "osopenuprn_202601.gpkg",
+    "roads": DATA_DIR / "oproad_gpkg_gb" / "Data" / "oproad_gb.gpkg",
+    "fsa": DATA_DIR / "fsa" / "fsa_establishments.gpkg",
+    "greenspace": DATA_DIR / "opgrsp_gpkg_gb" / "Data" / "opgrsp_gb.gpkg",
+    "transport": DATA_DIR / "transport" / "naptan_england.gpkg",
+    "energy_stats": DATA_DIR / "statistics" / "lsoa_energy_consumption.parquet",
+    "scaling": DATA_DIR / "statistics" / "lsoa_scaling.parquet",
+    "schools": DATA_DIR / "education" / "gias_schools.gpkg",
+    "health": DATA_DIR / "health" / "nhs_facilities.gpkg",
 }
 
 # Building physics columns needed for LSOA aggregation

@@ -30,15 +30,15 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pyogrio
 
-from urban_energy.paths import TEMP_DIR
+from urban_energy.paths import DATA_DIR
 
-OUTPUT_DIR = TEMP_DIR / "epc"
+OUTPUT_DIR = DATA_DIR / "epc"
 
 # Input paths
 EPC_INPUT_DIR = (
-    TEMP_DIR / "all-domestic-certificates"
+    DATA_DIR / "all-domestic-certificates"
 )  # Directory containing EPC CSV files
-UPRN_PATH = TEMP_DIR / "osopenuprn_202601_gpkg" / "osopenuprn_202601.gpkg"
+UPRN_PATH = DATA_DIR / "osopenuprn_202601_gpkg" / "osopenuprn_202601.gpkg"
 
 # EPC columns to extract from bulk download CSVs
 EPC_COLUMNS = [

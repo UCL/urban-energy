@@ -35,11 +35,11 @@ from shapely import box
 from tqdm import tqdm
 
 # Configuration
-from urban_energy.paths import TEMP_DIR
+from urban_energy.paths import DATA_DIR
 
-BUILDINGS_PATH = TEMP_DIR / "os_open_local" / "opmplc_gb.gpkg"
-BOUNDARIES_PATH = TEMP_DIR / "boundaries" / "built_up_areas.gpkg"
-OUTPUT_DIR = TEMP_DIR / "lidar"
+BUILDINGS_PATH = DATA_DIR / "os_open_local" / "opmplc_gb.gpkg"
+BOUNDARIES_PATH = DATA_DIR / "boundaries" / "built_up_areas.gpkg"
+OUTPUT_DIR = DATA_DIR / "lidar"
 CACHE_DIR = OUTPUT_DIR / "cache"
 TILE_DIR = OUTPUT_DIR / "tiles"  # Temporary tile storage
 

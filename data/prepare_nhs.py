@@ -49,9 +49,9 @@ import pandas as pd
 from shapely.geometry import Point
 
 from urban_energy.paths import CACHE_DIR as _CACHE_ROOT
-from urban_energy.paths import TEMP_DIR
+from urban_energy.paths import DATA_DIR
 
-OUTPUT_DIR = TEMP_DIR / "health"
+OUTPUT_DIR = DATA_DIR / "health"
 CACHE_DIR = _CACHE_ROOT / "nhs_ods"
 
 # ODS CSV column positions (fixed-width positional — no header row)
@@ -173,7 +173,7 @@ def load_postcode_lookup() -> pd.DataFrame:
     pd.DataFrame
         Columns: postcode (normalised, no space), easting, northing.
     """
-    codepoint_path = TEMP_DIR / "codepo_gpkg_gb"
+    codepoint_path = DATA_DIR / "codepo_gpkg_gb"
 
     gpkg_files = list(codepoint_path.glob("**/*.gpkg"))
     if not gpkg_files:

@@ -20,9 +20,9 @@ from tqdm import tqdm
 
 # Configuration
 from urban_energy.paths import CACHE_DIR as _CACHE_ROOT
-from urban_energy.paths import TEMP_DIR
+from urban_energy.paths import DATA_DIR
 
-OUTPUT_DIR = TEMP_DIR / "transport"
+OUTPUT_DIR = DATA_DIR / "transport"
 CACHE_DIR = _CACHE_ROOT / "naptan"
 
 # NaPTAN download URL (direct CSV download)

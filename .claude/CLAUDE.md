@@ -24,7 +24,7 @@ urban-energy/
 │   └── archive/               # Archived LSOA case and stale LaTeX
 ├── docs/                      # Archived working notes (v0 methodology, roadmap, log)
 ├── tests/                     # Test suite (framework configured, tests pending)
-├── temp/                      # Processing outputs (on external storage, not in git)
+├── temp/                      # Data, processing outputs, and caches (gitignored)
 └── .claude/                   # Claude Code configuration
 ```
 
@@ -48,27 +48,39 @@ urban-energy/
 
 ### Storage layout
 
-External storage at `/Volumes/1TB/urban-energy` (hardcoded in `src/urban_energy/paths.py`):
+The base data directory is configured via `URBAN_ENERGY_DATA_DIR` in a `.env` file at the repo root (gitignored). `src/urban_energy/paths.py` loads it and exports:
 
-```
+- `DATA_DIR` = `$URBAN_ENERGY_DATA_DIR/data` — all datasets
+- `PROCESSING_DIR` = `$URBAN_ENERGY_DATA_DIR/processing` — per-BUA pipeline outputs
+- `CACHE_DIR` = `$URBAN_ENERGY_DATA_DIR/cache` — download caches
+- `PROJECT_DIR` — source repo root (for `stats/figures/` outputs)
+
+Expected layout under `$URBAN_ENERGY_DATA_DIR` (default: `./temp/`):
+
+```text
 temp/
-├── processing/combined/oa_integrated.gpkg     ← Final integrated OA dataset (national)
-├── processing/{bua_name}/oa_integrated.gpkg   ← Per-BUA OA outputs
-├── boundaries/built_up_areas.gpkg
-├── lidar/building_heights.gpkg
-├── morphology/buildings_morphology.gpkg
-├── statistics/
-│   ├── census_oa_joined.gpkg
-│   ├── lsoa_energy_consumption.parquet        ← DESNZ metered (LSOA level)
-│   ├── postcode_energy_consumption.parquet     ← DESNZ metered (postcode level)
-│   ├── lsoa_imd2025.parquet                   ← IoD25 indices of deprivation
-│   ├── lsoa_vehicles.parquet                  ← DVLA vehicle licensing
-│   └── lsoa_scaling.parquet
-├── epc/epc_domestic_spatial.parquet
-├── fsa/fsa_establishments.gpkg
-├── transport/naptan_england.gpkg
-├── education/gias_schools.gpkg
-└── health/nhs_facilities.gpkg
+├── cache/                                     ← download caches (CACHE_DIR)
+├── processing/                                ← per-BUA pipeline outputs (PROCESSING_DIR)
+│   ├── combined/oa_integrated.gpkg            ← Final integrated OA dataset (national)
+│   └── {bua_name}/oa_integrated.gpkg          ← Per-BUA OA outputs
+└── data/                                      ← datasets (DATA_DIR)
+    ├── boundaries/built_up_areas.gpkg
+    ├── lidar/building_heights.gpkg
+    ├── morphology/buildings_morphology.gpkg
+    ├── statistics/
+    │   ├── census_oa_joined.gpkg
+    │   ├── lsoa_energy_consumption.parquet    ← DESNZ metered (LSOA level)
+    │   ├── postcode_energy_consumption.parquet ← DESNZ metered (postcode level)
+    │   ├── lsoa_imd2025.parquet               ← IoD25 indices of deprivation
+    │   ├── lsoa_vehicles.parquet              ← DVLA vehicle licensing
+    │   └── lsoa_scaling.parquet
+    ├── epc/epc_domestic_spatial.parquet
+    ├── fsa/fsa_establishments.gpkg
+    ├── transport/naptan_england.gpkg
+    ├── education/gias_schools.gpkg
+    ├── health/nhs_facilities.gpkg
+    ├── models/nepi/                           ← trained XGBoost models
+    └── stats/results/                         ← JSON analysis outputs
 ```
 
 ## Data Source Inventory
@@ -244,9 +256,9 @@ gravity-weighted count (more establishments closer = higher score).
 ### Script conventions
 
 All data scripts in `data/` follow this pattern:
-- Import `TEMP_DIR` and `CACHE_DIR` from `urban_energy.paths`
+- Import `DATA_DIR` and `CACHE_DIR` from `urban_energy.paths`
 - Use `download_and_cache()` to avoid re-downloading
-- Output parquet (tabular) or GeoPackage (spatial) to `temp/`
+- Output parquet (tabular) or GeoPackage (spatial) under `DATA_DIR`
 - Print progress with step numbers `[1/N]` and summary statistics
 - Filter to England only (codes starting with "E")
 - Use `requests` with `User-Agent: urban-energy-research/1.0`
@@ -315,7 +327,7 @@ Before committing, verify:
 - [ ] `ty check` passes (or type errors are intentional/documented)
 - [ ] Tests pass: `uv run pytest`
 - [ ] CRS handling is explicit and correct
-- [ ] No hardcoded absolute paths (except STORAGE_DIR in paths.py)
+- [ ] No hardcoded absolute paths (all storage paths derive from `URBAN_ENERGY_DATA_DIR` via `src/urban_energy/paths.py`)
 - [ ] No sensitive data included
 - [ ] Commit message is descriptive and follows conventional format
 

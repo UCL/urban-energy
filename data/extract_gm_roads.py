@@ -21,16 +21,16 @@ from pathlib import Path
 import geopandas as gpd
 from shapely.ops import unary_union
 
-from urban_energy.paths import TEMP_DIR
+from urban_energy.paths import DATA_DIR
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
-OUTPUT_DIR = TEMP_DIR / "roads"
+OUTPUT_DIR = DATA_DIR / "roads"
 
-CENSUS_GPKG = TEMP_DIR / "statistics" / "census_oa_joined.gpkg"
-ROADS_GPKG = TEMP_DIR / "oproad_gpkg_gb" / "Data" / "oproad_gb.gpkg"
+CENSUS_GPKG = DATA_DIR / "statistics" / "census_oa_joined.gpkg"
+ROADS_GPKG = DATA_DIR / "oproad_gpkg_gb" / "Data" / "oproad_gb.gpkg"
 
 BUFFER_DISTANCE_M = 20_000  # 20 km
 

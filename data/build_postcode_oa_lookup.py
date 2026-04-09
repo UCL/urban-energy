@@ -17,13 +17,13 @@ Output:
 import geopandas as gpd
 import pandas as pd
 
-from urban_energy.paths import TEMP_DIR
+from urban_energy.paths import DATA_DIR
 
-OUTPUT_DIR = TEMP_DIR / "statistics"
+OUTPUT_DIR = DATA_DIR / "statistics"
 
 # Input paths
-CODEPOINT_DIR = TEMP_DIR / "codepo_gpkg_gb"
-CENSUS_OA_PATH = TEMP_DIR / "statistics" / "census_oa_joined.gpkg"
+CODEPOINT_DIR = DATA_DIR / "codepo_gpkg_gb"
+CENSUS_OA_PATH = DATA_DIR / "statistics" / "census_oa_joined.gpkg"
 
 
 def _find_codepoint_gpkg() -> str:

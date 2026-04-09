@@ -29,9 +29,9 @@ import requests
 from tqdm import tqdm
 
 from urban_energy.paths import CACHE_DIR as _CACHE_ROOT
-from urban_energy.paths import TEMP_DIR
+from urban_energy.paths import DATA_DIR
 
-OUTPUT_DIR = TEMP_DIR / "statistics"
+OUTPUT_DIR = DATA_DIR / "statistics"
 CACHE_DIR = _CACHE_ROOT / "desnz"
 
 # DESNZ Sub-National Energy Statistics URLs (2010-2024 release, Dec 2025)
