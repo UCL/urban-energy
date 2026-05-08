@@ -333,46 +333,50 @@ footer {
   The <strong>Neighbourhood Energy Performance Index (NEPI)</strong> rates every Output Area in England — small neighbourhoods of about 130 households — on the total energy cost of living there. It's an EPC-style A–G rating, but for the <em>place</em>, not the building.
 </p>
 
-<h2>What this is, in three sentences</h2>
+<h2>What this is</h2>
 
 <p>
-  <strong>One.</strong> NEPI is a place-level energy rating: every Output Area
-  (a neighbourhood of ~130 households) gets an A–G band based on the total
-  energy footprint of living there.
+  NEPI is a place-level energy rating. Every Output Area in England — a
+  neighbourhood of approximately 130 households — receives an A–G band
+  derived from the total domestic energy footprint of living there.
 </p>
 
 <p>
-  <strong>Two.</strong> The score is built from three real, observed quantities
-  per OA — metered gas + electricity (Form), Census-derived transport energy
-  (Mobility), and an empirical penalty for poor walkable service coverage
-  (Access). They sum in kWh/household/year and are banded by national
+  The composite score combines three observed quantities per OA: metered
+  gas and electricity (Form), Census-derived transport energy (Mobility),
+  and an empirical penalty for poor walkable service coverage (Access).
+  Values are summed in kWh per household per year and banded by national
   percentile.
 </p>
 
 <p>
-  <strong>Three.</strong> The dashboard lets you view this from different
-  angles: by individual surface (Form / Mobility / Access), in different units
-  (kWh / kgCO₂ / £), and projected forward through the official UK
-  grid-decarbonisation pathway. The scenarios show how today's actual energy
-  mix ages under tomorrow's electricity grid — they do <em>not</em> model
-  retrofit, heat-pump, or EV adoption.
+  The dashboard exposes this through three controls: a Surface selector
+  (composite or one of the three pillars), a Unit selector (kWh, kgCO₂, £),
+  and a forward-projection block that applies the official UK
+  grid-decarbonisation trajectory together with hypothetical heat-pump
+  and EV adoption levels. The Lock-in surface shows the residual demand
+  under full electrification — energy attributable to urban form alone.
 </p>
 
 <div class="callout">
-  <strong>What this is NOT</strong> — important for grounding:
+  <strong>What this is not</strong>
   <ul style="margin-top: 6px; margin-bottom: 0;">
-    <li><strong>Not a forecast.</strong> "2050 mode" doesn't predict 2050 reality. It applies the projected 2050 grid-carbon factor to today's per-OA fuel data.</li>
-    <li><strong>Not a model of demand changes.</strong> Heat-pump rollout, EV adoption, fabric retrofit — none of these are modelled. kWh values are held constant across scenario years.</li>
-    <li><strong>Not policy.</strong> NEPI describes how energy intensity varies by place. It doesn't recommend interventions.</li>
-    <li><strong>Not individual.</strong> The unit of analysis is the OA — every household in an OA gets the same NEPI score. Tells you about average outcomes for a place, not specific households.</li>
-    <li><strong>Not all of England.</strong> Coverage is OAs whose centroid falls within an OS Built-Up Area polygon — i.e. urban, suburban, and village settlements. ~12,000 isolated rural OAs are out of scope (they need a different framing entirely; rural mobility patterns and the walkable-access idea don't translate). Net coverage: ~177,000 of England's ~189,000 OAs (~98% of households).</li>
+    <li><strong>Not a forecast.</strong> A future-year scenario applies projected grid-carbon factors to today's per-OA fuel data; it does not predict the actual state of any future year.</li>
+    <li><strong>Not policy.</strong> NEPI describes how energy intensity varies by place. It does not recommend interventions.</li>
+    <li><strong>Not individual.</strong> The unit of analysis is the OA. Every household in an OA receives the same NEPI score. Results describe average outcomes for a place, not specific households.</li>
+    <li><strong>Not all of England.</strong> Coverage extends to all 7,147 OS Built-Up Areas — approximately 177,050 of England's 189,000 OAs (~98 % of households). The remaining ~12,000 isolated rural OAs are out of scope: rural mobility patterns and the walkable-access framing do not translate to settlements with no built-up footprint.</li>
   </ul>
 </div>
 
-<h2>The headline idea</h2>
+<h2>Concept</h2>
 
 <p>
-  An EPC rates a dwelling's envelope. But an EPC misses the rest of the energy story: how much you drive because shops are far, how much heat your terrace shares with the neighbours, whether your nearest GP, school, and bus stop are walkable. NEPI puts those things on one scale, in one unit (<code>kWh/household/year</code>), so they can be compared and combined without arbitrary weighting.
+  An EPC rates a dwelling envelope. NEPI rates the place. The envelope is one
+  determinant of energy demand among several: heat lost through walls and roofs,
+  transport energy required by daily travel, and the additional energy demand
+  attributable to poor walkable service coverage. NEPI combines these on a single
+  scale (<code>kWh per household per year</code>) so they can be compared
+  and aggregated without arbitrary weighting.
 </p>
 
 <div class="bands-row">
@@ -390,10 +394,10 @@ footer {
   A national flat-dominant OA averages <strong>15,982 kWh/hh/yr</strong> (Band A); a detached-dominant OA averages <strong>26,897 kWh/hh/yr</strong> (Band F) — a 1.7× spread.
 </p>
 
-<h2>Three surfaces</h2>
+<h2>The pillars</h2>
 
 <p>
-  The composite NEPI is the sum of three independent surfaces. Each captures a distinct mechanism by which form drives energy use. Form and Mobility are <strong>direct measurements / fuel-intensity estimates</strong>; Access is a <strong>basket index</strong> — a derived, empirical quantity, not a metered value.
+  The composite NEPI is the sum of three pillars, each capturing a distinct mechanism by which urban form influences household energy demand. Form is a metered measurement of gas and electricity. Mobility is a behaviour-derived estimate from Census travel data and per-mode fuel intensities. The Access index is a derived empirical quantity calibrated against observed transport energy.
 </p>
 
 <!-- Comparative distribution chart: all three on a shared kWh axis so the
@@ -456,12 +460,7 @@ footer {
 </div>
 
 <p class="muted" style="margin-top: 8px;">
-  At a typical OA: Form ≈ 60% of the total, Mobility ≈ 35%, Access (basket) ≈ 5%.
-  At a sprawling detached suburb: Form 65%, Mobility 30%, Access (basket) 6%.
-  Note that the Access figure is a <em>conservative</em> basket-index estimate — the real
-  scale of the access-driven energy gap is larger than the basket captures
-  (residents in sprawling places make more trips and longer ones than the
-  basket assumes, while compact-area residents forgo trips entirely).
+  At a typical OA, Form contributes ~60 % of the composite, Mobility ~35 %, the Access index ~5 %. At a sprawling detached suburb, the split is ~65 / 30 / 6. The Access index uses conservative minimum assumptions; the true accessibility-driven energy gap is larger.
 </p>
 
 <div class="surface-card">
@@ -482,7 +481,7 @@ footer {
 <div class="surface-card">
   <h3>Mobility — transport energy</h3>
   <p>
-    Estimated household transport energy from Census 2021 commute distance × travel mode × fuel intensity (ECUK). Captures the bulk of routine travel; not a perfect proxy for total transport energy but the strongest available open data source.
+    Estimated household transport energy from Census 2021 commute distance × travel mode × fuel intensity (ECUK). The Census records only commute-to-work travel, which understates true mobility demand: leisure, shopping, school-run, and other discretionary trips are not represented. Mobility values published here are therefore a lower bound on the per-OA total transport energy. Census 2021 is also the most recent open dataset at OA granularity; subsequent travel pattern shifts are not captured.
   </p>
   <div class="typical">
     <span class="label">National range</span>
@@ -495,86 +494,79 @@ footer {
 </div>
 
 <div class="surface-card">
-  <h3>Access — coverage penalty <span class="basket-tag">Indicative basket index</span></h3>
+  <h3>Access index — coverage penalty</h3>
   <p>
-    <strong>Important: this is not a directly measured energy value.</strong>
-    Access is an <strong>indicative basket index</strong> — a synthetic per-OA quantity
-    approximating the <em>extra</em> transport energy attributable to poor walkable
-    service coverage. The index assumes a typical mix of trips for typical land-use
-    categories (food, healthcare, education, transit, greenspace, retail) and combines
-    them via Gaussian-decay walking thresholds across nine service types
-    (shops, takeaways, pubs, GPs, pharmacies, schools, greenspace, bus stops, hospitals).
+    The Access index is a derived empirical quantity, not a metered energy value.
+    It approximates the additional transport energy per household attributable
+    to poor walkable service coverage. Construction proceeds in two steps. First,
+    a basket of typical trips to typical land uses (food retail, schools, GPs,
+    pharmacies, transit stops, greenspace, hospitals, pubs, takeaways) is
+    evaluated against each OA's network distance to those services, weighted by
+    Gaussian decay around service-specific walking thresholds. Second, the
+    resulting coverage score is mapped to a kWh penalty by OLS regression on
+    observed commute-transport energy, controlling for density, household
+    size, deprivation, and build year. The penalty is expressed relative to a
+    compact reference (85th-percentile coverage; median of flat-dominant OAs).
   </p>
   <p>
-    The penalty is calibrated by an OLS regression of observed commute-transport energy
-    on coverage, controlling for density, household size, deprivation, and build year.
-    For each OA we predict its kWh penalty relative to a <em>compact reference</em>
-    (85th-percentile coverage — the median of flat-dominant OAs). Compact OAs incur ~0
-    penalty; sprawling OAs accumulate up to ~2,500 kWh/hh/yr in the index.
+    The index uses <strong>conservative minimum assumptions</strong>: the basket
+    models a fixed set of typical trips, calibration is against commute-only
+    energy, and the resulting estimates are clipped at zero. Real behavioural
+    differences are larger. Residents of sprawling places generate more, and
+    longer, trips than the basket assumes; residents of walkable places
+    routinely forgo trips or chain them efficiently. The published Access values
+    are therefore a lower bound on the true accessibility-driven energy gap.
+    The pillar is retained in the composite — and made prominent in the
+    dashboard — because the structural mechanism it captures is robust even
+    where the calibrated magnitude is conservative.
   </p>
-  <div class="callout">
-    <strong>The real scale of difference is greater.</strong>
-    The basket models <em>typical-trips × typical land uses</em> and is calibrated against
-    observed commute energy. Real-world behaviour amplifies the gap further: residents in
-    sprawling places generate more trips and longer ones than the basket assumes, while
-    residents in walkable places forgo some trips entirely or chain them efficiently. The
-    Access index here is a <strong>conservative lower bound</strong> on the actual
-    accessibility-driven energy gap between compact and sprawling OAs — not an upper bound.
-  </div>
   <div class="typical">
     <span class="label">National range</span>
     <span class="stats">
       <strong>0</strong> – <span class="median">630 median</span> – <strong>2,500</strong> kWh/hh/yr
-      (p5 – p50 – p95). Half of all OAs incur 0–630.
+      (p5 – p50 – p95). Approximately half of all OAs incur a penalty between 0 and 630 kWh/hh/yr.
     </span>
   </div>
-  <div class="source">Source: cityseer network analysis on OS Open Roads + FSA, NaPTAN, GIAS, NHS ODS, OS Greenspace destinations. Penalty model: OLS with HC1 robust standard errors. <strong>Indicative basket index, not metered energy. Conservative — real differences are larger.</strong></div>
+  <div class="source">Source: cityseer network analysis on OS Open Roads, with destination layers from FSA, NaPTAN, GIAS, NHS ODS, OS Open Greenspace. Penalty model: OLS with HC1 robust standard errors. Conservative basket index; not metered energy.</div>
 </div>
 
-<h2>What the dashboard shows you</h2>
+<h2>Dashboard controls</h2>
 
 <table>
   <tr>
-    <th>Toggle</th>
-    <th>What it does</th>
-  </tr>
-  <tr>
-    <td><strong>Mode</strong></td>
-    <td>Switches between today's NEPI ("Present") and projected future scenarios. Future modes will use NESO Future Energy Scenarios for grid carbon trajectories and DESNZ Fossil Fuel Price Assumptions for £/kWh bands. Currently placeholder UI; data lands with track <strong>B4</strong>.</td>
+    <th>Control</th>
+    <th>Function</th>
   </tr>
   <tr>
     <td><strong>Surface</strong></td>
-    <td>Composite shows the A–G band of the total NEPI. Each individual surface shows just that pillar on a continuous green→red ramp anchored at the national p5–p95 of that surface.</td>
+    <td>Selects the variable mapped: Composite (A–G bands on the total NEPI), one of the three pillars (Form, Mobility, Access index), or Lock-in (residual under full electrification). Pillar surfaces use a continuous ramp anchored at the national p5–p95 of that pillar.</td>
   </tr>
   <tr>
     <td><strong>Unit</strong></td>
-    <td>kWh, kgCO₂e, or £/year. Per-surface conversion factors: Form blends gas (70%) + electricity (30%); Mobility blends petrol + diesel; Access uses Mobility's factor (the Access surface is a transport-energy penalty). Bands stay constant across units — switching the unit rescales display values and legend labels without re-banding.</td>
+    <td>Applies a per-surface conversion factor to express values in kWh, kgCO₂, or £ per household per year. Form blends gas (~70 %) and electricity (~30 %); Mobility blends petrol and diesel; the Access index inherits Mobility's transport factor. Bands are invariant across units; switching the unit rescales values and legend labels without re-banding.</td>
+  </tr>
+  <tr>
+    <td><strong>Forward projection</strong></td>
+    <td>A future grid year and hypothetical adoption levels for heat pumps and electric vehicles. The grid year applies the projected DESNZ / NESO factors to today's per-OA fuel data. The Adoption sliders scale demand: heat-pump adoption shifts a proportional share of gas demand to electricity at COP 3; EV adoption shifts petrol and diesel demand to electricity at a 3.5× efficiency ratio. The projection block is disabled when Surface = Lock-in (which fixes its own scenario) or Unit = kWh (kWh values are not grid-projected).</td>
   </tr>
 </table>
 
-<p>Click any OA on the map to see its band, the breakdown across the three surfaces, its archetype (Flat/Terraced/Semi/Detached dominant), and how it compares to (1) the national median and (2) other OAs of the same archetype.</p>
+<p>Selecting an OA reveals its band, its breakdown across the three pillars, its dominant accommodation archetype (Flat, Terraced, Semi, or Detached), and comparisons against the national median and the median of OAs sharing its archetype.</p>
 
-<div class="callout">
-  <strong>Two OAs in the same band can have very different mixes.</strong> An A-band city centre flat might have low Form (small dwelling, shared walls) and low Mobility (short commute) with zero Access penalty. An A-band rural village could be A-band only because it's a tight cluster — high Form, low Mobility, near-zero Access — different policy levers entirely. The surface decomposition is the point.
-</div>
+<p>Two OAs in the same band may differ substantially in surface composition. A city-centre flat reaches Band A through low Form (shared walls, small floor area) combined with low Mobility (short commute) and a near-zero Access penalty. A compact rural village can reach Band A through tight clustering: relatively high Form, low Mobility, and a small Access penalty. The two profiles imply different intervention levers; the per-pillar decomposition exposes this.</p>
 
 <h2>Methodological caveats</h2>
 
 <p>
-  <strong>Ecological inference.</strong> The unit of analysis is the OA. NEPI tells you about average outcomes for a place, not specific households (Robinson 1950 ecological-fallacy caveat). That's the right level for the question — neighbourhood form is a property of the place, not the resident — but worth stating explicitly.
+  <strong>Ecological inference.</strong> The unit of analysis is the OA. NEPI describes average outcomes for a place, not specific households (Robinson 1950 ecological-fallacy caveat).
 </p>
 
 <p>
-  <strong>Metered where possible, modelled where not.</strong> EPCs systematically over-predict consumption (the "performance gap"); we sidestep this by using DESNZ postcode-level metered data for the Form surface. Mobility and Access are still derived from Census behaviour because nobody meters travel directly at this granularity.
+  <strong>Form is metered; Mobility and Access are derived.</strong> Form uses DESNZ postcode-level metered domestic energy aggregated to OA. EPC predictions are not used (the well-documented performance gap between predicted and metered EPC consumption is therefore avoided). Mobility and Access are derived from Census 2021 commute behaviour combined with per-mode fuel-intensity factors; metered transport energy is not available at OA granularity.
 </p>
 
 <p>
-  <strong>Per-OA fuel mix used for Form scenarios; national blends for Mobility.</strong>
-  Form CO₂ and £ values use each OA's actual gas/electricity split (from DESNZ
-  postcode data), so OAs experience grid decarbonisation differently. Mobility
-  and Access still use a national petrol/diesel blend because per-OA
-  petrol/diesel data is not available — a real limitation, called out
-  honestly.
+  <strong>Per-OA fuel split for Form; national blend for Mobility and Access.</strong> Form CO₂ and £ values use each OA's actual gas / electricity split from DESNZ postcode data. Mobility and Access use a national petrol / diesel blend because per-OA petrol / diesel data is not available at this granularity.
 </p>
 
 <h2>Data sources</h2>
@@ -598,40 +590,11 @@ footer {
 <ul>
   <li>
     <strong>Census 2021 commute data was COVID-affected.</strong>
-    Robustness check: the pre-pandemic Census 2011 transport gradient is
-    <em>steeper</em> than 2021 (flat-vs-detached: 2.00× in 2011 vs 1.70× in
-    2021). The dashboard uses 2021 data, so the morphology-energy gradient
-    you see here is a conservative lower bound. Full robustness section in
-    <a href="https://github.com/UCL/urban-energy/blob/main/PAPER.md">PAPER.md §5</a>.
+    The pre-pandemic Census 2011 transport gradient (flat-vs-detached: 2.00×) is steeper than the 2021 gradient (1.70×). The dashboard uses 2021 data; the published morphology-energy gradient is therefore a conservative lower bound. Full robustness analysis: <a href="https://github.com/UCL/urban-energy/blob/main/PAPER.md">PAPER.md §5</a>.
   </li>
-  <li><strong>Spatial autocorrelation is partial.</strong> BUA-clustered standard errors are used, but spatial error / lag models are forward work.</li>
-  <li><strong>Mobility doesn't capture leisure / shopping / school-run travel.</strong> Only commute-to-work behaviour is observed; the Access penalty fills part of this gap empirically but it's a proxy, not a measurement.</li>
-  <li>
-    <strong>442 BUAs missing from the combined dataset.</strong>
-    A pre-2026-05-07 path-collision bug in the upstream pipeline overwrote
-    one BUA's data with another's whenever two shared a sanitised name.
-    These BUAs are correctly absent rather than incorrectly present and
-    will be reinstated by a targeted reprocess. Greater Manchester
-    (this Atlas) is unaffected — Manchester's BUA22CD is unique.
-  </li>
-  <li><strong>Future-scenario factors are central trajectories.</strong> NESO FES Holistic Transition + DESNZ Fossil Fuel Price Assumptions central case. Low/high envelopes exist in the input data ([data/projections/](https://github.com/UCL/urban-energy/tree/main/data/projections)) but aren't yet exposed in the UI.</li>
-</ul>
-
-<h2>Status &amp; roadmap</h2>
-
-<p><strong>Live:</strong></p>
-<ul>
-  <li><strong>B1 — CO₂ + £ unit toggles.</strong> ✅ DUKES emission factors and Ofgem-cap-based £/kWh applied as per-surface multipliers on the existing kWh fields. Bands stay invariant across units.</li>
-  <li><strong>B3 — Projection data pipeline.</strong> ✅ Year-keyed factor tables loaded from CSV with per-row source citation (NESO FES Holistic Transition for grid carbon, DESNZ Fossil Fuel Price Assumptions for prices). See <a href="https://github.com/UCL/urban-energy/tree/main/data/projections">data/projections/</a>.</li>
-  <li><strong>B4 — Scenario mode.</strong> ✅ 2030 / 2040 / 2050 toggles active. Selected-OA panel adds a "vs same OA in 2025" row when in scenario mode. Energy demand (kWh) is held constant; only the unit-conversion factors evolve.</li>
-</ul>
-
-<p><strong>Open:</strong></p>
-<ul>
-  <li><strong>National scope.</strong> Currently covers Greater Manchester (8,886 OAs). Extending to all 177,050 OAs nationally is a tippecanoe-tuning exercise, not a methodology change.</li>
-  <li><strong>Demand-side electrification.</strong> Heat-pump and EV rollouts would change kWh per OA, not just kgCO₂ per kWh. Out of scope for v0; would be a per-OA scenario-year demand multiplier on top of the existing factor structure.</li>
-  <li><strong>Sensitivity envelopes.</strong> The price CSV carries low/central/high scenarios; the dashboard exposes only central. Adding low/high toggles is a small UI extension.</li>
-  <li><strong>442 BUAs needing reprocess.</strong> A pre-fix path-collision bug left these with overwritten data; targeted re-run of <code>processing/pipeline_oa.py</code> for affected BUA22CDs will fill the gap.</li>
+  <li><strong>Spatial autocorrelation.</strong> Standard errors are BUA-clustered. Spatial error and spatial lag models are not applied.</li>
+  <li><strong>Mobility scope.</strong> Census records commute-to-work travel only; leisure, shopping, school-run, and other discretionary trips are not represented. The Access index addresses this gap empirically but is a derived proxy, not a direct measurement.</li>
+  <li><strong>Future-scenario factors are central trajectories.</strong> NESO FES Holistic Transition for grid carbon; DESNZ Fossil Fuel Price Assumptions central case for prices. Low and high envelopes are present in the input data but are not currently exposed in the dashboard.</li>
 </ul>
 
 <h2>Licence &amp; attribution</h2>
@@ -639,18 +602,20 @@ footer {
 <p>
   The derived data presented here (per-OA / per-LAD NEPI scores, breakdowns,
   scenarios) is published under the
-  <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">Open Government Licence v3.0</a>
-  — free to use, share and adapt, commercially or non-commercially, with
-  attribution. The Atlas source code is <a href="https://github.com/UCL/urban-energy">GPL-3.0</a>.
+  <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">Open Government Licence v3.0</a>.
+  The Atlas source code is licensed under <a href="https://github.com/UCL/urban-energy">GPL-3.0</a>.
 </p>
 
-<p>If you re-use the data or derived NEPI scores, please cite:</p>
-<blockquote style="font-style: italic; border-left: 3px solid var(--accent); padding-left: 12px; color: var(--muted);">
-  Simons, G. (2026). NEPI Atlas — Neighbourhood Energy Performance Index.
-  UCL Bartlett School of Architecture. <a href="https://github.com/UCL/urban-energy">github.com/UCL/urban-energy</a>.
-</blockquote>
+<p>Required attributions for the underlying data sources:</p>
+<ul>
+  <li>Contains <strong>OS data © Crown copyright and database right 2024</strong> (OS Built-Up Areas, Open Roads, Open Map Local, Open Greenspace, Open UPRN, Code-Point Open, Boundary Line)</li>
+  <li>Contains <strong>ONS data © Crown copyright and database right 2024</strong> (Census 2021 topic tables, Output Area boundaries)</li>
+  <li>Contains public sector information licensed under the <strong>Open Government Licence v3.0</strong> (DESNZ postcode-metered energy, DESNZ Conversion Factors / Fossil Fuel Price Assumptions, EA LiDAR, IoD 2025, FSA, NaPTAN, GIAS, NHS ODS, DVLA vehicle stats, NESO Future Energy Scenarios)</li>
+  <li>EPC certificates: aggregated derived statistics only; raw certificates are not redistributed</li>
+  <li>Map base: © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ODbL</li>
+</ul>
 
-<p><strong>Underlying data sources</strong> are all open and listed in the Data sources section above. Required attributions:</p>
+<!-- Status & roadmap kept internal; previously published here. -->
 <ul>
   <li>Contains <strong>OS data © Crown copyright and database right 2024</strong> (OS Built-Up Areas, Open Roads, Open Map Local, Open Greenspace, Open UPRN, Code-Point Open, Boundary Line)</li>
   <li>Contains <strong>ONS data © Crown copyright and database right 2024</strong> (Census 2021 topic tables, Output Area boundaries)</li>

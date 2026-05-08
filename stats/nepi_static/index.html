@@ -230,65 +230,59 @@ header {
   opacity: 0.5;
 }
 
-/* Progressive disclosure trigger. Persistent — stays in the inline flow at
-   a fixed visual size, so toggling open/closed never reflows the row.
-   Active state matches the open popover. */
-.scenarios-trigger {
-  background: var(--bg-card);
+/* Forward-projection block. Fixed outline + min-width so the area is
+   always present in the controls row regardless of state. */
+.projection-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 540px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  color: var(--muted);
-  cursor: pointer;
-  padding: 6px 12px;
-  font-size: var(--t-small);
-  font-weight: 500;
-  white-space: nowrap;
-  height: 30px;
+  padding: 4px 10px 6px;
   align-self: flex-end;
-  min-width: 160px;
-  transition: color 0.12s, border-color 0.12s, background 0.12s;
+  background: var(--bg-card);
 }
-.scenarios-trigger:hover {
-  color: var(--accent);
-  border-color: var(--accent);
-}
-.scenarios-trigger.active {
-  color: var(--accent);
-  border-color: var(--accent);
+.projection-block.is-disabled {
+  opacity: 0.55;
   background: var(--bg-soft);
+  border-style: dashed;
+}
+.projection-block .projection-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
   font-weight: 600;
 }
-
-/* Absolute-positioned popover. Hangs off the bottom of .ctrls; doesn't
-   push other rows or reflow the inline controls. */
-.scenario-popover {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 30;
+.projection-active {
   display: flex;
   align-items: flex-end;
-  gap: var(--s-4);
-  padding: 10px var(--s-4) 12px;
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--border);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.06);
+  gap: var(--s-3);
 }
-.scenarios-reset {
-  background: none;
-  border: none;
-  color: var(--muted);
-  font-size: 11px;
+.projection-active .sub-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-soft);
   font-weight: 600;
-  cursor: pointer;
-  padding: 6px 4px;
-  white-space: nowrap;
-  align-self: flex-end;
-  height: 30px;
-  margin-left: auto;
+  display: block;
+  margin-bottom: 3px;
 }
-.scenarios-reset:hover { color: var(--accent); }
+.projection-active .proj-year,
+.projection-active .proj-adoption { display: flex; flex-direction: column; }
+.projection-placeholder {
+  font-size: var(--t-tiny);
+  color: var(--muted);
+  font-style: italic;
+  line-height: 1.45;
+  padding: 4px 0;
+  /* Reserve the same vertical space the active controls occupy so toggling
+     between states never resizes the block. */
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+}
 
 /* Adoption — flat inline row. No card-in-a-card chrome. */
 .adoption-group { display: flex; flex-direction: column; gap: 4px; }
@@ -1203,65 +1197,57 @@ footer {
       </div>
     </div>
 
-    <!-- Persistent disclosure trigger. Stays in the inline flow at a fixed
-         width so toggling open/closed never shifts the rest of the row.
-         Hidden entirely when Surface = Lock-in (Lock-in fixes its own
-         scenario; there's nothing to project). -->
-    <button class="scenarios-trigger"
-            :style="scenarios_available ? '' : 'visibility: hidden'"
-            :class="{ active: scenarios_visible }"
-            @click="toggle_scenarios()"
-            :title="scenarios_visible
-              ? 'Close projection panel'
-              : 'Open projection panel: pick a future grid year and hypothetical HP / EV adoption levels.'">
-      <span x-text="scenarios_active
-        ? 'Projection: ' + (summary?.scenarios?.[mode]?.label || mode) + (adoption_active ? ' + adoption' : '')
-        : (scenarios_visible ? 'Projection ▴' : 'Project forward →')"></span>
-    </button>
-
-    <!-- Popover: absolute-positioned below the controls row. Doesn't push
-         anything; doesn't reflow Surface/Unit/trigger when toggled. -->
-    <div class="scenario-popover" x-show="scenarios_visible" x-cloak>
-      <div class="ctrl-group">
-        <span class="label" title="Apply the official UK grid-decarbonisation trajectory.">Year</span>
-        <div class="toggle-buttons">
-          <template x-for="(s, key) in (summary?.scenarios || {})" :key="key">
-            <button :class="{ active: mode === key, inert: is_year_inert(key) }"
-                    @click="mode = key"
-                    :title="is_year_inert(key)
-                      ? (s.label || key) + ' — no visible change in kWh mode (kWh values are held constant; switch unit to kgCO₂ or £ to see this scenario)'
-                      : (s.label || key)">
-              <span x-text="s.label || key"></span>
-            </button>
-          </template>
-        </div>
-      </div>
-
-      <div class="ctrl-group adoption-group">
-        <span class="label" title="Hypothetical demand-side rollout. Layered on top of the year's grid factors. Heat pumps shift gas → electric heating at COP 3; EVs shift petrol/diesel → electric at 3.5× efficiency.">Adoption</span>
-        <div class="adoption-rows">
-          <div class="slider-h" :class="{ zero: hp_slider_pct === 0 }">
-            <span class="label-h">HP</span>
-            <input type="range" min="0" max="100" step="5" x-model.number="hp_slider_pct">
-            <span class="num" x-text="hp_slider_pct + '%'"></span>
+    <!-- Forward projection: a single fixed-outline area that always
+         occupies the same slot. When applicable, renders Year + Adoption
+         controls. When not, renders a placeholder explaining how to
+         activate it. The container does not change size between states. -->
+    <div class="projection-block" :class="{ 'is-disabled': !scenarios_available }">
+      <span class="projection-label">Forward projection</span>
+      <template x-if="scenarios_available">
+        <div class="projection-active">
+          <div class="proj-year">
+            <span class="sub-label">Year</span>
+            <div class="toggle-buttons">
+              <template x-for="(s, key) in (summary?.scenarios || {})" :key="key">
+                <button :class="{ active: mode === key }"
+                        @click="mode = key"
+                        :title="s.label || key">
+                  <span x-text="s.label || key"></span>
+                </button>
+              </template>
+            </div>
           </div>
-          <div class="slider-h" :class="{ zero: ev_slider_pct === 0 }">
-            <span class="label-h">EV</span>
-            <input type="range" min="0" max="100" step="5" x-model.number="ev_slider_pct">
-            <span class="num" x-text="ev_slider_pct + '%'"></span>
-          </div>
-          <div class="adoption-presets">
-            <button @click="set_adoption(80, 80)"
-                    :class="{ 'preset-active': hp_slider_pct === 80 && ev_slider_pct === 80 }">80/80</button>
+          <div class="proj-adoption">
+            <span class="sub-label">Adoption</span>
+            <div class="adoption-rows">
+              <div class="slider-h" :class="{ zero: hp_slider_pct === 0 }">
+                <span class="label-h">HP</span>
+                <input type="range" min="0" max="100" step="5" x-model.number="hp_slider_pct">
+                <span class="num" x-text="hp_slider_pct + '%'"></span>
+              </div>
+              <div class="slider-h" :class="{ zero: ev_slider_pct === 0 }">
+                <span class="label-h">EV</span>
+                <input type="range" min="0" max="100" step="5" x-model.number="ev_slider_pct">
+                <span class="num" x-text="ev_slider_pct + '%'"></span>
+              </div>
+              <div class="adoption-presets">
+                <button @click="set_adoption(80, 80)"
+                        :class="{ 'preset-active': hp_slider_pct === 80 && ev_slider_pct === 80 }">80/80</button>
+                <button @click="reset_scenarios()"
+                        x-show="scenarios_active"
+                        title="Reset year and adoption to Present">Reset</button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-
-      <button class="scenarios-reset"
-              @click="reset_scenarios()"
-              :title="scenarios_active ? 'Reset to Present (clears year + adoption)' : 'Hide projection panel'">
-        <span x-text="scenarios_active ? '✕ Reset to Present' : '✕ Close'"></span>
-      </button>
+      </template>
+      <template x-if="!scenarios_available">
+        <div class="projection-placeholder"
+             x-text="surface === 'lockin'
+               ? 'Lock-in fixes the 2050 grid plus 100 % heat-pump and 100 % EV adoption — there is no further projection to apply.'
+               : 'Switch Unit to kgCO₂ or £ to activate forward projection. kWh values are not grid-projected.'">
+        </div>
+      </template>
     </div>
   </div>
 </header>
@@ -1399,13 +1385,13 @@ footer {
           </li>
         </ul>
 
-        <p><strong>How to use the dashboard:</strong></p>
+        <p><strong>Controls</strong></p>
         <ul>
-          <li>Click any place for its breakdown and comparisons</li>
-          <li><strong>Surface</strong> shows one pillar; <strong>Composite</strong> sums them</li>
-          <li><strong>Unit</strong> renders kWh, kgCO₂, or £ — same data, three lenses</li>
-          <li><strong>Year</strong> applies the projected UK grid-decarbonisation trajectory; <strong>Adoption</strong> sliders layer hypothetical heat-pump and EV rollout on top</li>
-          <li><strong>🔒 Lock-in surface</strong> (last button in Surface) paints the map by what's structurally stuck after full electrification — the irreducible energy cost of urban form</li>
+          <li>Select an Output Area or Local Authority District on the map to view its NEPI breakdown and reference comparisons.</li>
+          <li><strong>Surface</strong> determines the variable mapped: the Composite NEPI, or one of its three pillars (Form, Mobility, Access).</li>
+          <li><strong>Unit</strong> applies a conversion factor to the Composite to express it in kWh, kgCO₂, or £ per household per year. The underlying values are unchanged.</li>
+          <li><strong>Project forward</strong> exposes two scenario controls: a future grid year (with the corresponding decarbonisation factors), and adoption levels for heat pumps and electric vehicles.</li>
+          <li><strong>Lock-in</strong> is the residual energy demand under a full-electrification scenario (2050 grid, 100 % heat-pump, 100 % EV). It quantifies the demand attributable to urban form alone — the component that cannot be reduced through technological substitution.</li>
         </ul>
 
         <div class="meta">
@@ -1456,7 +1442,7 @@ footer {
               <div class="unit">
                 <span x-text="unit_short"></span>
                 <span x-show="surface !== 'composite'">
-                  · <span x-text="surface_label.toLowerCase()"></span><template x-if="surface === 'access'"><span class="tag-basket" title="Indicative basket index — derived, not metered.">basket</span></template>
+                  · <span x-text="surface_label.toLowerCase()"></span>
                 </span>
                 / hh / yr
               </div>
@@ -1546,10 +1532,6 @@ footer {
               <div class="pillar">
                 <span class="name">
                   <span x-text="s.label"></span>
-                  <template x-if="s.key === 'access'">
-                    <span class="tag-basket"
-                          title="Indicative basket index, not metered energy. See About.">basket</span>
-                  </template>
                 </span>
                 <div class="dist-bar">
                   <div class="dist-track"></div>
@@ -1661,7 +1643,7 @@ footer {
                 <div class="unit">
                   Modeled · <span x-text="unit_short"></span>
                   <span x-show="surface !== 'composite'">
-                    · <span x-text="surface_label.toLowerCase()"></span><template x-if="surface === 'access'"><span class="tag-basket" title="Indicative basket index — derived, not metered.">basket</span></template>
+                    · <span x-text="surface_label.toLowerCase()"></span>
                   </span>
                 </div>
                 <div class="vs-existing"
@@ -1901,8 +1883,8 @@ function atlas() {
         tooltip: 'Building energy only (gas + electricity from DESNZ metered data). Lower for compact dwellings.' },
       { key: 'mobility',  label: 'Mobility',
         tooltip: 'Transport energy from Census 2021 commute distance × mode × fuel intensity. Lower in dense areas.' },
-      { key: 'access',    label: 'Access', basket: true,
-        tooltip: 'Indicative basket index — extra transport energy attributable to poor walkable service coverage. Derived from typical-trips × typical land uses, not metered energy. Conservative lower bound on the real gap.' },
+      { key: 'access',    label: 'Access index',
+        tooltip: 'Index of additional transport energy attributable to poor walkable service coverage. Derived from a basket of typical trips to typical land uses (food retail, schools, GPs, pharmacies, transit stops) under reasonable minimum-distance assumptions. Conservative lower bound; not metered energy.' },
       { key: 'lockin',    label: 'Lock-in',
         tooltip: 'Structural lock-in: residual energy / CO₂ / £ after full UK grid decarbonisation (2050) + 100% heat-pump + 100% EV adoption. What no technology rolls back — pure urban form.' },
     ],
@@ -1926,7 +1908,11 @@ function atlas() {
       this.$watch('hp_slider_pct', () => this.update_fill_paint());
       this.$watch('ev_slider_pct', () => this.update_fill_paint());
       this.$watch('level',         () => this.on_level_change());
-      this.$watch('selected', () => { this.overrides = {}; this.show_whatif = false; });
+      this.$watch('selected', () => {
+        this.overrides = {};
+        this.show_whatif = false;
+        this.dwelling_pos_set = null;
+      });
     },
     /** Swap visible layer set when Level toggles. */
     on_level_change() {
@@ -1967,41 +1953,20 @@ function atlas() {
       this.ev_slider_pct = ev_pct;
     },
     /**
-     * Progressive disclosure for the scenario controls (Year + Adoption).
-     * Hidden by default — Surface + Unit are enough for the headline view.
-     * Auto-revealed when any scenario value is non-default OR the user
-     * explicitly opts in. Suppressed entirely when Surface = Lock-in,
-     * which fixes its own scenario (2050 + 100% HP + 100% EV) so there's
-     * nothing to project.
+     * Forward-projection state. Year + Adoption controls are disabled when
+     * Surface = Lock-in (fixes its own scenario) or Unit = kWh (kWh values
+     * are not grid-projected — only the kgCO₂ and £ unit factors evolve).
      */
-    show_scenarios: false,
     get scenarios_active() {
       return this.mode !== 'present' || this.adoption_active;
     },
-    /**
-     * Whether the projection trigger button is shown at all.
-     * - Lock-in surface: scenario is fixed by definition.
-     * - kWh unit: projecting forward doesn't change the headline value
-     *   (kWh isn't grid-projected; only kgCO₂ / £ unit factors evolve).
-     *   Adoption sliders technically still alter kWh, but Year — the
-     *   primary lever — is inert, so the disclosure is misleading here.
-     */
     get scenarios_available() {
       return this.surface !== 'lockin' && this.unit !== 'kwh';
-    },
-    /** Whether the popover panel itself is open. */
-    get scenarios_visible() {
-      if (!this.scenarios_available) return false;
-      return this.show_scenarios || this.scenarios_active;
-    },
-    toggle_scenarios() {
-      this.show_scenarios = !this.show_scenarios;
     },
     reset_scenarios() {
       this.mode = 'present';
       this.hp_slider_pct = 0;
       this.ev_slider_pct = 0;
-      this.show_scenarios = false;
     },
     /**
      * A year-mode button is "inert" — clicking it changes nothing visible —
@@ -2286,23 +2251,42 @@ function atlas() {
       if (!f) return band_colour_expression();
 
       // Lock-in mode: sequential ramp on absolute residual value. Pale =
-      // low lock-in (place is structurally efficient); deep red = high
-      // lock-in (large residual energy that no technology rolls back).
-      // Lockin residuals are typically 35–55% of today's values, so we
-      // anchor the stops at scaled-down percentiles. STOPS MUST BE
-      // STRICTLY ASCENDING — MapLibre rejects the expression otherwise
-      // (causing the layer to render in default grey, hence "goes grey").
+      // low lock-in; deep brick = high lock-in. Stops are derived from the
+      // PER-SURFACE percentile distribution under the 2050 + HP100 + EV100
+      // projection (everything → elec, gas/petrol/diesel → 0):
+      //
+      //   form_residual_kWh ≈ form_kWh × ((1-GAS_FRAC) + GAS_FRAC / COP)
+      //                     ≈ form_kWh × 0.533
+      //   mob_residual_kWh  = mob_kWh / EV_EFFICIENCY_RATIO
+      //   acc_residual_kWh  = acc_kWh / EV_EFFICIENCY_RATIO
+      //   composite_residual_unit = sum × 2050 elec factor in current unit
+      //
+      // Without this per-unit factor the kgCO2 view collapsed (2050 elec
+      // factor is ~0.02 → all OAs evaluated below the lightest stop and
+      // the map went white) and the £ view saturated (factor 0.215 left
+      // residuals near the top stop → all OAs darkest brown).
       if (this.lockin_mode) {
         const f_2050 = this.summary?.scenarios?.y2050?.units?.[this.unit]?.factors;
         const expr = this.build_total_expression_for(f_2050 || f, { hp_share: 1, ev_share: 1 });
-        const breaks = this.summary?.surface_percentiles?.composite;
-        if (!breaks) return band_colour_expression();
-        const k = this.factor('composite');
-        const s0 = breaks.p05 * k * 0.40;
-        const s1 = breaks.p25 * k * 0.45;
-        const s2 = breaks.p50 * k * 0.50;
-        const s3 = breaks.p75 * k * 0.55;
-        const s4 = breaks.p95 * k * 0.60;
+        const sp = this.summary?.surface_percentiles;
+        if (!sp || !f_2050) return band_colour_expression();
+        const elec_factor = f_2050.elec ?? 1.0;
+        const GAS_FRAC = 0.70; // typical UK domestic split (Form ≈ 70 % gas, 30 % elec)
+        const form_resid_ratio = (1 - GAS_FRAC) + GAS_FRAC / HEAT_PUMP_COP;
+        const stop_kwh = (p) =>
+          (sp.form?.[p] ?? 0) * form_resid_ratio
+          + ((sp.mobility?.[p] ?? 0) + (sp.access?.[p] ?? 0)) / EV_EFFICIENCY_RATIO;
+        let s0 = stop_kwh('p05') * elec_factor;
+        let s1 = stop_kwh('p25') * elec_factor;
+        let s2 = stop_kwh('p50') * elec_factor;
+        let s3 = stop_kwh('p75') * elec_factor;
+        let s4 = stop_kwh('p95') * elec_factor;
+        // Guarantee strictly ascending stops — MapLibre rejects equal/desc.
+        const eps = Math.max(Math.abs(s4) * 0.01, 1e-4);
+        if (s1 <= s0) s1 = s0 + eps;
+        if (s2 <= s1) s2 = s1 + eps;
+        if (s3 <= s2) s3 = s2 + eps;
+        if (s4 <= s3) s4 = s3 + eps;
         return [
           'interpolate', ['linear'], expr,
           s0, LOCKIN_HEX[0],
@@ -2959,8 +2943,15 @@ function atlas() {
     set_override(key, value) {
       this.overrides = { ...this.overrides, [key]: Number(value) };
     },
-    /** Current dwelling-type spectrum position derived from pct_* shares. */
+    /**
+     * Slider state: when the user has explicitly moved the dwelling-type
+     * slider, the position is stored verbatim so the thumb can reach 0
+     * and 1. Without this, the thumb visually drifts inward because the
+     * Gaussian-blended pct_* values inverse-map to a non-extremal score.
+     */
+    dwelling_pos_set: null,
     get dwelling_pos() {
+      if (this.dwelling_pos_set != null) return this.dwelling_pos_set;
       const f = this.effective_features;
       if (!f) return 0.5;
       const total = (f.pct_detached || 0) + (f.pct_semi || 0)
@@ -2972,7 +2963,9 @@ function atlas() {
             + f.pct_flat * TYPE_POS.Flat) / total;
     },
     set_dwelling_pos(pos) {
-      const a = this.interpolate_archetype(Number(pos));
+      const p = Number(pos);
+      this.dwelling_pos_set = p;
+      const a = this.interpolate_archetype(p);
       this.overrides = { ...this.overrides,
         pct_detached: a.pct_detached,
         pct_semi: a.pct_semi,
@@ -2982,6 +2975,7 @@ function atlas() {
     },
     reset_whatif() {
       this.overrides = {};
+      this.dwelling_pos_set = null;
     },
     has_overrides() {
       return Object.keys(this.overrides).length > 0;
