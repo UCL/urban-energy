@@ -3334,7 +3334,7 @@
       "size_bytes": 25541759
     },
     "oa": {
-      "url": "https://REPLACE-WITH-YOUR-R2-DOMAIN.r2.dev/england_oa.pmtiles",
+      "url": "https://pub-e464ff17413e4256adbd9f89496bad9c.r2.dev/england_oa.pmtiles",
       "layer": "oa",
       "size_bytes": 226491729,
       "_note": "This file is too big for GitHub Pages (100 MB limit). Upload to Cloudflare R2 (or equivalent) and replace this URL. Or rebuild with ATLAS_OA_TILES_URL_BASE=<your-base-url> uv run python stats/export_atlas_data.py"
