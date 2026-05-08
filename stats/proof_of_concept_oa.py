@@ -133,7 +133,14 @@ _CC_CENTRALITY = [
 ]
 
 # Metered energy — postcode-aggregated to OA
-_OA_ENERGY = ["oa_total_mean_kwh"]
+# Per-fuel split is needed by the Atlas to apply per-OA scenario factors
+# (gas combustion is constant; electricity decarbonises with the grid).
+_OA_ENERGY = [
+    "oa_total_mean_kwh",
+    "oa_elec_mean_kwh",
+    "oa_gas_mean_kwh",
+    "oa_gas_share",
+]
 
 # Building physics (LiDAR + OS footprints) — optional robustness check.
 # Aggregated from all buildings (incl. non-domestic); not used as primary
@@ -273,10 +280,14 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
     del _probe
     _validate_columns(available)
 
-    # Select only the columns we actually use (814 → ~55)
+    # Select only the columns we actually use (814 → ~55).
+    # DVLA fleet fields (bev_share, ulev_share, cars_*) are needed by the Atlas
+    # so per-OA Mobility CO2/£ can ride each OA's actual fleet composition.
     _extra_raw = [
         "city", "n_uprns", "median_build_year", "oa_sv",
         "_oa_area_km2", "epc_coverage", "lsoa_gva_millions",
+        "bev_share", "ulev_share", "cars_total", "cars_private",
+        "ulev_battery_electric", "ulev_plug_in_hybrid", "ulev_hybrid",
     ]
     _imd_cols = [c for c in available if "imd_income" in c.lower() and "score" in c.lower()]
     _nearest_cols = [c for c in available if c.endswith("_nearest_max_4800")]

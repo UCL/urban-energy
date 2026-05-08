@@ -23,6 +23,7 @@ import re
 import sys
 import traceback
 import warnings
+from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -91,6 +92,32 @@ def load_all_buas() -> dict[str, str]:
         row["BUA22CD"]: _sanitise_name(row["BUA22NM"])
         for _, row in bua.iterrows()
     }
+
+
+def _bua_dir(bua_code: str, city_name: str) -> Path:
+    """
+    Per-BUA output directory using the BUA22CD-prefixed scheme.
+
+    329 sanitised names collide across 771 BUA22CDs (e.g. 'cambridge' maps
+    to two distinct codes). Prefixing with BUA22CD makes paths globally
+    unique while remaining human-readable.
+    """
+    return OUTPUT_DIR / f"{bua_code}_{city_name}"
+
+
+def _resolve_bua_dir(bua_code: str, city_name: str) -> Path:
+    """
+    Return the new-scheme path if it exists, else fall back to legacy path.
+
+    Lets `combine_oa_cities` find existing per-BUA data written under the
+    pre-fix scheme (`OUTPUT_DIR / {name}`) without forcing an immediate
+    migration of all existing folders.
+    """
+    new = _bua_dir(bua_code, city_name)
+    if new.exists():
+        return new
+    legacy = OUTPUT_DIR / city_name
+    return legacy if legacy.exists() else new
 
 
 def load_boundary(bua_code: str) -> gpd.GeoDataFrame:
@@ -633,11 +660,13 @@ def run_stage3_oa_aggregation(
 # ---------------------------------------------------------------------------
 
 
-def save_city_oa(city_name: str, oa: gpd.GeoDataFrame | None) -> None:
-    """Save OA GeoPackage for a single city."""
+def save_city_oa(
+    bua_code: str, city_name: str, oa: gpd.GeoDataFrame | None
+) -> None:
+    """Save OA GeoPackage for a single BUA under the BUA22CD-prefixed scheme."""
     if oa is None:
         return
-    city_dir = OUTPUT_DIR / city_name
+    city_dir = _bua_dir(bua_code, city_name)
     city_dir.mkdir(parents=True, exist_ok=True)
     geom_cols = [
         c
@@ -652,34 +681,61 @@ def save_city_oa(city_name: str, oa: gpd.GeoDataFrame | None) -> None:
     print(f"  Saved: {path}")
 
 
-def combine_oa_cities(city_names: list[str]) -> None:
-    """Combine per-city OA datasets into a single GeoPackage."""
+def combine_oa_cities(buas: dict[str, str]) -> None:
+    """
+    Combine per-BUA OA datasets into a single GeoPackage.
+
+    Iterates by BUA22CD (unique). Falls back to legacy `OUTPUT_DIR / name`
+    paths for BUAs not yet migrated to the new scheme. Deduplicates by
+    resolved path so that BUAs sharing a legacy folder due to historical
+    name collisions are read at most once.
+    """
     print()
     print("=" * 60)
     print("COMBINING OA OUTPUTS")
     print("=" * 60)
 
     frames: list[gpd.GeoDataFrame] = []
-    for name in city_names:
-        path = OUTPUT_DIR / name / "oa_integrated.gpkg"
+    seen_paths: set[Path] = set()
+    n_collisions = 0
+    for bua_code, city_name in buas.items():
+        path = _resolve_bua_dir(bua_code, city_name) / "oa_integrated.gpkg"
         if not path.exists():
             continue
+        if path in seen_paths:
+            # Two BUA22CDs resolved to the same legacy folder (name collision).
+            # Read once; the folder's content reflects whichever BUA was
+            # processed last under the pre-fix scheme.
+            n_collisions += 1
+            continue
+        seen_paths.add(path)
         gdf = gpd.read_file(path)
         if "city" not in gdf.columns:
-            gdf["city"] = name
+            gdf["city"] = city_name
         frames.append(gdf)
 
     if not frames:
-        print("  No city data to combine.")
+        print("  No BUA data to combine.")
         return
 
-    print(f"  Combining {len(frames)} BUAs...")
+    print(f"  Combining {len(frames)} BUAs"
+          f" ({n_collisions} skipped due to legacy-path collisions)...")
     combined = pd.concat(frames, ignore_index=True)
+
+    # Belt-and-braces: if a per-BUA file ever contains duplicate OA21CDs
+    # (shouldn't, but happened historically), keep one row per OA per BUA.
+    n_before = len(combined)
+    combined = combined.drop_duplicates(subset=["OA21CD", "city"], keep="first")
+    if len(combined) < n_before:
+        print(f"  Dropped {n_before - len(combined):,} duplicate (OA21CD, city) rows")
+
     combined = gpd.GeoDataFrame(combined, geometry="geometry", crs=frames[0].crs)
 
     combined_dir = OUTPUT_DIR / "combined"
     combined_dir.mkdir(parents=True, exist_ok=True)
     out_path = combined_dir / "oa_integrated.gpkg"
+    if out_path.exists():
+        out_path.unlink()
     combined.to_file(out_path, driver="GPKG")
     print(f"  Combined: {len(combined):,} OAs from {len(frames)} BUAs -> {out_path}")
 
@@ -696,8 +752,9 @@ def process_city(bua_code: str, city_name: str) -> None:
     print(f"PROCESSING (OA): {city_name} ({bua_code})")
     print("=" * 60)
 
-    # Skip if already complete
-    oa_path = OUTPUT_DIR / city_name / "oa_integrated.gpkg"
+    # Skip if already complete (resolves to new scheme if migrated, else legacy)
+    existing_dir = _resolve_bua_dir(bua_code, city_name)
+    oa_path = existing_dir / "oa_integrated.gpkg"
     if oa_path.exists():
         _probe = gpd.read_file(oa_path, rows=1)
         has_cc = any(c.startswith("cc_") for c in _probe.columns)
@@ -712,28 +769,29 @@ def process_city(bua_code: str, city_name: str) -> None:
     # Stage 1: Morphology
     buildings = run_stage1_morphology(boundary)
 
-    # Stage 2: Network — use cache if available
-    nodes_cache = OUTPUT_DIR / city_name / "network_segments.gpkg"
+    # Stage 2: Network — use cache if available (read from resolved path,
+    # write to new scheme so future runs use the BUA22CD-prefixed location)
+    nodes_cache_read = _resolve_bua_dir(bua_code, city_name) / "network_segments.gpkg"
+    nodes_cache_write = _bua_dir(bua_code, city_name) / "network_segments.gpkg"
     nodes = None
-    if nodes_cache.exists():
-        _probe = gpd.read_file(nodes_cache, rows=1)
+    if nodes_cache_read.exists():
+        _probe = gpd.read_file(nodes_cache_read, rows=1)
         has_cc = any(c.startswith("cc_") for c in _probe.columns)
         del _probe
         if has_cc:
-            print(f"\n  Loading cached network: {nodes_cache}")
-            nodes = gpd.read_file(nodes_cache)
+            print(f"\n  Loading cached network: {nodes_cache_read}")
+            nodes = gpd.read_file(nodes_cache_read)
             print(f"  {len(nodes):,} nodes from cache")
     if nodes is None:
         nodes = run_stage2_network(boundary, buildings=buildings)
         if nodes is not None:
-            city_dir = OUTPUT_DIR / city_name
-            city_dir.mkdir(parents=True, exist_ok=True)
-            nodes.to_file(nodes_cache, driver="GPKG")
-            print(f"  Saved network cache: {nodes_cache}")
+            nodes_cache_write.parent.mkdir(parents=True, exist_ok=True)
+            nodes.to_file(nodes_cache_write, driver="GPKG")
+            print(f"  Saved network cache: {nodes_cache_write}")
 
     # Stage 3: OA Aggregation
     oa = run_stage3_oa_aggregation(boundary, buildings, nodes, city_name)
-    save_city_oa(city_name, oa)
+    save_city_oa(bua_code, city_name, oa)
 
     if oa is not None:
         print(f"\n  {city_name}: {len(oa):,} OAs, {len(oa.columns)} columns")
@@ -788,7 +846,7 @@ def main() -> None:
     if n_errors > 0:
         print(f"\n  {n_errors} BUAs failed")
 
-    combine_oa_cities(list(selected.values()))
+    combine_oa_cities(selected)
 
 
 if __name__ == "__main__":

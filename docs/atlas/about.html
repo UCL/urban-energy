@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>About — NEPI Atlas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --bg: #fafafa;
+  --fg: #1c1c1c;
+  --muted: #6b6b6b;
+  --border: #e1e1e1;
+  --panel-bg: #ffffff;
+  --accent: #0a4d68;
+  --band-A: #00845A; --band-B: #2C9F29; --band-C: #8CBF26;
+  --band-D: #FCD800; --band-E: #F0AB00; --band-F: #ED6F21;
+  --band-G: #E3242B;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--fg);
+  background: var(--bg);
+}
+
+header {
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+header h1 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+header a {
+  font-size: 13px;
+  color: var(--accent);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+header a:hover { background: #f1f1f1; }
+
+main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+
+h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 32px 0 12px;
+  letter-spacing: -0.01em;
+}
+h2:first-of-type { margin-top: 0; }
+h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 20px 0 8px;
+}
+p { margin-bottom: 14px; }
+ul, ol { padding-left: 20px; margin-bottom: 14px; }
+ul li, ol li { margin-bottom: 6px; }
+strong { font-weight: 600; }
+em { font-style: italic; }
+code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 13px;
+  background: #f1f1f1;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+a { color: var(--accent); }
+
+.hero {
+  font-size: 18px;
+  line-height: 1.5;
+  color: var(--fg);
+  border-left: 3px solid var(--accent);
+  padding: 6px 0 6px 16px;
+  margin-bottom: 28px;
+}
+
+.bands-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin: 16px 0 22px;
+}
+.bands-row .band {
+  text-align: center;
+  padding: 8px 6px;
+  font-size: 13px;
+  color: white;
+  border-radius: 3px;
+}
+.bands-row .band .letter { font-weight: 700; font-size: 16px; display: block; }
+.bands-row .band .pct { font-size: 10px; opacity: 0.85; }
+
+.surface-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin: 10px 0;
+  position: relative;
+}
+.surface-card h3 {
+  color: var(--accent);
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.surface-card .basket-tag {
+  display: inline-block;
+  background: #fff5d8;
+  color: #b87000;
+  border: 1px solid #f0ab00;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+.surface-card .source {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px;
+  font-style: italic;
+}
+.surface-card .typical {
+  margin: 12px 0 8px;
+  padding: 10px 12px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  font-size: 13px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: center;
+}
+.surface-card .typical .label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.surface-card .typical .stats {
+  font-variant-numeric: tabular-nums;
+}
+.surface-card .typical .stats strong { color: var(--fg); font-weight: 700; }
+.surface-card .typical .stats .median {
+  background: var(--accent);
+  color: white;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 700;
+}
+
+/* Comparative distribution chart — all three surfaces on a shared axis */
+.dist-chart {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px 18px;
+  margin: 16px 0;
+}
+.dist-chart .title {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.dist-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 76px;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 0;
+}
+.dist-row .surface-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.dist-row .surface-name.basket::after {
+  content: 'BASKET';
+  display: inline-block;
+  background: #fff5d8;
+  color: #b87000;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 1px 4px;
+  border-radius: 6px;
+  margin-left: 5px;
+  vertical-align: middle;
+  border: 1px solid #f0ab00;
+}
+.dist-row .surface-track {
+  position: relative;
+  height: 16px;
+  background: #f0f1f3;
+  border-radius: 3px;
+}
+.dist-row .surface-whisker {
+  position: absolute;
+  top: 50%;
+  height: 2px;
+  background: #c5d3dc;
+  transform: translateY(-50%);
+}
+.dist-row .surface-iqr {
+  position: absolute;
+  top: 0; bottom: 0;
+  background: rgba(10, 77, 104, 0.22);
+  border-radius: 3px;
+}
+.dist-row .surface-median {
+  position: absolute;
+  top: -2px; bottom: -2px;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 1px;
+}
+.dist-row .surface-median-label {
+  position: absolute;
+  bottom: -16px;
+  font-size: 10px;
+  color: var(--accent);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.dist-row .median-num {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.dist-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 18px;
+  padding-left: 92px;
+  padding-right: 88px;
+  font-size: 10px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.dist-legend {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.dist-legend .swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+.dist-legend .swatch.iqr { background: rgba(10, 77, 104, 0.22); }
+.dist-legend .swatch.med { background: var(--accent); width: 3px; height: 12px; }
+.dist-legend .swatch.whisker { background: #c5d3dc; height: 2px; vertical-align: middle; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 14px 0;
+  font-size: 14px;
+}
+th, td {
+  border-bottom: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+.callout {
+  background: #fff8e1;
+  border-left: 3px solid #f0ab00;
+  padding: 12px 16px;
+  margin: 14px 0;
+  font-size: 14px;
+}
+.callout strong { color: #b87000; }
+
+.muted { color: var(--muted); font-size: 13px; }
+
+footer {
+  border-top: 1px solid var(--border);
+  margin-top: 40px;
+  padding-top: 16px;
+  font-size: 13px;
+  color: var(--muted);
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>NEPI Atlas — About</h1>
+  <a href="index.html">← Back to map</a>
+</header>
+
+<main>
+
+<p class="hero">
+  The <strong>Neighbourhood Energy Performance Index (NEPI)</strong> rates every Output Area in England — small neighbourhoods of about 130 households — on the total energy cost of living there. It's an EPC-style A–G rating, but for the <em>place</em>, not the building.
+</p>
+
+<h2>What this is, in three sentences</h2>
+
+<p>
+  <strong>One.</strong> NEPI is a place-level energy rating: every Output Area
+  (a neighbourhood of ~130 households) gets an A–G band based on the total
+  energy footprint of living there.
+</p>
+
+<p>
+  <strong>Two.</strong> The score is built from three real, observed quantities
+  per OA — metered gas + electricity (Form), Census-derived transport energy
+  (Mobility), and an empirical penalty for poor walkable service coverage
+  (Access). They sum in kWh/household/year and are banded by national
+  percentile.
+</p>
+
+<p>
+  <strong>Three.</strong> The dashboard lets you view this from different
+  angles: by individual surface (Form / Mobility / Access), in different units
+  (kWh / kgCO₂ / £), and projected forward through the official UK
+  grid-decarbonisation pathway. The scenarios show how today's actual energy
+  mix ages under tomorrow's electricity grid — they do <em>not</em> model
+  retrofit, heat-pump, or EV adoption.
+</p>
+
+<div class="callout">
+  <strong>What this is NOT</strong> — important for grounding:
+  <ul style="margin-top: 6px; margin-bottom: 0;">
+    <li><strong>Not a forecast.</strong> "2050 mode" doesn't predict 2050 reality. It applies the projected 2050 grid-carbon factor to today's per-OA fuel data.</li>
+    <li><strong>Not a model of demand changes.</strong> Heat-pump rollout, EV adoption, fabric retrofit — none of these are modelled. kWh values are held constant across scenario years.</li>
+    <li><strong>Not policy.</strong> NEPI describes how energy intensity varies by place. It doesn't recommend interventions.</li>
+    <li><strong>Not individual.</strong> The unit of analysis is the OA — every household in an OA gets the same NEPI score. Tells you about average outcomes for a place, not specific households.</li>
+    <li><strong>Not all of England.</strong> Coverage is OAs whose centroid falls within an OS Built-Up Area polygon — i.e. urban, suburban, and village settlements. ~12,000 isolated rural OAs are out of scope (they need a different framing entirely; rural mobility patterns and the walkable-access idea don't translate). Net coverage: ~177,000 of England's ~189,000 OAs (~98% of households).</li>
+  </ul>
+</div>
+
+<h2>The headline idea</h2>
+
+<p>
+  An EPC rates a dwelling's envelope. But an EPC misses the rest of the energy story: how much you drive because shops are far, how much heat your terrace shares with the neighbours, whether your nearest GP, school, and bus stop are walkable. NEPI puts those things on one scale, in one unit (<code>kWh/household/year</code>), so they can be compared and combined without arbitrary weighting.
+</p>
+
+<div class="bands-row">
+  <div class="band" style="background: var(--band-A)"><span class="letter">A</span><span class="pct">top 8%</span></div>
+  <div class="band" style="background: var(--band-B)"><span class="letter">B</span><span class="pct">8–19%</span></div>
+  <div class="band" style="background: var(--band-C)"><span class="letter">C</span><span class="pct">19–36%</span></div>
+  <div class="band" style="background: var(--band-D)"><span class="letter">D</span><span class="pct">36–60%</span></div>
+  <div class="band" style="background: var(--band-E)"><span class="letter">E</span><span class="pct">60–81%</span></div>
+  <div class="band" style="background: var(--band-F)"><span class="letter">F</span><span class="pct">81–95%</span></div>
+  <div class="band" style="background: var(--band-G)"><span class="letter">G</span><span class="pct">bottom 5%</span></div>
+</div>
+
+<p class="muted">
+  Bands are set by national percentile of total energy. Lower kWh = better.
+  A national flat-dominant OA averages <strong>15,982 kWh/hh/yr</strong> (Band A); a detached-dominant OA averages <strong>26,897 kWh/hh/yr</strong> (Band F) — a 1.7× spread.
+</p>
+
+<h2>Three surfaces</h2>
+
+<p>
+  The composite NEPI is the sum of three independent surfaces. Each captures a distinct mechanism by which form drives energy use. Form and Mobility are <strong>direct measurements / fuel-intensity estimates</strong>; Access is a <strong>basket index</strong> — a derived, empirical quantity, not a metered value.
+</p>
+
+<!-- Comparative distribution chart: all three on a shared kWh axis so the
+     reader can see at a glance which surface dominates a typical OA. Bar
+     width spans p5–p95 (whiskers); shaded block is the IQR (p25–p75); thick
+     vertical line is the national median. Axis: 0 to ~22,000 kWh/hh/yr
+     (scaled to Form's p95 = 21,273 with a small cushion). -->
+<div class="dist-chart">
+  <div class="title">Typical national distribution of each surface (kWh / household / year)</div>
+
+  <!-- Form: p5=6917, p25=11417, p50=13452, p75=15866, p95=21273. Axis max ≈ 22,000. -->
+  <div class="dist-row">
+    <span class="surface-name">Form</span>
+    <div class="surface-track">
+      <div class="surface-whisker" style="left: 31%; width: 65%"></div>
+      <div class="surface-iqr"     style="left: 52%; width: 20%"></div>
+      <div class="surface-median"  style="left: 61%"></div>
+      <div class="surface-median-label" style="left: 61%">13,452</div>
+    </div>
+    <span class="median-num">13.5k median</span>
+  </div>
+
+  <!-- Mobility: p5=2435, p25=5251, p50=7368, p75=9824, p95=14258. -->
+  <div class="dist-row">
+    <span class="surface-name">Mobility</span>
+    <div class="surface-track">
+      <div class="surface-whisker" style="left: 11%; width: 54%"></div>
+      <div class="surface-iqr"     style="left: 24%; width: 21%"></div>
+      <div class="surface-median"  style="left: 33%"></div>
+      <div class="surface-median-label" style="left: 33%">7,368</div>
+    </div>
+    <span class="median-num">7.4k median</span>
+  </div>
+
+  <!-- Access: p5=0, p25=15, p50=629, p75=1383, p95=2539. Mostly small. -->
+  <div class="dist-row">
+    <span class="surface-name basket">Access</span>
+    <div class="surface-track">
+      <div class="surface-whisker" style="left: 0%; width: 12%"></div>
+      <div class="surface-iqr"     style="left: 0%; width: 6%"></div>
+      <div class="surface-median"  style="left: 3%"></div>
+      <div class="surface-median-label" style="left: 3%">629</div>
+    </div>
+    <span class="median-num">629 median</span>
+  </div>
+
+  <div class="dist-axis">
+    <span>0</span>
+    <span>5,000</span>
+    <span>10,000</span>
+    <span>15,000</span>
+    <span>20,000+ kWh</span>
+  </div>
+
+  <div class="dist-legend">
+    <span><span class="swatch whisker"></span>p5–p95 range</span>
+    <span><span class="swatch iqr"></span>middle 50% (IQR)</span>
+    <span><span class="swatch med"></span>national median</span>
+  </div>
+</div>
+
+<p class="muted" style="margin-top: 8px;">
+  At a typical OA: Form ≈ 60% of the total, Mobility ≈ 35%, Access (basket) ≈ 5%.
+  At a sprawling detached suburb: Form 65%, Mobility 30%, Access (basket) 6%.
+  Note that the Access figure is a <em>conservative</em> basket-index estimate — the real
+  scale of the access-driven energy gap is larger than the basket captures
+  (residents in sprawling places make more trips and longer ones than the
+  basket assumes, while compact-area residents forgo trips entirely).
+</p>
+
+<div class="surface-card">
+  <h3>Form — building energy</h3>
+  <p>
+    Metered gas + electricity per household, gas weather-corrected to heat-degree-day standard. Compact dwelling types (flats, terraces) lose less heat per unit floor area than detached houses because of lower surface-to-volume ratios and shared party walls.
+  </p>
+  <div class="typical">
+    <span class="label">National range</span>
+    <span class="stats">
+      <strong>6,900</strong> – <span class="median">13,500 median</span> – <strong>21,300</strong> kWh/hh/yr
+      (p5 – p50 – p95)
+    </span>
+  </div>
+  <div class="source">Source: DESNZ postcode-level domestic energy consumption, aggregated to OA via postcode→OA spatial lookup. Excludes non-domestic. <strong>Direct measurement.</strong></div>
+</div>
+
+<div class="surface-card">
+  <h3>Mobility — transport energy</h3>
+  <p>
+    Estimated household transport energy from Census 2021 commute distance × travel mode × fuel intensity (ECUK). Captures the bulk of routine travel; not a perfect proxy for total transport energy but the strongest available open data source.
+  </p>
+  <div class="typical">
+    <span class="label">National range</span>
+    <span class="stats">
+      <strong>2,400</strong> – <span class="median">7,400 median</span> – <strong>14,300</strong> kWh/hh/yr
+      (p5 – p50 – p95)
+    </span>
+  </div>
+  <div class="source">Source: ONS Census 2021 (TS058 distance, TS061 mode), DESNZ ECUK fuel intensities by mode. <strong>Behaviour-derived estimate</strong> using observed commute behaviour and per-mode fuel-intensity factors.</div>
+</div>
+
+<div class="surface-card">
+  <h3>Access — coverage penalty <span class="basket-tag">Indicative basket index</span></h3>
+  <p>
+    <strong>Important: this is not a directly measured energy value.</strong>
+    Access is an <strong>indicative basket index</strong> — a synthetic per-OA quantity
+    approximating the <em>extra</em> transport energy attributable to poor walkable
+    service coverage. The index assumes a typical mix of trips for typical land-use
+    categories (food, healthcare, education, transit, greenspace, retail) and combines
+    them via Gaussian-decay walking thresholds across nine service types
+    (shops, takeaways, pubs, GPs, pharmacies, schools, greenspace, bus stops, hospitals).
+  </p>
+  <p>
+    The penalty is calibrated by an OLS regression of observed commute-transport energy
+    on coverage, controlling for density, household size, deprivation, and build year.
+    For each OA we predict its kWh penalty relative to a <em>compact reference</em>
+    (85th-percentile coverage — the median of flat-dominant OAs). Compact OAs incur ~0
+    penalty; sprawling OAs accumulate up to ~2,500 kWh/hh/yr in the index.
+  </p>
+  <div class="callout">
+    <strong>The real scale of difference is greater.</strong>
+    The basket models <em>typical-trips × typical land uses</em> and is calibrated against
+    observed commute energy. Real-world behaviour amplifies the gap further: residents in
+    sprawling places generate more trips and longer ones than the basket assumes, while
+    residents in walkable places forgo some trips entirely or chain them efficiently. The
+    Access index here is a <strong>conservative lower bound</strong> on the actual
+    accessibility-driven energy gap between compact and sprawling OAs — not an upper bound.
+  </div>
+  <div class="typical">
+    <span class="label">National range</span>
+    <span class="stats">
+      <strong>0</strong> – <span class="median">630 median</span> – <strong>2,500</strong> kWh/hh/yr
+      (p5 – p50 – p95). Half of all OAs incur 0–630.
+    </span>
+  </div>
+  <div class="source">Source: cityseer network analysis on OS Open Roads + FSA, NaPTAN, GIAS, NHS ODS, OS Greenspace destinations. Penalty model: OLS with HC1 robust standard errors. <strong>Indicative basket index, not metered energy. Conservative — real differences are larger.</strong></div>
+</div>
+
+<h2>What the dashboard shows you</h2>
+
+<table>
+  <tr>
+    <th>Toggle</th>
+    <th>What it does</th>
+  </tr>
+  <tr>
+    <td><strong>Mode</strong></td>
+    <td>Switches between today's NEPI ("Present") and projected future scenarios. Future modes will use NESO Future Energy Scenarios for grid carbon trajectories and DESNZ Fossil Fuel Price Assumptions for £/kWh bands. Currently placeholder UI; data lands with track <strong>B4</strong>.</td>
+  </tr>
+  <tr>
+    <td><strong>Surface</strong></td>
+    <td>Composite shows the A–G band of the total NEPI. Each individual surface shows just that pillar on a continuous green→red ramp anchored at the national p5–p95 of that surface.</td>
+  </tr>
+  <tr>
+    <td><strong>Unit</strong></td>
+    <td>kWh, kgCO₂e, or £/year. Per-surface conversion factors: Form blends gas (70%) + electricity (30%); Mobility blends petrol + diesel; Access uses Mobility's factor (the Access surface is a transport-energy penalty). Bands stay constant across units — switching the unit rescales display values and legend labels without re-banding.</td>
+  </tr>
+</table>
+
+<p>Click any OA on the map to see its band, the breakdown across the three surfaces, its archetype (Flat/Terraced/Semi/Detached dominant), and how it compares to (1) the national median and (2) other OAs of the same archetype.</p>
+
+<div class="callout">
+  <strong>Two OAs in the same band can have very different mixes.</strong> An A-band city centre flat might have low Form (small dwelling, shared walls) and low Mobility (short commute) with zero Access penalty. An A-band rural village could be A-band only because it's a tight cluster — high Form, low Mobility, near-zero Access — different policy levers entirely. The surface decomposition is the point.
+</div>
+
+<h2>Methodological caveats</h2>
+
+<p>
+  <strong>Ecological inference.</strong> The unit of analysis is the OA. NEPI tells you about average outcomes for a place, not specific households (Robinson 1950 ecological-fallacy caveat). That's the right level for the question — neighbourhood form is a property of the place, not the resident — but worth stating explicitly.
+</p>
+
+<p>
+  <strong>Metered where possible, modelled where not.</strong> EPCs systematically over-predict consumption (the "performance gap"); we sidestep this by using DESNZ postcode-level metered data for the Form surface. Mobility and Access are still derived from Census behaviour because nobody meters travel directly at this granularity.
+</p>
+
+<p>
+  <strong>Per-OA fuel mix used for Form scenarios; national blends for Mobility.</strong>
+  Form CO₂ and £ values use each OA's actual gas/electricity split (from DESNZ
+  postcode data), so OAs experience grid decarbonisation differently. Mobility
+  and Access still use a national petrol/diesel blend because per-OA
+  petrol/diesel data is not available — a real limitation, called out
+  honestly.
+</p>
+
+<h2>Data sources</h2>
+
+<table>
+  <tr><th>Layer</th><th>Source</th><th>Granularity</th></tr>
+  <tr><td>Building energy (Form)</td><td>DESNZ postcode-level domestic energy</td><td>Postcode → OA</td></tr>
+  <tr><td>Commute distance &amp; mode (Mobility)</td><td>ONS Census 2021 (TS058, TS061)</td><td>OA</td></tr>
+  <tr><td>Fuel intensities</td><td>DESNZ ECUK</td><td>National, by mode</td></tr>
+  <tr><td>Building morphology</td><td>EA LiDAR + OS OpenMap-Local + momepy</td><td>Building</td></tr>
+  <tr><td>Street network</td><td>OS Open Roads + cityseer 4.25</td><td>Edge / node</td></tr>
+  <tr><td>Service destinations</td><td>FSA · NaPTAN · GIAS · NHS ODS · OS Greenspace</td><td>Point</td></tr>
+  <tr><td>Boundaries</td><td>OS Built-Up Areas · OS Boundary Line LADs</td><td>Polygon</td></tr>
+  <tr><td>Deprivation control</td><td>IoD 2025</td><td>LSOA</td></tr>
+</table>
+
+<p class="muted">All sources are open. CRS is EPSG:27700 (British National Grid) for analysis; EPSG:4326 only for map display. Pipeline reproducible via <code>uv run python processing/pipeline_oa.py</code>.</p>
+
+<h2>Limitations</h2>
+
+<ul>
+  <li>
+    <strong>Census 2021 commute data was COVID-affected.</strong>
+    Robustness check: the pre-pandemic Census 2011 transport gradient is
+    <em>steeper</em> than 2021 (flat-vs-detached: 2.00× in 2011 vs 1.70× in
+    2021). The dashboard uses 2021 data, so the morphology-energy gradient
+    you see here is a conservative lower bound. Full robustness section in
+    <a href="https://github.com/UCL/urban-energy/blob/main/PAPER.md">PAPER.md §5</a>.
+  </li>
+  <li><strong>Spatial autocorrelation is partial.</strong> BUA-clustered standard errors are used, but spatial error / lag models are forward work.</li>
+  <li><strong>Mobility doesn't capture leisure / shopping / school-run travel.</strong> Only commute-to-work behaviour is observed; the Access penalty fills part of this gap empirically but it's a proxy, not a measurement.</li>
+  <li>
+    <strong>442 BUAs missing from the combined dataset.</strong>
+    A pre-2026-05-07 path-collision bug in the upstream pipeline overwrote
+    one BUA's data with another's whenever two shared a sanitised name.
+    These BUAs are correctly absent rather than incorrectly present and
+    will be reinstated by a targeted reprocess. Greater Manchester
+    (this Atlas) is unaffected — Manchester's BUA22CD is unique.
+  </li>
+  <li><strong>Future-scenario factors are central trajectories.</strong> NESO FES Holistic Transition + DESNZ Fossil Fuel Price Assumptions central case. Low/high envelopes exist in the input data ([data/projections/](https://github.com/UCL/urban-energy/tree/main/data/projections)) but aren't yet exposed in the UI.</li>
+</ul>
+
+<h2>Status &amp; roadmap</h2>
+
+<p><strong>Live:</strong></p>
+<ul>
+  <li><strong>B1 — CO₂ + £ unit toggles.</strong> ✅ DUKES emission factors and Ofgem-cap-based £/kWh applied as per-surface multipliers on the existing kWh fields. Bands stay invariant across units.</li>
+  <li><strong>B3 — Projection data pipeline.</strong> ✅ Year-keyed factor tables loaded from CSV with per-row source citation (NESO FES Holistic Transition for grid carbon, DESNZ Fossil Fuel Price Assumptions for prices). See <a href="https://github.com/UCL/urban-energy/tree/main/data/projections">data/projections/</a>.</li>
+  <li><strong>B4 — Scenario mode.</strong> ✅ 2030 / 2040 / 2050 toggles active. Selected-OA panel adds a "vs same OA in 2025" row when in scenario mode. Energy demand (kWh) is held constant; only the unit-conversion factors evolve.</li>
+</ul>
+
+<p><strong>Open:</strong></p>
+<ul>
+  <li><strong>National scope.</strong> Currently covers Greater Manchester (8,886 OAs). Extending to all 177,050 OAs nationally is a tippecanoe-tuning exercise, not a methodology change.</li>
+  <li><strong>Demand-side electrification.</strong> Heat-pump and EV rollouts would change kWh per OA, not just kgCO₂ per kWh. Out of scope for v0; would be a per-OA scenario-year demand multiplier on top of the existing factor structure.</li>
+  <li><strong>Sensitivity envelopes.</strong> The price CSV carries low/central/high scenarios; the dashboard exposes only central. Adding low/high toggles is a small UI extension.</li>
+  <li><strong>442 BUAs needing reprocess.</strong> A pre-fix path-collision bug left these with overwritten data; targeted re-run of <code>processing/pipeline_oa.py</code> for affected BUA22CDs will fill the gap.</li>
+</ul>
+
+<h2>Licence &amp; attribution</h2>
+
+<p>
+  The derived data presented here (per-OA / per-LAD NEPI scores, breakdowns,
+  scenarios) is published under the
+  <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">Open Government Licence v3.0</a>
+  — free to use, share and adapt, commercially or non-commercially, with
+  attribution. The Atlas source code is <a href="https://github.com/UCL/urban-energy">GPL-3.0</a>.
+</p>
+
+<p>If you re-use the data or derived NEPI scores, please cite:</p>
+<blockquote style="font-style: italic; border-left: 3px solid var(--accent); padding-left: 12px; color: var(--muted);">
+  Simons, G. (2026). NEPI Atlas — Neighbourhood Energy Performance Index.
+  UCL Bartlett School of Architecture. <a href="https://github.com/UCL/urban-energy">github.com/UCL/urban-energy</a>.
+</blockquote>
+
+<p><strong>Underlying data sources</strong> are all open and listed in the Data sources section above. Required attributions:</p>
+<ul>
+  <li>Contains <strong>OS data © Crown copyright and database right 2024</strong> (OS Built-Up Areas, Open Roads, Open Map Local, Open Greenspace, Open UPRN, Code-Point Open, Boundary Line)</li>
+  <li>Contains <strong>ONS data © Crown copyright and database right 2024</strong> (Census 2021 topic tables, Output Area boundaries)</li>
+  <li>Contains public sector information licensed under the <strong>Open Government Licence v3.0</strong> (DESNZ postcode-metered energy, DESNZ Conversion Factors / Fossil Fuel Price Assumptions, EA LiDAR, IoD 2025, FSA, NaPTAN, GIAS, NHS ODS, DVLA vehicle stats, NESO Future Energy Scenarios)</li>
+  <li>EPC certificates: aggregated derived statistics only; raw certificates are not redistributed</li>
+  <li>Map base: © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ODbL</li>
+</ul>
+
+<h2>Credits</h2>
+
+<p>
+  Built by <strong>Gareth Simons</strong> at UCL.
+  Source code: <a href="https://github.com/UCL/urban-energy">UCL/urban-energy</a>.
+  Methodology paper: <a href="../../PAPER.md">PAPER.md</a>.
+</p>
+
+<footer>
+  NEPI Atlas — derived data licensed OGL v3.0. Source code GPL-3.0. Map base © OpenStreetMap.
+</footer>
+
+</main>
+
+</body>
+</html>
