@@ -2,7 +2,7 @@
 NEPI Atlas data pipeline.
 
 Produces the artefacts consumed by the static MapLibre frontend in
-[stats/nepi_static/atlas/](../nepi_static/atlas/):
+[stats/nepi_static/](../nepi_static/):
 
     {bua}_oas.geojson        OA polygons + per-OA NEPI properties
     summary.json             band thresholds, distributions, units, scenarios

@@ -13,8 +13,9 @@ from urban_energy.paths import DATA_DIR, PROJECT_DIR
 
 SCHEMA_VERSION = "0.1"
 
-# Frontend assets directory — written GeoJSON + summary.json land here
-OUTPUT_DIR = PROJECT_DIR / "stats" / "nepi_static" / "atlas"
+# Frontend assets directory — written GeoJSON + summary.json land here.
+# This IS the dashboard root (mirrored to docs/ for GitHub Pages).
+OUTPUT_DIR = PROJECT_DIR / "stats" / "nepi_static"
 
 # Cache for computed national NEPI dataframe (parquet, ~50 MB)
 NEPI_CACHE_PATH = DATA_DIR / "stats" / "nepi_national.parquet"
