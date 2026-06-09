@@ -98,8 +98,6 @@ COVID-affected 2021 figure (2.00× vs 1.70×). Full robustness section in
 | [processing/](processing/) | National OA pipeline (`pipeline_oa.py` — CityNetwork API, all 7,147 BUAs) |
 | [stats/](stats/) | Case figures, NEPI scorecard, access penalty model, planning tool |
 | [docs/](docs/) | GitHub Pages mirror of [stats/nepi_static/](stats/nepi_static/) |
-| [notes/](notes/) | Archived v0 working notes (LSOA-era snapshots) |
-| [paper/archive/](paper/archive/) | LSOA case_v1 + stale LaTeX |
 
 The `data/`, `processing/`, and `stats/` directories contain code only — see
 [CLAUDE.md](CLAUDE.md) for the full inventory of scripts and outputs.

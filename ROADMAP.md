@@ -59,6 +59,6 @@ audit; summary:
 - DVLA fleet-electrification scenarios for lock-in quantification.
 
 ### Paper / repo
-- Reconcile or retire `paper/archive/main.tex`; finalise `paper/references.bib`.
+- Finalise `paper/references.bib`.
 - Expand the pytest suite (form-bias tests landed; pipeline/stats coverage next).
 - Pre-submission cover-letter framing for the target journal.

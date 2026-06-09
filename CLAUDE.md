@@ -22,8 +22,7 @@ urban-energy/
 ├── PAPER.md                   # Canonical paper (IMRaD draft, NEPI case)
 ├── paper/
 │   ├── literature_review.md   # Thematic literature review
-│   ├── references.bib         # BibTeX (partial)
-│   └── archive/               # LSOA case_v1.md + stale main.tex (frozen)
+│   └── references.bib         # BibTeX (partial)
 ├── src/urban_energy/
 │   ├── paths.py               # Centralised storage paths (loads URBAN_ENERGY_DATA_DIR from .env)
 │   ├── pipeline.py            # Orchestrator: doctor / status / list / run
@@ -50,7 +49,6 @@ urban-energy/
 │   ├── figures/archive_lsoa/  # Archived LSOA-era figures
 │   └── archive/               # Archived LSOA analysis scripts
 ├── docs/                      # GitHub Pages mirror of stats/nepi_static/
-├── notes/                     # Archived v0 working notes (LSOA-era, banner-marked)
 ├── tests/                     # pytest framework configured, tests pending
 ├── temp/                      # Default $URBAN_ENERGY_DATA_DIR (gitignored)
 └── .claude/settings.local.json # Claude Code permissions
