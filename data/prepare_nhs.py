@@ -10,20 +10,16 @@ Data sources:
     License: UK Open Government Licence (OGL)
 
 Manual download:
-    ODS files must be downloaded manually from the NHS Digital website and saved
-    to cache/nhs_ods/ with the exact ODS filenames:
+    NHS retired the legacy bulk CSV/zip downloads in October 2025. Export the
+    three ODS files from the ODS Data Search & Export (DSE) portal and save them,
+    with the exact filenames below, into the data dir alongside the other manual
+    downloads (the legacy cache/nhs_ods/ location is also searched):
 
-    ets.csv (hospitals/trusts):
-        https://digital.nhs.uk/services/organisation-data-service/data-search-and-export/csv-downloads/other-nhs-organisations
-        → "NHS Trusts and Sites"
+        https://www.odsdatasearchandexport.nhs.uk/
 
-    epraccur.csv (GP practices):
-        https://digital.nhs.uk/services/organisation-data-service/data-search-and-export/csv-downloads/gp-and-gp-practice-related-data
-        → "GP Practices"
-
-    edispensary.csv (pharmacies):
-        https://digital.nhs.uk/services/organisation-data-service/data-search-and-export/csv-downloads/gp-and-gp-practice-related-data
-        → "Dispensaries"
+    - ets.csv         — NHS Trusts and Sites (hospitals)
+    - epraccur.csv    — GP practices
+    - edispensary.csv — Dispensaries (pharmacies)
 
 Key features:
     - Authoritative NHS register of all active sites in England

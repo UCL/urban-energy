@@ -58,8 +58,19 @@ def load_built_up_areas(path: Path) -> gpd.GeoDataFrame:
         )
 
     print(f"Loading built-up areas from {path}")
-    gdf = gpd.read_file(path)
-    print(f"  Loaded {len(gdf):,} polygons")
+    # The OS Open Built Up Areas GeoPackage ships several layers; the
+    # 'os_open_built_up_areas' layer carries the BUA code (gsscode) + name.
+    # Older single-layer files fall back to the default layer.
+    from pyogrio import list_layers
+
+    layer_names = {name for name, _ in list_layers(str(path))}
+    layer = (
+        "os_open_built_up_areas"
+        if "os_open_built_up_areas" in layer_names
+        else None
+    )
+    gdf = gpd.read_file(path, layer=layer)
+    print(f"  Loaded {len(gdf):,} polygons" + (f" (layer={layer})" if layer else ""))
     print(f"  Columns: {list(gdf.columns)}")
 
     # Standardise column names (OS uses various conventions)

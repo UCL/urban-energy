@@ -137,6 +137,11 @@ EPC_COLUMNS = [
     "INSPECTION_DATE",
 ]
 
+# Some EPC packagings name the unique certificate id differently: the per-year
+# bulk export uses `certificate_number`; the per-LA download uses `LMK_KEY`.
+# Alias to LMK_KEY so deduplication always has a stable per-certificate key.
+EPC_COLUMN_ALIASES = {"CERTIFICATE_NUMBER": "LMK_KEY"}
+
 NUMERIC_COLS = [
     # Energy metrics
     "CURRENT_ENERGY_EFFICIENCY",
@@ -320,9 +325,10 @@ def write_epc_to_parquet(
         batch_end = min(i + batch_size, len(csv_files))
         print(f"  Batch {i // batch_size + 1}: files {i + 1}-{batch_end}")
 
-        # Select the wanted columns case-insensitively, then normalise headers
-        # to upper-case so both EPC packagings (per-LA upper, per-year lower) work.
-        wanted = {c.upper() for c in EPC_COLUMNS}
+        # Select the wanted columns case-insensitively, normalise headers to
+        # upper-case (per-LA upper vs per-year lower), and alias the cert id so
+        # both packagings expose LMK_KEY for deduplication.
+        wanted = {c.upper() for c in EPC_COLUMNS} | set(EPC_COLUMN_ALIASES)
         dfs = []
         for csv_path in batch_files:
             df = pd.read_csv(
@@ -331,6 +337,7 @@ def write_epc_to_parquet(
                 low_memory=False,
             )
             df.columns = [c.strip().upper() for c in df.columns]
+            df = df.rename(columns=EPC_COLUMN_ALIASES)
             dfs.append(df)
 
         batch_df = pd.concat(dfs, ignore_index=True)
@@ -375,17 +382,19 @@ def deduplicate_on_disk(input_path: Path, output_path: Path) -> int:
     int
         Number of deduplicated records.
     """
-    # Pass 1: read only dedup keys to find winners
+    # Pass 1: read only the dedup keys to find the most recent cert per UPRN.
+    # LMK_KEY is the unique per-certificate id (aliased from certificate_number
+    # for the per-year packaging — see EPC_COLUMN_ALIASES).
     print("  Pass 1: finding most recent certificate per UPRN...")
     keys = pd.read_parquet(input_path, columns=["UPRN", "LODGEMENT_DATE", "LMK_KEY"])
-    keys = keys.sort_values("LODGEMENT_DATE", ascending=False)
+    keys = keys.sort_values("LODGEMENT_DATE", ascending=False, kind="stable")
     keys = keys.drop_duplicates(subset=["UPRN"], keep="first")
     keep_keys = set(keys["LMK_KEY"])
     n_dedup = len(keys)
     del keys
     gc.collect()
 
-    # Pass 2: read full data, filter to winners
+    # Pass 2: read full data, filter to the winning certificates
     print(f"  Pass 2: reading {n_dedup:,} winning records...")
     df = pd.read_parquet(input_path)
     df = df[df["LMK_KEY"].isin(keep_keys)]
