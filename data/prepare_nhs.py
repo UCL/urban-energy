@@ -42,17 +42,21 @@ Output:
         Columns: ods_code, name, facility_type, postcode, easting, northing, geometry
 """
 
+import zipfile
 from io import BytesIO
 
 import geopandas as gpd
 import pandas as pd
+import requests
 from shapely.geometry import Point
 
 from urban_energy.paths import CACHE_DIR as _CACHE_ROOT
 from urban_energy.paths import DATA_DIR
 
 OUTPUT_DIR = DATA_DIR / "health"
-CACHE_DIR = _CACHE_ROOT / "nhs_ods"
+# Manual NHS ODS inputs (NHS retired the legacy bulk download in 2025) live with
+# the other manual downloads in the data dir; legacy locations are searched too.
+_NHS_SEARCH_DIRS = (DATA_DIR, DATA_DIR / "nhs_ods", _CACHE_ROOT / "nhs_ods")
 
 # ODS CSV column positions (fixed-width positional — no header row)
 # Reference: ODS Data Dictionary https://digital.nhs.uk/services/organisation-data-service
@@ -89,13 +93,13 @@ ODS_COL_NAMES = [
 ]
 
 
-def load_ods_file(filename: str) -> bytes | None:
-    """
-    Load an NHS ODS CSV file from the manual download cache.
+ODS_URL = "https://files.digital.nhs.uk/assets/ods/current/{name}.zip"
+_HEADERS = {"User-Agent": "urban-energy-research/1.0"}
 
-    ODS bulk files must be downloaded manually from the NHS Digital website.
-    Place the downloaded CSV files in cache/nhs_ods/ using the exact ODS
-    filenames (e.g. ets.csv, epraccur.csv, edispensary.csv).
+
+def _download_ods(filename: str) -> bytes | None:
+    """
+    Download and extract an ODS CSV from the NHS 'current' bulk files.
 
     Parameters
     ----------
@@ -105,20 +109,68 @@ def load_ods_file(filename: str) -> bytes | None:
     Returns
     -------
     bytes | None
-        Raw CSV content, or None if the file is not found.
+        Raw CSV content, or None if the download or extraction failed.
     """
-    cache_path = CACHE_DIR / f"{filename}.csv"
+    try:
+        resp = requests.get(
+            ODS_URL.format(name=filename), headers=_HEADERS, timeout=300
+        )
+        resp.raise_for_status()
+    except requests.RequestException as exc:
+        print(f"  Could not download {filename}.zip: {exc}")
+        return None
 
-    if cache_path.exists():
-        print(f"  Loading {filename}.csv from cache")
-        return cache_path.read_bytes()
+    try:
+        with zipfile.ZipFile(BytesIO(resp.content)) as zf:
+            member = next(
+                (m for m in zf.namelist() if m.lower() == f"{filename}.csv"), None
+            ) or next((m for m in zf.namelist() if m.lower().endswith(".csv")), None)
+            if member is None:
+                print(f"  No CSV found inside {filename}.zip")
+                return None
+            content = zf.read(member)
+    except zipfile.BadZipFile:
+        print(f"  {filename}.zip is not a valid archive")
+        return None
 
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    (DATA_DIR / f"{filename}.csv").write_bytes(content)
+    print(f"  Downloaded {filename}.csv ({len(content) / 1e6:.1f} MB)")
+    return content
+
+
+def load_ods_file(filename: str) -> bytes | None:
+    """
+    Load an NHS ODS CSV, downloading it automatically if not already cached.
+
+    Parameters
+    ----------
+    filename : str
+        ODS base filename without extension (e.g. "ets", "epraccur").
+
+    Returns
+    -------
+    bytes | None
+        Raw CSV content, or None if unavailable.
+    """
+    for directory in _NHS_SEARCH_DIRS:
+        path = directory / f"{filename}.csv"
+        if path.exists():
+            print(f"  Loading {path}")
+            return path.read_bytes()
+
+    print(f"  {filename}.csv not found; trying NHS ODS download...")
+    content = _download_ods(filename)
+    if content is not None:
+        return content
+
+    # NHS retired the legacy bulk CSV/zip downloads in October 2025; the data
+    # now comes from the ODS Data Search & Export (DSE) portal.
     print(
-        f"  {filename}.csv not found in {CACHE_DIR}\n"
-        f"  Download manually from:\n"
-        f"  https://digital.nhs.uk/services/organisation-data-service"
-        f"/data-search-and-export/csv-downloads\n"
-        f"  Save as: {cache_path}"
+        f"  Automatic download unavailable (NHS retired legacy bulk files in 2025).\n"
+        f"  Export {filename} manually from the ODS Data Search & Export portal:\n"
+        f"    https://www.odsdatasearchandexport.nhs.uk/\n"
+        f"  Save {filename}.csv to: {DATA_DIR}"
     )
     return None
 
@@ -276,10 +328,9 @@ def main() -> None:
 
     if not frames:
         print(
-            "\nNo ODS data loaded. Download the CSV files manually from:\n"
-            "https://digital.nhs.uk/services/organisation-data-service"
-            "/data-search-and-export/csv-downloads\n"
-            f"and save to: {CACHE_DIR}"
+            "\nNo ODS data loaded. Export the CSV files from the ODS Data Search "
+            "& Export portal (https://www.odsdatasearchandexport.nhs.uk/)\n"
+            f"and save ets.csv / epraccur.csv / edispensary.csv to: {DATA_DIR}"
         )
         return
 

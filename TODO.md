@@ -2,6 +2,11 @@
 
 Methodological and design items requiring deliberation before action.
 
+> Status (2026-06-09): prioritisation now lives in [ROADMAP.md](ROADMAP.md).
+> #6 is **resolved** (Form under-recording flags implemented). #4 and #5 are
+> **deferred** with the LiDAR/morphology path. #1, #2, #3 remain open analysis
+> decisions and need no pipeline re-run.
+
 ## 1. Per-household vs per-capita
 
 The composite NEPI is currently published per household per year. Household
@@ -58,6 +63,11 @@ The Lock-in surface is currently defined as the residual demand after the
 
 ## 4. LiDAR vs WALS
 
+> **Deferred (2026-06-09).** The LiDAR/morphology path is deferred from the lean
+> rebuild — nothing published or live consumes its columns beyond a single
+> `height_mean` table cell. Revisit this source choice only if the morphology
+> dimension is reinstated.
+
 Building heights currently come from Environment Agency LiDAR composite
 DSMs. Costs of LiDAR: large download volumes, periodic gaps in coverage,
 moderate processing. Alternative: WALS (Welsh / Wider Area LiDAR Service)
@@ -68,6 +78,9 @@ whether WALS-equivalent data is sufficient for the morphology features
 the pipeline uses today.
 
 ## 5. Sky view factor and shadow
+
+> **Deferred (2026-06-09).** Both ride on the LiDAR DSM, which is deferred.
+> Reconsider together with item #4.
 
 Two morphology features not currently in the pipeline:
 
@@ -83,6 +96,13 @@ additions to the pipeline. Decide whether to add them, and if so whether
 they enter the NEPI composite or sit alongside as auxiliary metrics.
 
 ## 6. Aggregation pitfalls in metered energy
+
+> **Resolved in part (2026-06-09).** Flag (a) is implemented:
+> `urban_energy.form_bias.compute_form_bias_flags` adds `form_flat_share`,
+> `form_gas_meter_coverage`, `form_offgas_flag`, `form_bulkgas_flag`, and
+> `form_underrecorded_flag` to the OA dataset (Stage 3). Still open: (b) surface
+> these on the Atlas About page and in the paper, and (c) an EPC-based correction
+> for the most affected OA classes — tracked in [ROADMAP.md](ROADMAP.md).
 
 The Form surface uses DESNZ postcode-level domestic energy aggregated to
 OA via the postcode-to-OA spatial lookup. Two known sources of

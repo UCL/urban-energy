@@ -13,7 +13,7 @@ Output:
     - temp/statistics/oa_energy_consumption.parquet
         Columns: OA21CD, LSOA21CD, oa_elec_mean_kwh, oa_gas_mean_kwh,
                  oa_total_mean_kwh, oa_gas_share, oa_num_meters,
-                 oa_num_postcodes
+                 oa_num_postcodes, oa_elec_num_meters, oa_gas_num_meters
 """
 
 import pandas as pd
@@ -117,6 +117,10 @@ def aggregate_postcode_to_oa(
     # Count metrics
     results["oa_num_meters"] = merged.groupby("OA21CD")["_meters"].sum()
     results["oa_num_postcodes"] = merged.groupby("OA21CD")["Postcode"].count()
+    # Per-fuel meter counts (feed the Form under-recording flags, TODO #6):
+    # low gas-meter coverage flags off-gas / communal-gas OAs.
+    results["oa_elec_num_meters"] = elec_meters.groupby(merged["OA21CD"]).sum()
+    results["oa_gas_num_meters"] = gas_meters.groupby(merged["OA21CD"]).sum()
 
     # LSOA21CD lookup (first per OA — all postcodes in same OA map to same LSOA)
     oa_lsoa = merged.groupby("OA21CD")["LSOA21CD"].first()

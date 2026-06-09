@@ -73,15 +73,16 @@ COVID-affected 2021 figure (2.00× vs 1.70×). Full robustness section in
 
 ---
 
-## Two deliverables
+## Three deliverables
 
 1. **The paper** — full IMRaD case in [PAPER.md](PAPER.md), with §5 robustness section
    already drafted. Targets a peer-reviewed journal.
-2. **The NEPI planning tool** — four monotonically-constrained XGBoost models (form /
-   mobility / cars / commute) deployed three ways:
-   - Live HTML/JS in any browser: <https://UCL.github.io/urban-energy/>
-   - Static source in [stats/nepi_static/](stats/nepi_static/), mirrored to [docs/](docs/) for GitHub Pages
-   - Streamlit interactive in [stats/nepi_app.py](stats/nepi_app.py) with SHAP waterfalls
+2. **The NEPI Atlas** — a public, place-level A–G energy-rating dashboard, live on
+   GitHub Pages: <https://UCL.github.io/urban-energy/> (source in [stats/atlas/](stats/atlas/),
+   exported to [stats/nepi_static/](stats/nepi_static/) and mirrored to [docs/](docs/)).
+3. **The NEPI planning tool** — four monotonically-constrained XGBoost models (form /
+   mobility / cars / commute), embedded in the Atlas as in-browser HTML/JS and also
+   available as a Streamlit app ([stats/nepi_app.py](stats/nepi_app.py)) with SHAP waterfalls.
 
 ---
 
@@ -123,37 +124,25 @@ uv run python stats/access_penalty_model.py
 uv run streamlit run stats/nepi_app.py
 ```
 
-Full reproduction recipe (raw downloads → national pipeline → trained models → static
-tool export) is in [CLAUDE.md](CLAUDE.md#commands-reference).
+Full reproduction recipe (raw downloads → national pipeline → trained models → Atlas)
+is in [REPRODUCTION.md](REPRODUCTION.md), driven by the orchestrator
+(`uv run python -m urban_energy.pipeline doctor`).
 
 ---
 
 ## Status
 
-**Done:**
+Full status, open work, and the 2026-06-09 lean-pipeline scope decisions
+(KEEP / DEFER / CUT) live in **[ROADMAP.md](ROADMAP.md)**. Headline state:
 
-- National OA pipeline (CityNetwork API, all 6,687 processed BUAs / 198,779 OAs)
-- NEPI scorecard, A–G bands, surface decomposition
-- Empirical access penalty model (OLS on observed transport behaviour)
-- Four XGBoost planning-tool models with monotonic constraints + SHAP
-- Streamlit + static HTML/JS tool, live on GitHub Pages
-- Case narrative [PAPER.md](PAPER.md) (IMRaD draft with §5 robustness — Census 2011, OD
-  distance, plurality, NTS scalar, regression with BUA-clustered SEs)
-- Storage centralised behind `URBAN_ENERGY_DATA_DIR` env var
-- Dependabot security alerts patched (aiohttp / pillow / requests / pygments)
+**Done:** national OA pipeline (198,779 OAs), NEPI scorecard + A–G bands + surface
+decomposition, empirical access-penalty OLS, four monotonic XGBoost models + SHAP,
+Streamlit + static HTML/JS tool live on GitHub Pages, the IMRaD case ([PAPER.md](PAPER.md)),
+storage centralised behind `URBAN_ENERGY_DATA_DIR`, methodology #6 Form under-recording
+flags, and an executable rebuild orchestrator (`urban_energy.pipeline`).
 
-**Open:**
-
-- Reconcile or retire `paper/archive/main.tex`
-- Finalise `paper/references.bib`
-- Sensitivity on basket weights, distance-decay parameters, trip-demand assumptions
-- Climate stratification (heating degree days as a control)
-- Calibrate Gaussian decay thresholds against observed travel survey distances
-- Spatial autocorrelation: BUA-clustered SEs are partial; consider spatial error / lag models
-- Bettencourt scaling analysis (BRES + GVA) — data loaded, analysis pending
-- DVLA fleet electrification scenarios for lock-in quantification
-- Pytest test suite (framework configured, tests pending)
-- Pre-submission cover-letter framing for target journal
+**Open:** see [ROADMAP.md](ROADMAP.md) — analysis decisions (per-capita unit, SHAP
+interpretation, lock-in framing), paper finalisation, and deferred LiDAR/morphology.
 
 ---
 

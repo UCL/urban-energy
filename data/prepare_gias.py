@@ -27,10 +27,12 @@ Output:
                  easting, northing, geometry
 """
 
+import datetime
 from io import BytesIO
 
 import geopandas as gpd
 import pandas as pd
+import requests
 from shapely.geometry import Point
 
 from urban_energy.paths import CACHE_DIR as _CACHE_ROOT
@@ -46,13 +48,51 @@ OPEN_STATUS_CODES = {
 }
 
 
+GIAS_URL = (
+    "https://ea-edubase-api-prod.azurewebsites.net/edubase/downloads/"
+    "public/edubasealldata{date}.csv"
+)
+_HEADERS = {"User-Agent": "urban-energy-research/1.0"}
+
+
+def _download_gias() -> bytes | None:
+    """
+    Download the latest GIAS all-establishments CSV automatically.
+
+    The GIAS bulk file is published daily at a date-stamped URL; this tries the
+    last few days until one resolves, caching the result.
+
+    Returns
+    -------
+    bytes | None
+        Raw CSV content, or None if no recent date could be fetched.
+    """
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    today = datetime.date.today()
+    for back in range(7):
+        date = (today - datetime.timedelta(days=back)).strftime("%Y%m%d")
+        try:
+            resp = requests.get(
+                GIAS_URL.format(date=date), headers=_HEADERS, timeout=300
+            )
+        except requests.RequestException:
+            continue
+        # A real CSV starts with the header row, not an HTML error page.
+        if resp.status_code == 200 and resp.content[:1] not in (b"<", b""):
+            out = CACHE_DIR / f"edubasealldata{date}.csv"
+            out.write_bytes(resp.content)
+            print(f"  Downloaded {out.name} ({len(resp.content) / 1e6:.0f} MB)")
+            return resp.content
+    return None
+
+
 def load_gias() -> bytes:
     """
-    Load GIAS establishment data from manual download cache.
+    Load GIAS establishment data, downloading it if not already cached.
 
-    Accepts either a fixed filename (gias_all_establishments.csv) or a dated
-    filename as downloaded directly from the GIAS website
-    (e.g. edubasealldata20260226.csv).
+    Accepts a manually-saved fixed filename (gias_all_establishments.csv) or a
+    dated filename (e.g. edubasealldata20260226.csv); if neither is present the
+    latest CSV is fetched automatically from the GIAS bulk endpoint.
 
     Returns
     -------
@@ -62,7 +102,7 @@ def load_gias() -> bytes:
     Raises
     ------
     FileNotFoundError
-        If no GIAS CSV is found in the cache directory.
+        If no cached CSV exists and the automatic download failed.
     """
     # Accept fixed rename
     fixed_path = CACHE_DIR / "gias_all_establishments.csv"
@@ -77,8 +117,14 @@ def load_gias() -> bytes:
         print(f"  Loading {dated_path.name}")
         return dated_path.read_bytes()
 
+    # Nothing cached — fetch automatically.
+    print("  No cached GIAS CSV; downloading from the GIAS bulk endpoint...")
+    content = _download_gias()
+    if content is not None:
+        return content
+
     raise FileNotFoundError(
-        f"No GIAS CSV found in {CACHE_DIR}\n"
+        f"No GIAS CSV in {CACHE_DIR} and automatic download failed.\n"
         "Download manually from:\n"
         "  https://get-information-schools.service.gov.uk/Downloads\n"
         "  → 'All establishment data (open establishments)' → CSV\n"

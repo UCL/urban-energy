@@ -35,7 +35,7 @@ from scipy.spatial import cKDTree  # type: ignore[unresolved-import]
 
 warnings.filterwarnings("ignore", message="DataFrame is highly fragmented")
 
-from archive.pipeline_lsoa import (  # noqa: E402
+from common import (  # noqa: E402
     _MORPH_MEAN_COLS,
     _MORPH_SUM_COLS,
     _TS001_POP,
@@ -45,6 +45,7 @@ from archive.pipeline_lsoa import (  # noqa: E402
     run_stage1_morphology,
 )
 
+from urban_energy.form_bias import compute_form_bias_flags  # noqa: E402
 from urban_energy.paths import DATA_DIR, PROCESSING_DIR  # noqa: E402
 
 OUTPUT_DIR = PROCESSING_DIR
@@ -638,12 +639,9 @@ def run_stage3_oa_aggregation(
                 ]
             oa = oa.merge(df, on=key_col, how="left")
 
-    scaling_path = PATHS.get("scaling")
-    if scaling_path and scaling_path.exists():
-        scaling_df = pd.read_parquet(scaling_path).rename(
-            columns={"LSOA_CODE": "LSOA21CD"}
-        )
-        oa = oa.merge(scaling_df, on="LSOA21CD", how="left")
+    # Form-surface under-recording flags (methodology TODO #6): communal/bulk
+    # gas in flats and off-gas-grid OAs bias the metered Form surface downward.
+    oa = compute_form_bias_flags(oa)
 
     oa["city"] = city_name
     oa = gpd.GeoDataFrame(oa, geometry="geometry", crs=boundaries.crs)

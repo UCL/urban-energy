@@ -30,15 +30,18 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pyogrio
 
-from urban_energy.paths import DATA_DIR
+from urban_energy.paths import DATA_DIR, epc_input_dir, latest_uprn_gpkg
 
 OUTPUT_DIR = DATA_DIR / "epc"
 
 # Input paths
-EPC_INPUT_DIR = (
-    DATA_DIR / "all-domestic-certificates"
-)  # Directory containing EPC CSV files
-UPRN_PATH = DATA_DIR / "osopenuprn_202601_gpkg" / "osopenuprn_202601.gpkg"
+# Raw domestic EPC input — auto-detects the per-year `domestic-csv/` export or
+# the per-LA `all-domestic-certificates/` download.
+EPC_INPUT_DIR = epc_input_dir() or DATA_DIR / "all-domestic-certificates"
+UPRN_PATH = (
+    latest_uprn_gpkg()
+    or DATA_DIR / "osopenuprn_202601_gpkg" / "osopenuprn_202601.gpkg"
+)
 
 # EPC columns to extract from bulk download CSVs
 EPC_COLUMNS = [
@@ -222,9 +225,13 @@ def _find_csv_files(input_dir: Path) -> list[Path]:
             f"Download from: https://epc.opendatacommunities.org/"
         )
 
+    # Per-LA layout (all-domestic-certificates/*/certificates.csv) or the
+    # per-year bulk export (domestic-csv/certificates-YYYY.csv).
     all_csv_files = sorted(input_dir.glob("*/certificates.csv"))
     if not all_csv_files:
-        raise FileNotFoundError(f"No certificates.csv files found in {input_dir}")
+        all_csv_files = sorted(input_dir.glob("certificates-*.csv"))
+    if not all_csv_files:
+        raise FileNotFoundError(f"No certificates CSV files found in {input_dir}")
 
     # Exclude Welsh LAs (codes starting W0)
     csv_files = [f for f in all_csv_files if "-W0" not in f.parent.name]
@@ -250,10 +257,12 @@ def _clean_batch(df: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         Cleaned records with standardised types.
     """
-    df["LMK_KEY"] = df["LMK_KEY"].astype(str)
+    if "LMK_KEY" in df.columns:
+        df["LMK_KEY"] = df["LMK_KEY"].astype(str)
 
     # Parse dates
-    df["LODGEMENT_DATE"] = pd.to_datetime(df["LODGEMENT_DATE"], errors="coerce")
+    if "LODGEMENT_DATE" in df.columns:
+        df["LODGEMENT_DATE"] = pd.to_datetime(df["LODGEMENT_DATE"], errors="coerce")
     if "INSPECTION_DATE" in df.columns:
         df["INSPECTION_DATE"] = pd.to_datetime(df["INSPECTION_DATE"], errors="coerce")
 
@@ -311,9 +320,17 @@ def write_epc_to_parquet(
         batch_end = min(i + batch_size, len(csv_files))
         print(f"  Batch {i // batch_size + 1}: files {i + 1}-{batch_end}")
 
+        # Select the wanted columns case-insensitively, then normalise headers
+        # to upper-case so both EPC packagings (per-LA upper, per-year lower) work.
+        wanted = {c.upper() for c in EPC_COLUMNS}
         dfs = []
         for csv_path in batch_files:
-            df = pd.read_csv(csv_path, usecols=EPC_COLUMNS, low_memory=False)
+            df = pd.read_csv(
+                csv_path,
+                usecols=lambda c: c.strip().upper() in wanted,
+                low_memory=False,
+            )
+            df.columns = [c.strip().upper() for c in df.columns]
             dfs.append(df)
 
         batch_df = pd.concat(dfs, ignore_index=True)

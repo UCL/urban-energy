@@ -4,6 +4,11 @@ Codebase reference and Claude Code briefing. For the project pitch, headline res
 theory synopsis, and current status read [README.md](README.md). For the paper itself
 read [PAPER.md](PAPER.md).
 
+**Rebuilding the data?** The pipeline is driven by an executable orchestrator:
+`uv run python -m urban_energy.pipeline {doctor,status,list,run}`. The step-by-step
+recipe is [REPRODUCTION.md](REPRODUCTION.md); current scope and what is KEEP / DEFER /
+CUT lives in [ROADMAP.md](ROADMAP.md). Prefer those over the prose command lists below.
+
 **Author:** Gareth Simons · **License:** GPL-3.0-only · **Repo:** [UCL/urban-energy](https://github.com/UCL/urban-energy)
 
 ---
@@ -20,20 +25,23 @@ urban-energy/
 │   ├── references.bib         # BibTeX (partial)
 │   └── archive/               # LSOA case_v1.md + stale main.tex (frozen)
 ├── src/urban_energy/
-│   └── paths.py               # Centralised storage paths (loads URBAN_ENERGY_DATA_DIR from .env)
+│   ├── paths.py               # Centralised storage paths (loads URBAN_ENERGY_DATA_DIR from .env)
+│   ├── pipeline.py            # Orchestrator: doctor / status / list / run
+│   └── form_bias.py           # Form under-recording flags (methodology #6)
 ├── data/                      # Raw data acquisition + preprocessing scripts
 ├── processing/                # National OA pipeline
 │   ├── pipeline_oa.py         # CityNetwork API, all 7,147 BUAs
-│   ├── process_morphology.py  # Building shape metrics from LiDAR + OS footprints
-│   └── archive/pipeline_lsoa.py  # LSOA pipeline (still imported for shared morphology constants)
+│   ├── common.py              # Shared pipeline plumbing (PATHS, Stage 1, morphology constants)
+│   ├── process_morphology.py  # Building shape metrics from LiDAR + OS footprints (deferred path)
+│   └── archive/               # Frozen LSOA pipeline + one-offs (not imported — see archive/README.md)
 ├── stats/                     # Analysis, NEPI scorecard, planning tool
 │   ├── proof_of_concept_oa.py # Core OA data loading + aggregation functions
 │   ├── oa_figures.py          # Three-surfaces publication figures (fig1–fig8)
-│   ├── basket_index_oa.py     # Illustrative basket case
-│   ├── build_case_oa.py       # Entry point: regenerates oa_figures + basket_index_oa
+│   ├── build_case_oa.py       # Entry point: regenerates the three-surfaces figures
 │   ├── nepi.py                # NEPI scorecard, A–G bands, surface decomposition
 │   ├── access_penalty_model.py # Empirical OLS access-energy penalty
 │   ├── nepi_model.py          # Train four XGBoost models (form / mobility / cars / commute)
+│   ├── export_static_tool.py  # Export trained models → nepi_static/nepi_models.json
 │   ├── nepi_app.py            # Streamlit interactive planning tool
 │   ├── nepi_static/           # Static HTML/JS planning tool (no Python runtime)
 │   ├── figures/oa/            # Three-surfaces case figures
@@ -133,14 +141,19 @@ brought to OA), see [PAPER.md §3.2](PAPER.md).
 |---|--------|---------|
 | 1 | [OA Boundaries](https://geoportal.statistics.gov.uk/datasets/ons::output-areas-december-2021-boundaries-ew-bfe-v9/about) | `$DATA_DIR/` |
 | 2 | [Built Up Areas](https://osdatahub.os.uk/downloads/open/BuiltUpAreas) | `$DATA_DIR/OS_Open_Built_Up_Areas_GeoPackage/` |
-| 3 | [OS Open Map Local](https://osdatahub.os.uk/downloads/open/OpenMapLocal) | `$DATA_DIR/os_open_local/` |
-| 4 | [OS Open Roads](https://osdatahub.os.uk/downloads/open/OpenRoads) | `$DATA_DIR/oproad_gpkg_gb/` |
-| 5 | [OS Open Greenspace](https://osdatahub.os.uk/downloads/open/OpenGreenspace) | `$DATA_DIR/opgrsp_gpkg_gb/` |
-| 6 | [OS Open UPRN](https://osdatahub.os.uk/downloads/open/OpenUPRN) | `$DATA_DIR/osopenuprn_*/` |
-| 7 | [OS Code-Point Open](https://osdatahub.os.uk/downloads/open/CodePointOpen) | `$DATA_DIR/codepo_gpkg_gb/` |
+| 3 | [OS Open Roads](https://osdatahub.os.uk/downloads/open/OpenRoads) | `$DATA_DIR/oproad_gpkg_gb/` |
+| 4 | [OS Open Greenspace](https://osdatahub.os.uk/downloads/open/OpenGreenspace) | `$DATA_DIR/opgrsp_gpkg_gb/` |
+| 5 | [OS Open UPRN](https://osdatahub.os.uk/downloads/open/OpenUPRN) | `$DATA_DIR/osopenuprn_202601_gpkg/` |
+| 6 | [OS Code-Point Open](https://osdatahub.os.uk/downloads/open/CodePointOpen) | `$DATA_DIR/codepo_gpkg_gb/` |
+| 7 | [OS Boundary Line](https://osdatahub.os.uk/downloads/open/BoundaryLine) (Atlas LAD layer) | `$DATA_DIR/bdline_gpkg_gb/` |
 | 8 | [EPC "All domestic certificates"](https://epc.opendatacommunities.org/) (registration) | `$DATA_DIR/epc/` |
 | 9 | [GIAS edubasealldata CSV](https://get-information-schools.service.gov.uk/Downloads) | `$CACHE_DIR/gias/` |
 | 10 | [NHS ODS](https://digital.nhs.uk/services/organisation-data-service/data-search-and-export/csv-downloads): `ets.csv`, `epraccur.csv`, `edispensary.csv` | `$CACHE_DIR/nhs_ods/` |
+
+**Deferred (skip for the lean rebuild):** OS Open Map Local footprints
+(`os_open_local/`) and EA LiDAR — they only feed the deferred morphology path
+(see [ROADMAP.md](ROADMAP.md)). **External binaries** (Atlas tiles, not Python
+deps): `brew install tippecanoe pmtiles`.
 
 ---
 
@@ -243,32 +256,19 @@ uv run ruff format .         # Format
 uv run ty check              # Type check
 ```
 
-### Data acquisition
+### Data acquisition + national pipeline (via the orchestrator)
 
 ```bash
-uv run python data/download_census.py            # Census 2021 topic tables
-uv run python data/download_census_2011.py       # Census 2011 commute (validation)
-uv run python data/download_energy_stats.py      # DESNZ energy (LSOA, legacy)
-uv run python data/download_energy_postcode.py   # DESNZ energy (postcode, primary)
-uv run python data/download_imd.py               # IoD 2025
-uv run python data/download_vehicles.py          # DVLA vehicles
-uv run python data/download_fsa.py               # FSA establishments
-uv run python data/download_naptan.py            # NaPTAN transport
-uv run python data/download_scaling.py           # BRES + GVA
-uv run python data/prepare_gias.py               # GIAS schools (after manual CSV)
-uv run python data/prepare_nhs.py                # NHS ODS (after manual CSVs + Code-Point)
-uv run python data/process_boundaries.py         # OS BUAs → study boundaries
-uv run python data/process_lidar.py              # LiDAR → building heights
-uv run python data/process_epc.py                # EPC → spatial parquet
-uv run python data/build_postcode_oa_lookup.py   # Postcode → OA lookup
-uv run python data/aggregate_energy_oa.py        # Postcode energy → OA
+uv run python -m urban_energy.pipeline run --layer acquire  # KEEP-set downloads + OA energy
+uv run python -m urban_energy.pipeline run pipeline         # national pipeline → oa_integrated.gpkg
 ```
 
-### National pipeline
+Individual scripts still run standalone (e.g. `uv run python data/download_census.py`);
+`pipeline list` prints the full manifest with each stage's script and outputs.
+The deferred LiDAR/morphology stages run only on opt-in:
 
 ```bash
-uv run python processing/process_morphology.py   # Building morphology metrics
-uv run python processing/pipeline_oa.py          # All BUAs → oa_integrated.gpkg
+uv run python -m urban_energy.pipeline run lidar morphology --include-optional
 ```
 
 ### Analysis + NEPI
@@ -284,43 +284,15 @@ uv run streamlit run stats/nepi_app.py           # Launch interactive tool
 ### Static-tool export (after retraining models)
 
 ```bash
-# 1. Export trained models to JSON for the static tool
-uv run python -c "
-import json, xgboost as xgb, sys
-sys.path.insert(0, 'stats')
-from nepi_model import MODEL_DIR, MODEL_FEATURES
-from pathlib import Path
-
-OUT = Path('stats/nepi_static/nepi_models.json')
-
-def extract(path, features):
-    m = xgb.XGBRegressor(); m.load_model(path)
-    dump = m.get_booster().get_dump(dump_format='json')
-    trees = []
-    for t in dump:
-        nodes = []; tree = json.loads(t)
-        def walk(n):
-            if 'leaf' in n: nodes.append({'leaf': n['leaf']})
-            else:
-                nd = {'f': n['split'], 't': n['split_condition'], 'y': None, 'n': None}
-                nodes.append(nd)
-                for c in n['children']:
-                    if c['nodeid'] == n.get('yes', 0): nd['y'] = len(nodes); walk(c)
-                    elif c['nodeid'] == n.get('no', 0): nd['n'] = len(nodes); walk(c)
-                    else: walk(c)
-        walk(tree); trees.append(nodes)
-    return {'features': features, 'base_score': 0.0, 'n_trees': len(trees), 'trees': trees}
-
-models = {n: extract(MODEL_DIR/f'nepi_model_{n}.json', MODEL_FEATURES[n]) for n in MODEL_FEATURES}
-with open(MODEL_DIR/'nepi_band_thresholds.json') as f: bands = json.load(f)
-with open(MODEL_DIR/'nepi_archetype_profiles.json') as f: archetypes = json.load(f)
-with open(OUT, 'w') as f: json.dump({'models': models, 'band_thresholds': bands, 'archetypes': archetypes}, f, separators=(',', ':'))
-print(f'Exported {OUT} ({OUT.stat().st_size/1024:.0f} KB)')
-"
-
-# 2. Mirror to docs/ for GitHub Pages
-cp stats/nepi_static/index.html stats/nepi_static/nepi_models.json docs/
+# Export the XGBoost trees → stats/nepi_static/nepi_models.json, then mirror docs/
+uv run python stats/export_static_tool.py
+uv run python -m urban_energy.pipeline run mirror_docs
 ```
+
+The export logic (previously an inline `python -c` one-liner here) is now
+[stats/export_static_tool.py](stats/export_static_tool.py), wired as the
+orchestrator's `static_tool` stage so the browser models cannot drift from the
+trained `$DATA_DIR/models/nepi/` artifacts.
 
 ---
 
@@ -369,7 +341,7 @@ git diff                     # Review
 git log --oneline -10        # Recent history
 ```
 
-Commits use HEREDOCs with `Co-Authored-By: Claude Opus 4.6 (1M context)` trailer when
+Commits use HEREDOCs with `Co-Authored-By: Claude Opus 4.8 (1M context)` trailer when
 Claude assists. New commits, never `--amend` after a hook failure.
 
 ---
