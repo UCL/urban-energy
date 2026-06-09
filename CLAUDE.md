@@ -103,55 +103,34 @@ $URBAN_ENERGY_DATA_DIR/
 
 ## 3. Data inventory
 
-All sources are open. EPC uses "All domestic certificates"; non-domestic EPCs are
-excluded. CRS is EPSG:27700 (British National Grid) throughout; EPSG:4326 only for
-interchange.
+All sources are open; CRS is EPSG:27700 throughout (EPSG:4326 only for interchange).
+Scope (KEEP / DEFER / CUT) is in [ROADMAP.md](ROADMAP.md); download links and the full
+rebuild recipe are in [REPRODUCTION.md](REPRODUCTION.md). The load-bearing (KEEP) sources:
 
-| # | Source | Granularity | Script | Output | Role |
-|---|--------|------------|--------|--------|------|
-| 1 | Census 2021 (10 topic tables) | OA | `data/download_census.py` | `census_oa_joined.gpkg` | Population, accommodation type (TS044), commute distance/mode, deprivation, cars, tenure |
-| 2 | Census 2011 commute (QS701/QS702) | OA | `data/download_census_2011.py` | `census_2011_commute_oa.parquet` | Pre-pandemic validation of the morphology-transport gradient (case_v2 §5.5) |
-| 3 | DESNZ postcode-level energy | Postcode | `data/download_energy_postcode.py` → `data/aggregate_energy_oa.py` | `oa_energy_consumption.parquet` | **Primary DV (Form surface)**: gas + electricity, gas weather-corrected, aggregated to OA via postcode→OA lookup |
-| 4 | DESNZ LSOA energy | LSOA | `data/download_energy_stats.py` | `lsoa_energy_consumption.parquet` | Legacy / LSOA-level cross-check |
-| 5 | EPC domestic certificates | UPRN | `data/process_epc.py` | `epc_domestic_spatial.parquet` | Building fabric, construction age, floor area (NOT the primary DV — see case_v2 §3.3 for justification) |
-| 6 | Environment Agency LiDAR | 2 m raster | `data/process_lidar.py` | `building_heights.gpkg` | nDSM building heights → S/V ratio, volume |
-| 7 | OS Open Map Local | Building footprint | (manual download) | `os_open_local/` | Building geometry for morphology |
-| 8 | OS Open Roads | Road network | (manual) | `oproad_gpkg_gb/` | Street network for CityNetwork centrality + accessibility |
-| 9 | OS Open Greenspace | Polygon | (manual) | `opgrsp_gpkg_gb/` | Recreation / restoration trophic layer |
-| 10 | OS Open UPRN | Point | (manual) | `osopenuprn_*/` | Property-level geocoding |
-| 11 | OS Code-Point Open | Postcode centroid | (manual) | `codepo_gpkg_gb/` | Postcode → OA join + NHS site geocoding |
-| 12 | OS Built Up Areas | Polygon | `data/process_boundaries.py` | `built_up_areas.gpkg` | 7,147 English BUA processing units |
-| 13 | FSA establishments | Point | `data/download_fsa.py` | `fsa_establishments.gpkg` | Food retail accessibility (~500k) |
-| 14 | NaPTAN transport stops | Point | `data/download_naptan.py` | `naptan_england.gpkg` | Bus/rail accessibility (~434k stops) |
-| 15 | GIAS schools (DfE) | Point | `data/prepare_gias.py` | `gias_schools.gpkg` | Education accessibility (~25k) |
-| 16 | NHS ODS facilities | Point | `data/prepare_nhs.py` | `nhs_facilities.gpkg` | Health accessibility (~24k: GPs, pharmacies, hospitals) |
-| 17 | IoD 2025 (IMD) | LSOA (2021) | `data/download_imd.py` | `lsoa_imd2025.parquet` | 7-domain deprivation control (income domain in OLS) |
-| 18 | DVLA vehicle licensing | LSOA (2021) | `data/download_vehicles.py` | `lsoa_vehicles.parquet` | Fleet composition by fuel type, transport lock-in |
-| 19 | ONS Small Area GVA + BRES | LSOA | `data/download_scaling.py` | `lsoa_scaling.parquet` | Bettencourt scaling analysis (forward work) |
-| 20 | Census 2021 OD workplace flows | MSOA→MSOA | (manual) | `msoa_od_commute.parquet` | OD commute distance robustness check (case_v2 §5.6) |
+| Source | Script | Output | Role |
+|--------|--------|--------|------|
+| Census 2021 (10 topic tables) | `download_census.py` | `census_oa_joined.gpkg` | Population, dwelling type (TS044), commute, cars, deprivation |
+| DESNZ postcode energy | `download_energy_postcode.py` → `aggregate_energy_oa.py` | `oa_energy_consumption.parquet` | **Primary DV (Form)**: metered gas + electricity → OA |
+| EPC domestic | `process_epc.py` | `epc_domestic_spatial.parquet` | Construction age → `median_build_year` (Form-model feature) |
+| OS Open Roads | (manual) | `oproad_gpkg_gb/` | CityNetwork centrality + accessibility |
+| OS Open Greenspace | (manual) | `opgrsp_gpkg_gb/` | Recreation accessibility |
+| OS Open UPRN | (manual) | `osopenuprn_*/` | Property geocoding (aggregation key) |
+| OS Code-Point Open | (manual) | `codepo_gpkg_gb/` | Postcode→OA + NHS geocoding |
+| OS Built Up Areas | `process_boundaries.py` | `built_up_areas.gpkg` | ~7,244 English BUA processing units |
+| OS Boundary Line | (manual) | `bdline_gpkg_gb/` | Atlas LAD layer |
+| FSA establishments | `download_fsa.py` | `fsa_establishments.gpkg` | Food accessibility (~500k) |
+| NaPTAN stops | `download_naptan.py` | `naptan_england.gpkg` | Bus/rail accessibility (~434k) |
+| GIAS schools | `prepare_gias.py` | `gias_schools.gpkg` | Education accessibility (~25k) |
+| NHS ODS | `prepare_nhs.py` | `nhs_facilities.gpkg` | Health accessibility (GPs/pharmacies/hospitals) |
+| IoD 2025 | `download_imd.py` | `lsoa_imd2025.parquet` | Deprivation control (income domain in OLS) |
+| DVLA vehicles | `download_vehicles.py` | `lsoa_vehicles.parquet` | Fleet composition (Atlas `bev_share`) |
+| NESO projections | `build_projections.py` | `projections.parquet` | Atlas scenario factors |
 
-For the per-variable derivation table (what each metric measures, native scale, how it's
-brought to OA), see [PAPER.md §3.2](PAPER.md).
+For the per-variable derivation table see [PAPER.md §3.2](PAPER.md).
 
-### Manual downloads (one-off, no API)
-
-| # | Source | Save to |
-|---|--------|---------|
-| 1 | [OA Boundaries](https://geoportal.statistics.gov.uk/datasets/ons::output-areas-december-2021-boundaries-ew-bfe-v9/about) | `$DATA_DIR/` |
-| 2 | [Built Up Areas](https://osdatahub.os.uk/downloads/open/BuiltUpAreas) | `$DATA_DIR/OS_Open_Built_Up_Areas_GeoPackage/` |
-| 3 | [OS Open Roads](https://osdatahub.os.uk/downloads/open/OpenRoads) | `$DATA_DIR/oproad_gpkg_gb/` |
-| 4 | [OS Open Greenspace](https://osdatahub.os.uk/downloads/open/OpenGreenspace) | `$DATA_DIR/opgrsp_gpkg_gb/` |
-| 5 | [OS Open UPRN](https://osdatahub.os.uk/downloads/open/OpenUPRN) | `$DATA_DIR/osopenuprn_202601_gpkg/` |
-| 6 | [OS Code-Point Open](https://osdatahub.os.uk/downloads/open/CodePointOpen) | `$DATA_DIR/codepo_gpkg_gb/` |
-| 7 | [OS Boundary Line](https://osdatahub.os.uk/downloads/open/BoundaryLine) (Atlas LAD layer) | `$DATA_DIR/bdline_gpkg_gb/` |
-| 8 | [EPC "All domestic certificates"](https://epc.opendatacommunities.org/) (registration) | `$DATA_DIR/epc/` |
-| 9 | [GIAS edubasealldata CSV](https://get-information-schools.service.gov.uk/Downloads) | `$CACHE_DIR/gias/` |
-| 10 | [NHS ODS](https://digital.nhs.uk/services/organisation-data-service/data-search-and-export/csv-downloads): `ets.csv`, `epraccur.csv`, `edispensary.csv` | `$CACHE_DIR/nhs_ods/` |
-
-**Deferred (skip for the lean rebuild):** OS Open Map Local footprints
-(`os_open_local/`) and EA LiDAR — they only feed the deferred morphology path
-(see [ROADMAP.md](ROADMAP.md)). **External binaries** (Atlas tiles, not Python
-deps): `brew install tippecanoe pmtiles`.
+The manual-download checklist (exact target paths, EPC registration), the external
+binaries (`tippecanoe`/`pmtiles`), and the deferred sources (OS Map Local, EA LiDAR)
+are all in [REPRODUCTION.md](REPRODUCTION.md).
 
 ---
 
@@ -248,7 +227,7 @@ Pages deployment.
 
 ```bash
 uv sync                      # Install dependencies
-uv run pytest                # Run tests (framework configured, tests pending)
+uv run pytest                # Run tests
 uv run ruff check .          # Lint
 uv run ruff format .         # Format
 uv run ty check              # Type check
@@ -272,7 +251,7 @@ uv run python -m urban_energy.pipeline run lidar morphology --include-optional
 ### Analysis + NEPI
 
 ```bash
-uv run python stats/build_case_oa.py             # Three-surfaces + basket figures
+uv run python stats/build_case_oa.py             # Three-surface figures
 uv run python stats/nepi.py                      # NEPI scorecard + bands
 uv run python stats/access_penalty_model.py      # Empirical access-energy penalty
 uv run python stats/nepi_model.py                # Train XGBoost planning-tool models

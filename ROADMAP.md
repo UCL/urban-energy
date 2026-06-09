@@ -1,8 +1,7 @@
 # Roadmap
 
-Single source of truth for status and open work. Folds the former README
-Done/Open lists and cross-references the detailed methodology write-ups in
-[TODO.md](TODO.md). Updated 2026-06-09 (lean-pipeline cleanup).
+Single source of truth for status, open work, and methodology decisions.
+Updated 2026-06-09 (lean-pipeline cleanup).
 
 ## Deliverables & priority
 
@@ -13,8 +12,7 @@ Done/Open lists and cross-references the detailed methodology write-ups in
 
 ## Scope decisions (2026-06-09 consumption audit)
 
-The rebuild targets only what the deliverables consume. Full evidence in the
-audit; summary:
+The rebuild targets only what the deliverables consume:
 
 - **KEEP** (load-bearing): Census 2021, DESNZ postcode metered energy, EPC
   (build-year only), OS Roads/Greenspace/UPRN/Code-Point/Boundary-Line/BUAs,
@@ -36,27 +34,43 @@ audit; summary:
   static-tool export promoted to `stats/export_static_tool.py`.
 - **Methodology #6** (Form under-recording flags) implemented in
   `urban_energy.form_bias` + Stage 3, with tests.
+- **Accessibility bands** settled on the minute-clean ladder (400/800/1600/4800/
+  9600 m ≈ 5/10/20/60/120 min at ~80 m/min) — kept as-is.
 
-## Open — by layer
+## Open work — by layer
 
-### Process / data
-- **TODO #4 (LiDAR vs WALS)** and **#5 (sky-view-factor / shadow)** — deferred
-  with the LiDAR path. Revisit only if the morphology dimension is reinstated.
+### Process / data (baked into the pipeline; changing requires a re-run)
 - Climate stratification (heating degree days as a control).
-- Calibrate Gaussian decay thresholds against observed travel-survey distances.
+- Optional: calibrate the Gaussian decay against observed travel-survey distances
+  (bands themselves are settled, see Done).
 
-### Analyse (post-rebuild; no pipeline re-run needed)
-- **TODO #1** — per-household vs per-capita canonical unit.
-- **TODO #2** — critical interpretation of SHAP / gradient-booster outputs.
-- **TODO #3** — lock-in surface: audience, definition, per-pillar unpacking.
-- **TODO #6 follow-on** — surface the new `form_*` flags on the Atlas About page
-  and in the paper; consider an EPC-based correction for the most affected OAs.
-- Spatial autocorrelation: BUA-clustered SEs are partial; consider spatial
+### Analyse (computed in `stats/`, post-pipeline; cheap to revise — minutes)
+These are the contestable scientific choices; none gate the national run.
+
+- **Per-household vs per-capita unit.** NEPI is published per household. Household
+  size varies with archetype (flats are smaller households than detached), so
+  per-hh understates the per-capita intensity of compact types. Per-hh is natural
+  for billed energy; per-capita for emissions/equity. Decide: keep per-hh canonical
+  + a per-capita toggle / switch / publish both.
+- **SHAP interpretation.** SHAP attributions are conditional on the model's joint
+  feature distribution, not structural causal effects — co-linear features
+  (density, type, build year) share explanatory power. The workbench "vs actual"
+  baseline is the mid-archetype interpolation (a convenience reference, not a
+  counterfactual). Document this; consider exposing alternative baselines.
+- **Lock-in surface.** Resolve audience (planners siting new build vs analysts
+  targeting retrofit), end-state definition (100% HP+EV vs a realistic 80/80
+  ceiling), and whether to expose per-pillar (form-only / mobility-only) residuals.
+- **#6 follow-on.** Surface the new `form_*` under-recording flags on the Atlas
+  About page and in the paper; consider an EPC-based Form correction for the most
+  affected OA classes (high-flat / off-gas).
+- **Spatial autocorrelation.** BUA-clustered SEs are partial; consider spatial
   error / lag models.
 
 ### Forward work (out of current scope)
 - Bettencourt scaling analysis (BRES + GVA) — source archived; revive if pursued.
 - DVLA fleet-electrification scenarios for lock-in quantification.
+- LiDAR/morphology source (LiDAR vs WALS) and sky-view-factor / shadow features —
+  deferred with the morphology dimension; revisit only if it is reinstated.
 
 ### Paper / repo
 - Finalise `paper/references.bib`.

@@ -91,7 +91,9 @@ COVID-affected 2021 figure (2.00× vs 1.70×). Full robustness section in
 | Path | Purpose |
 | ---- | ------- |
 | [PAPER.md](PAPER.md) | **The paper** — full IMRaD case (canonical) |
-| [CLAUDE.md](CLAUDE.md) | **Technical brief** — codebase, data, scripts, conventions, repro |
+| [CLAUDE.md](CLAUDE.md) | **Technical brief** — codebase layout, data, architecture, conventions |
+| [REPRODUCTION.md](REPRODUCTION.md) | **How to rebuild** — orchestrator-driven recipe, manual downloads |
+| [ROADMAP.md](ROADMAP.md) | **Status, scope & open work** — incl. the methodology decisions |
 | [paper/literature_review.md](paper/literature_review.md) | Thematic literature review |
 | [paper/references.bib](paper/references.bib) | BibTeX bibliography (partial) |
 | [data/](data/) | Raw-data acquisition and preprocessing scripts |
