@@ -25,6 +25,7 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 from scipy import stats as sp_stats
+from travel_energy import compute_travel_energy
 
 from urban_energy.paths import DATA_DIR, PROCESSING_DIR
 
@@ -111,9 +112,6 @@ _TS044_COMMERCIAL = (
 # Conversion: 1 ktoe = 11.63 GWh, so kWh/pkm = ktoe_per_billion_pkm * 0.01163
 _KWH_PER_PKM_ROAD = 34.3 * 0.01163  # ≈ 0.399
 _KWH_PER_PKM_RAIL = 15.3 * 0.01163  # ≈ 0.178
-# NTS 2024 distance ratio (England): total miles / commuting miles per person.
-# Used only for a secondary "overall travel" scenario estimate.
-_NTS_TOTAL_TO_COMMUTE_DISTANCE_FACTOR = 6082 / 1007  # ≈ 6.04
 
 # ---------------------------------------------------------------------------
 # Cityseer accessibility — only the columns we use
@@ -312,6 +310,30 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
 
     lsoa = lsoa[lsoa["OA21CD"].notna()].copy()
 
+    # De-duplicate boundary-straddling OAs. An OA that intersects more than one
+    # Built-Up Area is emitted once per BUA: census + energy columns are identical
+    # across those rows (BUA-invariant), but per-BUA network/accessibility columns
+    # differ. Without this, ~3.6% of rows are pseudo-replicas that inflate the
+    # effective N and understate every regression SE. Keep the row from the BUA
+    # holding most of the OA's properties (max n_uprns ≈ the OA's "home" BUA),
+    # which is exact for the invariant columns and the principled pick for the
+    # network columns.
+    if lsoa["OA21CD"].duplicated().any():
+        _n_before = len(lsoa)
+        lsoa["_dedup_rank"] = pd.to_numeric(
+            lsoa.get("n_uprns"), errors="coerce"
+        ).fillna(0)
+        lsoa = (
+            lsoa.sort_values("_dedup_rank", ascending=False, kind="stable")
+            .drop_duplicates("OA21CD", keep="first")
+            .drop(columns="_dedup_rank")
+            .reset_index(drop=True)
+        )
+        print(
+            f"  De-duplicated {_n_before - len(lsoa):,} boundary-straddle rows "
+            f"→ {len(lsoa):,} unique OAs"
+        )
+
     # Coerce numerics
     for col in _BUILDING_COLS:
         if col in lsoa.columns:
@@ -479,9 +501,6 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
         + lsoa["public_transport_kwh_per_hh_est"]
     )
     lsoa["transport_kwh_per_hh_est"] = lsoa["motorised_commute_kwh_per_hh_est"]
-    lsoa["transport_kwh_per_hh_total_est"] = (
-        lsoa["transport_kwh_per_hh_est"] * _NTS_TOTAL_TO_COMMUTE_DISTANCE_FACTOR
-    )
 
     # Car ownership — kept as a secondary metric
     one_car = pd.to_numeric(lsoa[_TS045_ONE], errors="coerce")
@@ -492,12 +511,9 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
         one_car + 2 * two_car + 3 * three_car
     ) / car_hh_total.replace(0, np.nan)
 
-    # Total energy cost per household
+    # Commute-only total (the full travel total is set after the disaggregation)
     lsoa["total_kwh_per_hh"] = lsoa["building_kwh_per_hh"] + lsoa[
         "transport_kwh_per_hh_est"
-    ].fillna(0)
-    lsoa["total_kwh_per_hh_total_est"] = lsoa["building_kwh_per_hh"] + lsoa[
-        "transport_kwh_per_hh_total_est"
     ].fillna(0)
 
     lsoa["log_total_kwh_per_hh"] = np.log(lsoa["total_kwh_per_hh"].clip(lower=1))
@@ -505,6 +521,14 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
 
     # --- Occupation density (Census-derived, no building-type confound) ---
     lsoa["avg_hh_size"] = lsoa["total_people"] / lsoa["total_hh"].replace(0, np.nan)
+
+    # --- Total household travel energy: constrained disaggregation of measured
+    # NTS car mileage by 2021 rural-urban class (stats/travel_energy.py). ---
+    lsoa = compute_travel_energy(lsoa)
+    lsoa["transport_kwh_per_hh_total_est"] = lsoa["travel_kwh_per_hh_car"]
+    lsoa["total_kwh_per_hh_total_est"] = (
+        lsoa["building_kwh_per_hh"] + lsoa["transport_kwh_per_hh_total_est"].fillna(0)
+    )
 
     # --- Population density (from Census OA areas) ---
     if "_oa_area_km2" in lsoa.columns:
@@ -614,9 +638,8 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
     )
     t_total = lsoa["transport_kwh_per_hh_total_est"].dropna()
     print(
-        "    Transport (overall scenario, est.): "
-        f"median={t_total.median():,.0f}  "
-        f"(factor={_NTS_TOTAL_TO_COMMUTE_DISTANCE_FACTOR:.2f}x)"
+        "    Travel (total car, NTS-disaggregated): "
+        f"median={t_total.median():,.0f}"
     )
     if "private_transport_kwh_per_hh_est" in lsoa.columns:
         print(
@@ -1793,56 +1816,6 @@ def run_plurality_sensitivity(lsoa: pd.DataFrame) -> None:
 # ---------------------------------------------------------------------------
 
 
-def run_nts_sensitivity(lsoa: pd.DataFrame) -> None:
-    """
-    Test sensitivity of total energy gradient to the NTS distance scalar.
-
-    The default scalar is 6.04x (NTS 2024 total/commute distance ratio).
-    This tests the gradient at 1x (commute only), 4x, 6x, 8x, and 10x.
-
-    Parameters
-    ----------
-    lsoa : pd.DataFrame
-        OA data with transport_kwh_per_hh_est and building_kwh_per_hh.
-    """
-    print(f"\n{'=' * 70}")
-    print("SENSITIVITY: NTS TOTAL-TO-COMMUTE DISTANCE SCALAR")
-    print("=" * 70)
-
-    flat = lsoa[lsoa["dominant_type"] == "Flat"]
-    det = lsoa[lsoa["dominant_type"] == "Detached"]
-
-    if len(flat) < 10 or len(det) < 10:
-        print("  Insufficient data")
-        return
-
-    scalars = [1.0, 3.0, 4.0, 5.0, 6.04, 7.0, 8.0, 10.0]
-    print(
-        f"\n  {'Scalar':>8s} {'Flat total':>12s} {'Det total':>12s} "
-        f"{'Ratio':>8s} {'Trans share (Det)':>18s}"
-    )
-    print(f"  {'-' * 64}")
-
-    for s in scalars:
-        f_bldg = flat["building_kwh_per_hh"].median()
-        f_trans = flat["transport_kwh_per_hh_est"].median() * s
-        d_bldg = det["building_kwh_per_hh"].median()
-        d_trans = det["transport_kwh_per_hh_est"].median() * s
-
-        f_total = f_bldg + f_trans
-        d_total = d_bldg + d_trans
-        ratio = f_total / d_total if d_total > 0 else np.nan
-        d_share = d_trans / d_total if d_total > 0 else np.nan
-
-        marker = " *" if abs(s - _NTS_TOTAL_TO_COMMUTE_DISTANCE_FACTOR) < 0.1 else ""
-        print(
-            f"  {s:>7.1f}x {f_total:>12,.0f} {d_total:>12,.0f} "
-            f"{ratio:>8.3f} {d_share:>17.1%}{marker}"
-        )
-
-    print("\n  * = baseline NTS 2024 scalar")
-
-
 # ---------------------------------------------------------------------------
 # 8e. Edge effect diagnostic
 # ---------------------------------------------------------------------------
@@ -2072,7 +2045,6 @@ def main(cities: list[str] | None = None) -> None:
     # --- Robustness and sensitivity ---
     bootstrap_results = run_bootstrap_cis(lsoa)
     run_plurality_sensitivity(lsoa)
-    run_nts_sensitivity(lsoa)
     run_edge_diagnostic(lsoa)
     run_spatial_diagnostics(lsoa)
 

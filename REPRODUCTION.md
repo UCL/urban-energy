@@ -60,6 +60,12 @@ Stages skip when their declared outputs already exist (`--force` to rebuild).
 `run --all` runs every non-optional stage in order. The national pipeline is
 resumable per-BUA, so it can be interrupted and re-run.
 
+**Travel-energy inputs.** Two small open downloads anchor household car-travel
+energy and must be present before the analyse layer:
+`uv run python data/download_nts_mileage.py` (NTS9904 2024 car miles/person by
+2021 rural-urban class) and `uv run python data/download_ons_ruc.py` (ONS 2021
+RUC of OAs). The disaggregation that consumes them is `stats/travel_energy.py`.
+
 ## Layer notes & budgets
 
 - **acquire** (~1 h, scripted): Census 2021, DESNZ postcode energy, IMD, DVLA

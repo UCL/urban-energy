@@ -123,8 +123,10 @@ rebuild recipe are in [REPRODUCTION.md](REPRODUCTION.md). The load-bearing (KEEP
 | GIAS schools | `prepare_gias.py` | `gias_schools.gpkg` | Education accessibility (~25k) |
 | NHS ODS | `prepare_nhs.py` | `nhs_facilities.gpkg` | Health accessibility (GPs/pharmacies/hospitals) |
 | IoD 2025 | `download_imd.py` | `lsoa_imd2025.parquet` | Deprivation control (income domain in OLS) |
-| DVLA vehicles | `download_vehicles.py` | `lsoa_vehicles.parquet` | Fleet composition (Atlas `bev_share`) |
+| DVLA vehicles | `download_vehicles.py` | `lsoa_vehicles.parquet` | Fleet composition (Atlas `bev_share`); travel-energy fleet intensity |
 | NESO projections | `build_projections.py` | `projections.parquet` | Atlas scenario factors |
+| NTS9904 mileage | `download_nts_mileage.py` | `nts_mileage_by_ruc.parquet` | **Travel-energy anchor**: measured car miles/person by 2021 RUC class |
+| ONS RUC 2021 | `download_ons_ruc.py` | `oa21_ruc21.parquet` | OA→rural-urban class (travel-energy disaggregation) |
 
 For the per-variable derivation table see [PAPER.md §3.2](PAPER.md).
 

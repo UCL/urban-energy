@@ -213,19 +213,27 @@ def compute_nepi(lsoa: pd.DataFrame) -> pd.DataFrame:
     # --- Surface 1: Form (building kWh/hh) ---
     lsoa["nepi_form_kwh"] = lsoa["building_kwh_per_hh"]
 
-    # --- Surface 2: Mobility (transport kWh/hh) ---
+    # --- Surfaces 2 & 3: Mobility (baseline transport) + Access (coverage
+    # increment), decomposed so they do NOT double-count (robustness Step 2).
+    # The access penalty is a *slice of* total transport energy; summing it on
+    # top of total transport would count the access-driven kilometres twice.
+    # Instead split total transport into a baseline — the energy that would
+    # remain at the reference coverage — and the coverage-driven increment. The
+    # two are mutually exclusive and sum to total transport, so the composite
+    # Form + Mobility + Access = Form + total transport, with no overlap.
     transport_col = "transport_kwh_per_hh_total_est"
     if transport_col not in lsoa.columns:
         transport_col = "transport_kwh_per_hh_est"
-    lsoa["nepi_mobility_kwh"] = lsoa[transport_col]
-
-    # --- Surface 3: Access (penalty kWh/hh) ---
     lsoa["nepi_access_kwh"] = lsoa["access_penalty_kwh"].fillna(0)
+    lsoa["nepi_mobility_kwh"] = (
+        pd.to_numeric(lsoa[transport_col], errors="coerce").fillna(0)
+        - lsoa["nepi_access_kwh"]
+    ).clip(lower=0)
 
-    # --- Composite: sum of three surfaces ---
+    # --- Composite: Form + baseline Mobility + Access (no double-count) ---
     lsoa["nepi_total_kwh"] = (
         lsoa["nepi_form_kwh"].fillna(0)
-        + lsoa["nepi_mobility_kwh"].fillna(0)
+        + lsoa["nepi_mobility_kwh"]
         + lsoa["nepi_access_kwh"]
     )
 

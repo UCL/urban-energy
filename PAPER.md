@@ -276,17 +276,25 @@ classification.
 
 ### 3.4 Transport energy estimation
 
-Commute energy is estimated from Census 2021 TS058 (commute distance, 8 bands with
-midpoint imputation) and TS061 (travel mode), annualised at 220 workdays × return trip,
-with mode-specific energy intensities from ECUK 2025 (road: 0.399, rail: 0.178 kWh/pkm).
+Household car-travel energy is estimated by **constrained disaggregation of measured National
+Travel Survey mileage**. NTS9904 (2024) reports average car/van-driver distance per person by
+2021 Rural-Urban Classification of residence — a survey-measured, residence-based figure that
+carries the urban→rural driving gradient (≈ 2,500 → 5,200 miles/person). Each Output Area is
+assigned its 2021 rural-urban class (ONS OA21→RUC21 lookup), and the class mileage is
+redistributed across OAs *within* the class by measured local signals — cars per person
+(Census TS045) and commute distance (Census TS058) — population-weighted so each class's mean
+**exactly reproduces** the NTS figure. Per-OA mileage is converted to energy with ECUK
+vehicle-km intensities (ICE ≈ 0.58, battery-electric ≈ 0.20 kWh/vkm), fleet-weighted by the
+DVLA battery-electric share. This anchors travel energy to a measured total while letting each
+neighbourhood vary by its own car ownership and commute distance, with no double-counting.
+(A superseded earlier estimate scaled commute energy by a uniform national 6.04× factor; the
+disaggregation replaces it.)
 
-An overall-travel scenario scales the commute estimate by 6.04× (NTS 2024 total distance /
-commute distance ratio). This is a known simplification: the ratio likely varies by
-morphology type. Sensitivity is tested across 1×–10× scalars.
-
-Census 2021 was conducted on 21 March 2021 during the third national lockdown. Work-from-home
-rates were ~3× pre-pandemic levels; public transport use was depressed ~50% (ONS, 2023).
-The commute data reflects pandemic-affected behaviour.
+Commute-only energy (a secondary figure) is estimated from Census 2021 TS058 (commute distance,
+8 bands with midpoint imputation) and TS061 (travel mode), annualised at 220 workdays × return
+trip, with ECUK 2025 passenger intensities (road 0.399, rail 0.178 kWh/pkm). Census 2021 was
+conducted during the third national lockdown, so the commute data reflects pandemic-affected
+behaviour, whereas the NTS9904 2024 mileage anchor reflects current post-pandemic travel.
 
 ### 3.5 Access surface: walkable service coverage
 

@@ -36,6 +36,7 @@ dependencies = [
     "streamlit>=1.40",
     "scikit-learn>=1.6.0",
     "python-dotenv>=1.0.0",
+    "odfpy>=1.4.1",
 ]
 
 [project.optional-dependencies]
