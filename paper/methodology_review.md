@@ -423,14 +423,55 @@ EPC analogy stated precisely. Most of this needs no new data collection.
 
 ---
 
-## Outstanding strand
+## PART H — Framing & scope: scaling, lock-in, energy justice
 
-One literature strand (urban-scaling-methodology critique à la Leitão/Arcaute/Louf,
-and spatial-energy-justice framing for an A–G area label) did not complete (agent
-socket failure). Lock-in/path-dependence (Seto 2016, Unruh 2000) and ecological-
-inference methods (Robinson, King, Openshaw, Greenland) *are* covered above. The
-scaling invocation in §1 is currently motivational rather than load-bearing; a
-dedicated scaling-critique + energy-justice review can be run on request.
+### H1. Urban scaling — keep as mechanism, cite the critiques, disavow OA-level exponents
+The Bettencourt (2007) N^1.15 / N^0.85 framing is defensible only as *motivation*
+(the proximity mechanism), not as a law NEPI relies on. The exponents are heavily
+contested: Leitão et al. (2016) show standard log-log OLS yields β≠1 conclusions
+that "vary dramatically" once heavy-tailed city sizes and non-Gaussian fluctuations
+are handled; Arcaute et al. (2015, England & Wales) and Cottineau et al. (2017,
+~5,000 city definitions) show the exponent is **city-definition / MAUP-sensitive**
+and can flip super-↔sub-linear. **Fix:** cite the critiques alongside Bettencourt;
+frame scaling as direction-not-magnitude; explicitly disavow any OA-level
+energy-vs-population exponent (OAs are intra-urban units, not cities). Same
+areal-unit sensitivity bounds both scaling exponents and NEPI's bands (→ C2).
+
+### H2. Lock-in — supported, but must be two-tier
+The durable-substrate half is strongly supported and arguably *understated*: Boeing
+(2021) finds street patterns persist "for centuries"; Seto et al. (2016) — the
+canonical infrastructural/institutional/behavioural taxonomy — state the built
+environment "determine[s] energy demand for decades" and "lock[s] in… mode
+choices… and behaviors." But Seto et al. say *constrains*, not *determines*:
+current travel energy also responds to faster-turnover fuel/vehicle/income/transit
+factors. The **durability hierarchy** (layout: centuries ≫ buildings: decades–
+century ≫ vehicles: ~years) is the sound empirical core of the headline. **Fix:**
+adopt Seto's taxonomy; cite Boeing + Barrington-Leigh & Millard-Ball (2019);
+separate durable substrate from malleable outcome; temper "no policy addresses" →
+"**under-addressed** by current decarbonisation policy."
+
+### H3. Energy justice — add a section; an A–G area label carries real distributional risk
+In energy-justice terms (Jenkins et al. 2016: distribution / recognition /
+procedure; Walker & Day 2012; Bouzarovski & Simcock 2017) a place-based A–G label
+is both a contribution (it makes spatial energy burdens visible) and a hazard.
+Because NEPI's worst grades fall on the most deprived areas, the label risks
+**territorial stigmatization** (Wacquant 2007) and **regressive capitalization**
+into property values/rents (EPC evidence: Fuerst et al. 2015; Brounen & Kok 2011).
+**Fix:** add an energy-justice section on the three tenets; add an anti-stigma
+safeguard (grades describe *form*, not residents; G-areas are priority-for-support,
+not failing); flag the regressive risk and pair the label with an
+investment/entitlement dimension.
+
+### H4. Ecological inference & MAUP — corroborated (→ C1/C2)
+Robinson (1950; ecological r can exceed or sign-flip the individual r), Openshaw
+(1984, MAUP), Greenland & Morgenstern (1989, ecological bias from effect
+modification alone), and Subramanian et al. (2009, distinguishing contextual from
+compositional needs individual + ecological data) confirm C1/C2: keep all claims
+ecological, temper individual-level language ("band-G *areas*"), and add the LSOA
+MAUP re-run.
+
+➡ **The step-by-step execution plan for all of the above is
+[robustness_plan.md](robustness_plan.md).**
 
 ---
 
@@ -464,4 +505,13 @@ Ecological Inference Problem* · Openshaw (1984) *MAUP* CATMOG 38 · Fotheringha
 Wong (1991) *Env. Plan. A* · Anselin (1988) *Spatial Econometrics* · Conley (1999)
 *J. Econometrics* · Seto et al. (2016) *Ann. Rev. Env. Res.* (Carbon Lock-In) ·
 Bound, Brown & Mathiowetz (2001) *Handbook of Econometrics* · Norman et al. (2006)
-*J. Urban Plan. Dev.* 132(1):10.
+*J. Urban Plan. Dev.* 132(1):10 · Bettencourt et al. (2007) *PNAS* 104(17):7301 ·
+Leitão et al. (2016) *R. Soc. Open Sci.* 3(7):150649 · Arcaute et al. (2015) *J. R.
+Soc. Interface* 12(102):20140745 · Cottineau et al. (2017) *CEUS* 63:80 · Unruh
+(2000) *Energy Policy* 28(12):817 · Boeing (2021) *JAPA* 87(1):123 · Barrington-
+Leigh & Millard-Ball (2019) *PNAS* 116(6):1941 · Walker & Day (2012) *Energy Policy*
+49:69 · Jenkins et al. (2016) *ERSS* 11:174 · Sovacool & Dworkin (2015) *Applied
+Energy* 142:435 · Bouzarovski & Simcock (2017) *Energy Policy* 107:640 · Wacquant
+(2007) *Thesis Eleven* 91(1):66 · Fuerst et al. (2015) *Energy Economics* 48:145 ·
+Brounen & Kok (2011) *JEEM* 62(2):166 · Greenland & Morgenstern (1989) *IJE*
+18(1):269 · Subramanian et al. (2009) *IJE* 38(2):342.
