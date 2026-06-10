@@ -34,8 +34,10 @@ So the argument has **two measured axes** and a **rate**, not three summed surfa
 - **📐 The rate** = access ÷ energy. The headline: compact form delivers more access per kWh.
 
 Each axis must survive the same test: *is the association with form real, or an artefact of
-who lives there and what they already own?* And critically — the two axes have **different
-drivers** (§4), which is what justifies keeping them separate.
+who lives there and what they already own?* The two axes **share a cause** — compact form
+drives both — but are kept separate because they differ in **what technology can fix**: energy
+is partly optimisable (insulate, electrify), access is structurally locked (§4). That
+difference is the lock-in story.
 
 ---
 
@@ -150,21 +152,59 @@ the energy of a detached one (13,675 vs 24,363) **and** reaches everything ~2–
 **Compact form delivers far more access per unit energy.** This is a ratio of two measured
 quantities — descriptive, *no model required*.
 
-**What explains it [solid].** Regressing each axis on neighbourhood structure:
-- **Structure explains ACCESS** — meshedness + compactness explain **R² 0.25–0.36** of how far
-  the GP/hospital/food/school are.
-- **Structure does *not* explain ENERGY** — it explains ~1% of heating, because heating is a
-  property of the **dwelling**, not the street network.
+**What explains it [solid].** Neighbourhood structure — **residential density + dwelling mix** —
+explains a large share of *both* axes:
+- **Access (distances):** directly structural — compact form puts destinations close.
+- **Energy:** density + dwelling mix explain **~46% of total household energy** (R²), via two
+  channels: **dwelling mix → heating** (flat-heavy areas use less; R²≈0.23) and **density →
+  travel** (compact areas drive far less; R²≈0.33–0.58). *(Network *pattern* alone — meshedness
+  — explains little of energy; it is density and dwelling type that matter.)*
 
-So the two axes have **genuinely different drivers** — which is the empirical justification for
-the two-axis split. And it fixes the causal claim to a **modest, defensible** one:
+So energy and access are **not independent — they are causally linked**: the access deficit
+(everything far) is what *forces* the travel energy. **Travel energy is the energy cost of low
+access**; heating is the separate, dwelling-driven component.
 
-> Compactness and meshedness bring destinations *closer*; that proximity — **not** any direct
-> effect on energy use — is what earns the better access-per-energy ratio.
+**Why keep two axes, then?** Not because they have different drivers (they don't) — but because
+they differ in **what technology can fix**:
+- **Energy is partly tech-optimisable** — insulate the homes, electrify the cars.
+- **Access is structurally locked** — no technology moves the GP closer.
+
+This is the **lock-in**, and the rate (access per energy) is what makes it legible: even fully
+decarbonised, sprawl delivers less access per Joule, because the access deficit is structural
+and permanent without rebuilding.
+
+> Corrected causal claim: compact form drives **both** the access *and* the energy — they are the
+> **return** and the **cost** of the same structural cause. The rate matters because the cost can
+> be optimised by technology while the return (access) cannot.
 
 ---
 
-## 5. Claims ladder (at a glance)
+## 5. Lock-in — why the penalty survives decarbonisation
+
+Structure drives both axes (§4), but technology can reach only one of them — the
+carbon/infrastructure **lock-in** (Seto et al. 2016; Unruh 2000): built form fixes energy
+demand for decades regardless of technology.
+
+- **Electrification** cuts energy *per mile* (EV ~0.20 vs ICE ~0.58 kWh/vkm) — **not the miles**.
+- **Insulation** cuts loss *per m²* — **not** the dwelling's **size or exposed surface**.
+
+So uniform technology scales every neighbourhood's energy down by ~the same factor and **leaves
+the structural gradient intact**. The relative sprawl penalty (detached:flat ratio) is
+**~invariant to electrification** — both scale together, so the miles ratio (hence the energy
+ratio) is unchanged. **Clean energy shrinks the absolute numbers; it does not close the gap.**
+
+Heat lock-in is *partly soft* (deep retrofit → near-zero, in principle); **travel/access lock-in
+is hard** — distance is irreducible, so the **Access axis is tech-immune**: the purest lock-in.
+
+The residual penalty under perfect optimisation = locked-in miles × EV intensity (travel) +
+size/surface residual (heat) + the **entire** access deficit (unchanged). This is what the
+trophic framing makes legible: even fully decarbonised, sprawl delivers **less function per
+Joule**, because its access is structurally low — you can clean the energy, but you cannot make
+the desert a rainforest without rebuilding it.
+
+---
+
+## 6. Claims ladder (at a glance)
 
 | # | Claim | Status |
 |---|-------|--------|
@@ -185,8 +225,27 @@ the two-axis split. And it fixes the causal claim to a **modest, defensible** on
 | A1 | Nearest-distance access worsens 2–3× flat→detached | **solid** |
 | **Rate + structure** | | |
 | R1 | Compact form delivers more access per unit energy (descriptive) | **solid** |
-| R2 | Structure (meshedness/compactness) explains access (R²~0.3), not energy (~0.01) | **solid** |
-| R3 | Causal: compactness shortens distances → better ratio; not a direct energy effect | provisional |
+| R2 | Structure (density + dwelling mix) explains ~46% of total energy *and* the access gradient — both axes structural | **solid** |
+| R3 | Energy & access are cost & return of one structural cause; differ in tech-optimisability (the lock-in) | provisional |
+| **Lock-in** | | |
+| L1 | Uniform tech (insulate + electrify) leaves the relative sprawl gradient intact | provisional |
+| L2 | Access is tech-immune — the hard, residual lock-in | provisional |
+
+---
+
+## 7. Open items — next
+
+- **Quantify the lock-in.** Define a "perfectly optimised" scenario (uniform best-fabric floor +
+  full electrification, via the NESO / `bev_share` machinery), recompute the energy axis, and
+  report the residual gradient + the unchanged access deficit. That residual *is* the lock-in
+  penalty. *(memory: `nepi-lock-in-penalty`)*
+- **Rate circularity.** Travel energy is the *cost of low access*, so the rate (access ÷ energy)
+  partly contains the inverse of its own numerator. Consider rating against heat + an
+  idealised/electrified travel cost, so the rate measures the *structural* return cleanly.
+- **Access axis firm-up.** Finalise the nearest-distance access measure and the rate as the
+  headline.
+- **Formal docs.** Reconcile `PAPER.md` results tables + `CLAUDE.md §4` NEPI-models to the
+  two-axis frame (still in the old three-surface numbers).
 
 ---
 
