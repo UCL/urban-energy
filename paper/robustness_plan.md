@@ -16,7 +16,18 @@ Legend — Return: ●●● high / ●● med / ● low · Effort: ◯ low / �
 
 ## Phase 0 — Construction corrections (PREREQUISITE — these move the numbers)
 
-**Step 1 — Reconstruct Form as genuine per-household.** ●●● ◯◯ · in-repo
+**Step 1 — Reconstruct Form as genuine per-household.** ✅ DONE (2026-06-10) · ●●● ◯◯ · in-repo
+- *Result:* fixed at the stats layer (`proof_of_concept_oa.py`; meter-count columns
+  already in the national dataset). Reported as a **normalisation panel** (per-meter
+  / per-household / per-person / per-m²). Flat→Detached building-energy gradient:
+  per-meter **1.46×** → per-household **1.51×** → per-person **1.34×** → per-m²
+  **0.93× (reverses)**. Median dwelling floor area Flat 62 m² vs Detached 104 m².
+  **Finding:** the per-household Form gap is overwhelmingly a *dwelling-size +
+  household-size* effect, not a per-area efficiency effect — per m², detached is
+  marginally better. Per-m² uses EPC median floor area via the new
+  `data/aggregate_epc_floor_area_oa.py` (covers Step 4's floor-area piece). → write
+  to PAPER §3.3 (construction) + §5 (normalisation robustness). Original task below.
+
 - *Do:* in `aggregate_energy_oa.py`, carry postcode **totals** (or mean×num_meters), and compute OA energy = (Σ gas kWh + Σ elec kWh) ÷ Census households (TS017), using a **common household denominator for both fuels**.
 - *Why:* `building_kwh_per_hh` is currently kWh **per meter** (no division by households), summed across two different meter denominators; the meter→household ratio is morphology-correlated.
 - *Then:* re-run the energy aggregation + Stage-3 merge, regenerate the headline. Expect the Form gradient and band cut-points to move.

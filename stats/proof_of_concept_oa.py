@@ -140,6 +140,8 @@ _OA_ENERGY = [
     "oa_elec_mean_kwh",
     "oa_gas_mean_kwh",
     "oa_gas_share",
+    "oa_gas_num_meters",
+    "oa_elec_num_meters",
 ]
 
 # Building physics (LiDAR + OS footprints) — optional robustness check.
@@ -298,6 +300,12 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
     lsoa = gpd.read_file(DATA_PATH, columns=_columns_needed)
     print(f"  Loaded {len(lsoa):,} OAs ({len(lsoa.columns)} columns)")
 
+    # Merge OA median dwelling floor area (EPC) for the per-m² Form normalisation.
+    _floor_path = DATA_DIR / "statistics" / "oa_floor_area.parquet"
+    if _floor_path.exists():
+        _floor = pd.read_parquet(_floor_path)[["OA21CD", "oa_median_floor_area_m2"]]
+        lsoa = lsoa.merge(_floor, on="OA21CD", how="left")
+
     if cities and "city" in lsoa.columns:
         lsoa = lsoa[lsoa["city"].isin(cities)].copy()
         print(f"  Filtered to {cities}: {len(lsoa):,}")
@@ -345,10 +353,37 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
     # THE COST SIDE: energy per household
     # ===================================================================
 
-    # Building energy (metered, postcode-aggregated to OA)
-    lsoa["building_kwh_per_hh"] = pd.to_numeric(
-        lsoa["oa_total_mean_kwh"], errors="coerce"
+    # Building energy: genuine metered energy PER HOUSEHOLD (robustness Step 1).
+    # OA total metered energy = per-meter mean x meter count, summed across fuels,
+    # divided by occupied households (TS017) with a COMMON denominator for both
+    # fuels. Previously this assigned `oa_total_mean_kwh` directly, which was
+    # (a) kWh per METER, not per household, and (b) a sum of gas and electricity
+    # means taken over different meter denominators. The raw per-meter value is
+    # retained as `oa_total_mean_kwh` for reference; the off-gas/communal-gas
+    # under-recording it leaves is surfaced by the `form_*` flags (form_bias.py).
+    _oa_gas_total = pd.to_numeric(
+        lsoa["oa_gas_mean_kwh"], errors="coerce"
+    ) * pd.to_numeric(lsoa["oa_gas_num_meters"], errors="coerce")
+    _oa_elec_total = pd.to_numeric(
+        lsoa["oa_elec_mean_kwh"], errors="coerce"
+    ) * pd.to_numeric(lsoa["oa_elec_num_meters"], errors="coerce")
+    _oa_energy_total = _oa_gas_total.fillna(0) + _oa_elec_total.fillna(0)
+    lsoa["building_kwh_per_hh"] = _oa_energy_total / lsoa["total_hh"].replace(
+        0, np.nan
     )
+    # Per-person normalisation (controls household size — the equity/emissions
+    # view). Reported alongside per-household so the gradient can be shown robust
+    # to the denominator. Per-m² (controls dwelling size) is added below if the
+    # OA floor-area lookup is present.
+    lsoa["building_kwh_per_person"] = _oa_energy_total / lsoa[
+        "total_people"
+    ].replace(0, np.nan)
+    # Per-m² normalisation (controls dwelling size — the thermal-efficiency view),
+    # from EPC median dwelling floor area (Step 4); present only if it merged.
+    if "oa_median_floor_area_m2" in lsoa.columns:
+        lsoa["building_kwh_per_m2"] = lsoa["building_kwh_per_hh"] / pd.to_numeric(
+            lsoa["oa_median_floor_area_m2"], errors="coerce"
+        ).replace(0, np.nan)
 
     # --- Transport energy from Census ts058 + ts061 ---
     # Private vs public commute energy from mode counts (ts061),
