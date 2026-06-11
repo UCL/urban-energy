@@ -211,6 +211,14 @@ inputs only (no mediators):
 | Cars | `cars_per_hh` | density, type mix, local coverage, bus + rail access |
 | Commute | `avg_commute_km` | local coverage, bus + rail access |
 
+**Reframing note.** The Mobility target `transport_kwh_per_hh_total_est` is now the
+**NTS-disaggregated total car-travel energy** (`stats/travel_energy.py`), not the old
+commute×6.04 estimate. More broadly, NEPI is being restructured from the three-surface kWh stack
+(banded A–G) to a **two-axis** model — *energy spent* vs *access gained*, plus a lock-in analysis
+(`stats/lock_in.py`) and a per-service access profile (`stats/access_profile.py`) — now canonical
+in [`paper/argument.md`](paper/argument.md). The `nepi.py` scorecard, the A–G bands and the
+empirical access-penalty model are legacy pending that migration.
+
 Trained models live at `$DATA_DIR/models/nepi/nepi_model_{form,mobility,cars,commute}.json`,
 plus `nepi_band_thresholds.json`, `nepi_archetype_profiles.json`, `nepi_feature_stats.json`.
 SHAP TreeExplainer provides exact attributions in the Streamlit app.

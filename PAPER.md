@@ -1,21 +1,30 @@
-# The Neighbourhood Energy Performance Index: Scoring Urban Form Against Three Surfaces of Energy Demand
+# The Neighbourhood Energy Performance Index: Energy Spent versus Access Gained
+
+> **⚠ Migration in progress.** This paper is being restructured from the original
+> three-surface framing (Form + Mobility + Access penalty, summed in kWh and banded A–G)
+> to the **two-axis** model — *energy spent* versus *access gained* — that is now canonical
+> in [`paper/argument.md`](paper/argument.md). The **abstract below reflects the two-axis
+> frame**; the methods/results sections that follow are **partly superseded** (the old
+> kWh-stack, A–G banding and empirical access-penalty model are retired) and are being
+> rewritten. Where they conflict, `argument.md` is authoritative.
 
 ## Abstract
 
-Decarbonisation policy targets buildings and vehicles as separate technology problems, but
-a household's total energy expenditure is jointly shaped by built form, transport dependence,
-and local access to services. We propose the Neighbourhood Energy Performance Index (NEPI),
-an open-data scorecard that rates each neighbourhood on three surfaces — Form (building
-energy), Mobility (transport energy), and Access (the empirical energy penalty for poor
-walkable service coverage) — all expressed in kWh per household per year. Applying the
-index to 198,779 Output Areas across 6,687 English Built-Up Areas using metered energy
-data, Census 2021, and network-based accessibility analysis, we find that the median
-flat-dominant neighbourhood costs 15,982 kWh/hh/yr (Band A) while the median
-detached-dominant neighbourhood costs 26,897 kWh/hh/yr (Band F) — a gap of 10,915 kWh
-decomposed as Form 45%, Mobility 43%, Access 14%. The access penalty (1,519 kWh/hh/yr for
-detached areas) is the surface that building retrofit and vehicle electrification cannot
-address. The index is constructed entirely from open data sources and can be computed for
-every neighbourhood in England.
+Decarbonisation policy targets buildings and vehicles as separate technology problems, but a
+household's experience of place is shaped by two things at once: the **energy** it spends — to
+heat the home and to travel — and the **access** it gets to everyday services. We propose the
+Neighbourhood Energy Performance Index (NEPI), an open-data measure that rates each
+neighbourhood on **two axes**: total household energy (metered building energy + car-travel
+energy disaggregated from measured National Travel Survey mileage) and everyday access (the
+count of essential services within a local catchment). Across ~174,000 English Output Areas,
+a detached-dominant neighbourhood spends **~1.8× the energy** of a flat-dominant one
+(≈13,700 → 24,500 kWh/hh/yr) and reaches a fraction of the services: **kilowatt for kilowatt,
+compact form delivers ~10× the everyday access of sprawl** (11× GPs, 24× shops, 20× rail; 39%
+of detached areas have no GP within 1,600 m). Crucially, **technology cannot close the gap**:
+under perfect insulation and full electrification, ~40% of the energy penalty survives — the
+irreducible dwelling size and car mileage — and **100% of the access deficit**, because no
+technology moves the GP closer. This is carbon lock-in made measurable. The index is built
+entirely from open data and computable for every neighbourhood in England.
 
 ## 1. Introduction
 
