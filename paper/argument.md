@@ -129,19 +129,44 @@ and one within-class commute elasticity (0.3).
 
 ---
 
-## 3. The Access axis (nearest distance)
+## 3. The Access axis — what your energy buys
 
-**Measure.** Access = **nearest network distance** to each everyday service (GP, hospital,
-school, food, greenspace, transit). Concrete, measured per place — *no model, no penalty
-regression, no reference-coverage assumption*.
+**The headline [solid].** Kilowatt for kilowatt, a **compact neighbourhood delivers ~10× the
+everyday access of a sprawling one** — **11× the GPs, 24× the shops, 20× the rail**, ~5× the
+buses and greenspace (geometric mean **10.0×**). For the *same* energy, you reach an order of
+magnitude more of everyday life.
 
-**Observation [solid].** Distances rise sharply flat→detached: **GP 633 → 1,530 m, hospital
-540 → 1,267, food 269 → 816, school 435 → 790**; bus and greenspace near-universal. A flat
-neighbourhood reaches its GP ~2.4× closer than a detached one.
+**Why it's so large.** Two penalties stack: a detached neighbourhood has **~5× fewer** services
+within reach **and** burns **~1.8× the energy** — so per kWh it buys roughly a *tenth* of the
+access. *Pay more, get less.*
 
-**Claim.** Compact form puts everyday destinations within reach; low-density form pushes them
-2–3× further away. This is the *return* side — what a household gets — kept on its own axis,
-never converted into energy.
+**The intuition.** Two households on the same energy budget. The flat lives in a **five-minute
+world** — GP, school, station, ~50 shops, all within a walk. The detached one spends *more*
+energy to live in a **drive-for-everything world** — often no GP, no station, a handful of shops
+within reach.
+
+**The measure.** Access = the **count of each everyday service within a 1,600 m catchment**
+(local / active-travel range) — concrete, measured, and able to report **zero**, which nearest
+distance cannot. Read three ways:
+
+| within 1,600 m | Flat | Detached | % detached with *zero* | × access/kWh |
+|---|---:|---:|---:|---:|
+| GP | 5 | 1 | **39%** | 11× |
+| Hospital | 10 | 1 | 32% | 9× |
+| Pharmacy | 5 | 1 | 27% | 10× |
+| School | 14 | 3 | 7% | 8× |
+| Food | 54 | 4 | 11% | 24× |
+| Greenspace | 25 | 9 | 1% | 6× |
+| Bus | 79 | 28 | 8% | 5× |
+| Rail | 3 | 0 | **73%** | 20× |
+| **Overall** | | | | **10×** |
+
+(Full table: `stats/access_profile.py`.)
+
+**Claim.** Access is the **return** — what a household gets for living there — kept on its own
+axis, never converted into energy. Compact form delivers far more of it per unit energy, service
+by service; sprawl households, despite spending *more* energy, often have **nothing** within a
+walk.
 
 ---
 
@@ -231,7 +256,8 @@ can clean the energy, but you cannot make the desert a rainforest without rebuil
 | T4 | Car travel ≈ 2.8× flat→detached; 24–37% of household energy | **solid** |
 | E1 | Combined energy (heat+travel) ≈ 1.78× flat→detached | **solid** |
 | **Access** | | |
-| A1 | Nearest-distance access worsens 2–3× flat→detached | **solid** |
+| A1 | Compact form delivers ~10× the everyday access per kWh (5× buses → 24× shops) | **solid** |
+| A2 | Counts within 1,600 m: 39% of detached have no GP within reach, 73% no rail | **solid** |
 | **Rate + structure** | | |
 | R1 | Compact form delivers more access per unit energy (descriptive) | **solid** |
 | R2 | Structure (density + dwelling mix) explains ~46% of total energy *and* the access gradient — both axes structural | **solid** |
