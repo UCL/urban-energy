@@ -161,6 +161,9 @@ def build_stages(p: Paths) -> list[Stage]:
               ("stats/access_penalty_model.py",)),
         Stage("models", "analyse", (models / "nepi_model_form.json",),
               ("stats/nepi_model.py",), note="4 monotonic XGBoost models + SHAP"),
+        Stage("lock_in", "analyse", (stats / "oa_epc_potential.parquet",),
+              ("stats/lock_in.py",),
+              note="lock-in penalty: energy gap surviving best-fabric + full EV"),
         # --- atlas ---
         Stage("static_tool", "atlas", (nepi_static / "nepi_models.json",),
               ("stats/export_static_tool.py",), note="XGBoost trees → in-browser JSON"),

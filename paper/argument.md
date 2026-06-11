@@ -188,29 +188,28 @@ demand for decades regardless of technology.
 - **Electrification** cuts energy *per mile* (EV ~0.20 vs ICE ~0.58 kWh/vkm) — **not the miles**.
 - **Insulation** cuts loss *per m²* — **not** the dwelling's **size or exposed surface**.
 
-**Quantified [provisional]** (`stats/lock_in.py`: best-practice fabric via EPC potential + full
-electrification):
+**Quantified [solid]** (`stats/lock_in.py`: best-practice fabric — EPC-potential intensity ×
+floor area — + full electrification):
 
 | Flat→Detached | Flat | Detached | gap |
 |---|---:|---:|---:|
-| Energy now | 13,675 | 24,363 | **1.78×** |
-| Energy optimised | 8,844 | 10,939 | **1.24×** |
+| Energy now | 13,435 | 24,536 | **1.83×** |
+| Energy optimised | 9,690 | 14,115 | **1.46×** |
 
-Perfect optimisation closes ~80% of the energy **gap**, but a residual **~1.24×** survives — and
-it is almost entirely **locked-in travel**: electrification scales travel uniformly, so the
-**2.8× mileage ratio is preserved exactly** (detached drives 2.8× the miles, electric or not).
+Perfect optimisation closes ~60% of the energy **gap**, but a residual **~1.46×** survives, and it
+splits across **both** halves — **heat/size ~2,375 kWh and travel/miles ~2,050 kWh**:
 
-- **Heat lock-in is soft** — best-practice retrofit largely closes the heat gap (leakier houses
-  have more headroom).
-- **Travel lock-in is hard** — distance is irreducible; you change kWh-per-mile, never the miles.
+- **Heat lock-in is hard** — at best fabric, detached still uses **1.28×** a flat's heat, driven
+  by **size** (≈103 vs 62 m²). Insulation fixes per-m² efficiency, not floor area.
+- **Travel lock-in is hard** — electrification preserves the **2.8× mileage ratio exactly**
+  (detached drives 2.8× the miles, electric or not).
 - **Access lock-in is total** — the Access axis is tech-immune: no technology moves the GP closer.
 
-So the residual penalty = locked-in miles × EV intensity (travel) + the **entire** access deficit.
-This is what the trophic framing makes legible: even fully decarbonised, sprawl delivers **less
-function per Joule**, because its access is structurally low — you can clean the energy, but you
-cannot make the desert a rainforest without rebuilding it. *(The ~20% is a **lower bound**: the
-EPC-ratio heat counterfactual likely over-credits house retrofit, so a fabric-floor × floor-area
-version would leave more residual heat — enlarging the lock-in, not shrinking it.)*
+The pattern is general: **technology optimises per-*unit* efficiency (per-m², per-mile) but not
+the structural *quantities* (floor area, miles, distance).** So the residual penalty = bigger
+homes (heat) + longer trips (travel) + the **entire** access deficit. This is what the trophic
+framing makes legible: even fully decarbonised, sprawl delivers **less function per Joule** — you
+can clean the energy, but you cannot make the desert a rainforest without rebuilding it.
 
 ---
 
@@ -238,18 +237,17 @@ version would leave more residual heat — enlarging the lock-in, not shrinking 
 | R2 | Structure (density + dwelling mix) explains ~46% of total energy *and* the access gradient — both axes structural | **solid** |
 | R3 | Energy & access are cost & return of one structural cause; differ in tech-optimisability (the lock-in) | provisional |
 | **Lock-in** | | |
-| L1 | Perfect optimisation closes ~80% of the energy gap; the residual ~1.24× is locked-in travel (2.8× mileage ratio invariant) | provisional |
-| L2 | Access is tech-immune — the hard, residual lock-in | provisional |
+| L1 | Perfect optimisation leaves ~40% of the energy gap (residual ~1.46×), split heat/size (1.28×) + travel/miles (2.8×) | **solid** |
+| L2 | Tech optimises per-unit efficiency, not structural quantities (size, miles); access is 100% tech-immune | **solid** |
 
 ---
 
 ## 7. Open items — next
 
-- **Lock-in — refine the heat counterfactual.** First cut built (`stats/lock_in.py`): optimised
-  gradient 1.78×→1.24×, residual is locked-in travel, access untouched. The EPC potential/current
-  heat floor over-credits house retrofit (so the ~20% residual is a *lower bound*); redo with a
-  best-practice kWh/m² × floor-area floor that preserves the surface-to-volume residual.
-  *(memory: `nepi-lock-in-penalty`)*
+- **Lock-in — done** (`stats/lock_in.py`, best-fabric × size + full EV): optimised gradient
+  1.83×→**1.46×**, ~40% of the penalty survives, split heat/size (1.28×) + travel/miles (2.8×),
+  access 100% locked. *(Minor caveat: optimised heat is EPC-modelled potential × area while
+  current is metered — a basis mix that doesn't change the conclusion.)*
 - **Rate circularity.** Travel energy is the *cost of low access*, so the rate (access ÷ energy)
   partly contains the inverse of its own numerator. Consider rating against heat + an
   idealised/electrified travel cost, so the rate measures the *structural* return cleanly.
