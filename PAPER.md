@@ -1,12 +1,13 @@
 # The Neighbourhood Energy Performance Index: Energy Spent versus Access Gained
 
-> **⚠ Migration in progress.** This paper is being restructured from the original
-> three-surface framing (Form + Mobility + Access penalty, summed in kWh and banded A–G)
-> to the **two-axis** model — *energy spent* versus *access gained* — that is now canonical
-> in [`paper/argument.md`](paper/argument.md). The **abstract below reflects the two-axis
-> frame**; the methods/results sections that follow are **partly superseded** (the old
-> kWh-stack, A–G banding and empirical access-penalty model are retired) and are being
-> rewritten. Where they conflict, `argument.md` is authoritative.
+> **⏸ DEFERRED — parked, not maintained now.** This paper is set aside for a later phase. The
+> current focus is the canonical argument ([`paper/argument.md`](paper/argument.md)) and the
+> processing pipeline. Only the **abstract** has been updated to the **two-axis** model
+> (*energy spent* vs *access gained*); the methods/results body below still uses the original
+> *three-surface* framing (Form + Mobility + Access penalty, summed in kWh and banded A–G),
+> which is **superseded** (the kWh-stack, A–G banding and empirical access-penalty model are
+> retired). The full rewrite to two axes happens **next**. Until then, wherever anything
+> conflicts, **`argument.md` is authoritative.**
 
 ## Abstract
 
@@ -18,7 +19,7 @@ neighbourhood on **two axes**: total household energy (metered building energy +
 energy disaggregated from measured National Travel Survey mileage) and everyday access (the
 count of essential services within a local catchment). Across ~174,000 English Output Areas,
 a detached-dominant neighbourhood spends **~1.8× the energy** of a flat-dominant one
-(≈13,700 → 24,500 kWh/hh/yr) and reaches a fraction of the services: **kilowatt for kilowatt,
+(≈13,700 → 24,400 kWh/hh/yr) and reaches a fraction of the services: **kilowatt for kilowatt,
 compact form delivers ~10× the everyday access of sprawl** (11× GPs, 24× shops, 20× rail; 39%
 of detached areas have no GP within 1,600 m). Crucially, **technology cannot close the gap**:
 under perfect insulation and full electrification, ~40% of the energy penalty survives — the
@@ -557,16 +558,12 @@ pattern, not a multiplicative causal chain.
 
 ### 4.5 Deprivation stratification
 
-![Figure 8: Deprivation gradient](stats/figures/basket_oa/fig_basket_oa_deprivation_gradient.png)
-
 The morphology gradient in NEPI scores is present within each deprivation quintile (Census
 TS011). This is consistent with a morphological interpretation but does not rule out
 confounding: TS011 is a coarse composite that does not capture income, tenure, or
 preferences directly.
 
 ### 4.6 Distribution-wide pattern
-
-![Figure 9: Energy vs coverage scatter](stats/figures/basket_oa/fig_basket_oa_scatter_energy_vs_basket.png)
 
 The morphology-energy-access pattern holds across the full distribution of 198,779 OAs,
 not only at type-group medians.

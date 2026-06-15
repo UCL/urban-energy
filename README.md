@@ -5,7 +5,14 @@ access) shapes household energy consumption in England, packaged as the **Neighb
 Energy Performance Index (NEPI)** — a place-level rating analogous to a building EPC,
 computed from open data.
 
-**Live tool:** <https://UCL.github.io/urban-energy/>
+**Live tool:** <https://UCL.github.io/urban-energy/> *(currently the legacy A–G Atlas; the
+two-axis migration is deferred — see below).*
+
+> **⏸ Current focus.** The live work is the **[argument](paper/argument.md)** (the canonical
+> two-axis statement) and the **processing pipeline** — making both watertight. **The paper
+> ([PAPER.md](PAPER.md)) and the Atlas are explicitly DEFERRED** to a later phase; they still
+> carry the older *three-surface / A–G* framing. The theory + headline below are the current
+> two-axis frame; the deferred artefacts will be migrated next.
 
 ---
 
@@ -33,56 +40,68 @@ Three established empirical regularities converge:
    systematically over-predict consumption, so we use DESNZ postcode-level metered data
    to sidestep the performance gap.
 
-Three dimensions, three policy silos, no integrated metric — until the **NEPI**. We rate
-each Output Area on three surfaces, all in **kWh/household/year** so the composite needs
-no arbitrary weighting:
+NEPI puts this on **two measured axes** and a **rate** (the canonical statement is
+[paper/argument.md](paper/argument.md)):
 
-- **Form** — DESNZ metered building energy
-- **Mobility** — Census commute × ECUK energy intensities
-- **Access** — empirical OLS estimate of the *additional* transport energy attributable
-  to poor walkable service coverage, relative to a compact reference (85% coverage)
+- **⚡ Energy** (kWh/household/year) — what a household *spends*: metered **heat** (DESNZ
+  gas + electricity) + **car travel** (anchored to measured NTS mileage by rural-urban class).
+- **🌳 Access** — what the place *gives back*: the **count of everyday services within a
+  walkable (1,600 m) catchment** — and, unlike nearest distance, it can report **zero**.
+- **📐 The rate** = access ÷ energy. *The measure of a place is not how much energy it
+  consumes, but how much access that energy buys.*
 
-The composite is banded **A–G** by national percentile, directly analogous to a building
-EPC. Where an EPC rates the dwelling envelope, the NEPI rates the place.
-
-The analysis is descriptive and ecological (Robinson, 1950; Greenland, 2001): morphology
-is genuinely an area-level property, so the ecological design is the correct level of
-analysis, not a limitation. **The empirical result: building retrofit and fleet
-electrification can compress the Form and Mobility gaps on technology-replacement
-timescales, but the Access gap is set by street layout and turns over on generational
-timescales — and that is the surface no current policy addresses.**
+The analysis is descriptive and ecological (Robinson, 1950; Greenland, 2001): morphology is
+genuinely an area-level property, so the ecological design is the correct level of analysis,
+not a limitation. **The empirical result: insulation and fleet electrification can compress
+the energy gap on technology-replacement timescales, but the access deficit is set by street
+layout and turns over on generational timescales — even fully decarbonised, sprawl delivers
+less access per Joule.** This is the carbon/infrastructure lock-in (Seto et al. 2016; Unruh 2000).
 
 ---
 
-## Headline result (6,687 BUAs / 198,779 OAs)
+## Headline result (~174k OAs with complete energy + form data)
 
-| | Flat-dominant OA | Detached-dominant OA | Gap |
-|---|---:|---:|---:|
-| **Form** (building energy) | 10,755 kWh/hh | 15,713 kWh/hh | 1.46× |
-| **Mobility** (transport, overall) | 4,150 kWh/hh | 9,185 kWh/hh | 2.21× |
-| **Access penalty** (empirical OLS) | 0 | 1,519 kWh/hh | — |
-| **Total NEPI** | **15,982 (Band A)** | **26,897 (Band F)** | **+10,915** |
-| kWh per unit access | 3,292 | 8,820 | 2.68× |
+**Energy** — a detached neighbourhood spends **1.78× a flat's household energy**:
 
-Decomposition of the 10,915 kWh/hh/yr gap: **Form 45% / Mobility 43% / Access 14%**.
+| kWh/household/year | Flat | Detached | gap |
+| --- | ---: | ---: | ---: |
+| Heat (metered) | 10,196 | 15,462 | 1.5× |
+| Car travel (NTS-anchored) | 3,239 | 9,073 | 2.8× |
+| **Total energy** | **13,675** | **24,363** | **1.78×** |
 
-**Robustness:** the gradient *steepens* at stricter plurality thresholds (1.84× at 60%
-purity), and the pre-pandemic Census 2011 transport gradient is **steeper** than the
-COVID-affected 2021 figure (2.00× vs 1.70×). Full robustness section in
-[PAPER.md §5](PAPER.md).
+**Access** — for the *same* energy, compact form buys **~10× more everyday access**
+(geometric mean over eight services): 11× the GPs, 24× the shops, 20× the rail. **39% of
+detached neighbourhoods have no GP within 1,600 m; 73% have no railway station.** *Pay more,
+get less.*
+
+**Lock-in** — perfect optimisation (best-practice insulation + full electrification) closes
+only ~60% of the energy gap: a residual **1.44×** survives (bigger homes + longer trips), and
+the access deficit is **100% tech-immune**. Built form fixes demand for generations.
+
+(Numbers and confidence tags: [paper/argument.md](paper/argument.md); reproduce with
+`stats/lock_in.py` + `stats/access_profile.py`.)
 
 ---
 
-## Three deliverables
+## Deliverables
 
-1. **The paper** — full IMRaD case in [PAPER.md](PAPER.md), with §5 robustness section
-   already drafted. Targets a peer-reviewed journal.
-2. **The NEPI Atlas** — a public, place-level A–G energy-rating dashboard, live on
-   GitHub Pages: <https://UCL.github.io/urban-energy/> (source in [stats/atlas/](stats/atlas/),
-   exported to [stats/nepi_static/](stats/nepi_static/) and mirrored to [docs/](docs/)).
-3. **The NEPI planning tool** — four monotonically-constrained XGBoost models (form /
-   mobility / cars / commute), embedded in the Atlas as in-browser HTML/JS and also
-   available as a Streamlit app ([stats/nepi_app.py](stats/nepi_app.py)) with SHAP waterfalls.
+### Current focus
+
+1. **The argument** — the canonical two-axis statement in
+   [paper/argument.md](paper/argument.md): hypothesis, claims ladder, and every headline
+   number with its confidence tag. This is the single source of truth.
+2. **The processing pipeline** — the national OA pipeline + the two-axis analysis layer
+   (`stats/travel_energy.py`, `stats/access_profile.py`, `stats/lock_in.py`), reproducible
+   end-to-end via the orchestrator.
+
+### ⏸ Deferred (next phase — old three-surface / A–G framing, not maintained now)
+
+1. **The paper** — full IMRaD case in [PAPER.md](PAPER.md); to be rewritten to the two-axis
+   frame once the argument + pipeline are locked.
+2. **The NEPI Atlas + planning tool** — the public A–G dashboard (live on GitHub Pages) and
+   the four XGBoost planning models ([stats/nepi_app.py](stats/nepi_app.py); static tool in
+   [stats/nepi_static/](stats/nepi_static/) mirrored to [docs/](docs/)). Migration to the
+   two-axis model is a separate phase.
 
 ---
 
@@ -90,16 +109,17 @@ COVID-affected 2021 figure (2.00× vs 1.70×). Full robustness section in
 
 | Path | Purpose |
 | ---- | ------- |
-| [PAPER.md](PAPER.md) | **The paper** — full IMRaD case (canonical) |
+| [paper/argument.md](paper/argument.md) | **The argument** — canonical two-axis statement (single source of truth) |
+| [PAPER.md](PAPER.md) | The formal IMRaD paper — **⏸ deferred** (old three-surface framing) |
 | [CLAUDE.md](CLAUDE.md) | **Technical brief** — codebase layout, data, architecture, conventions |
 | [REPRODUCTION.md](REPRODUCTION.md) | **How to rebuild** — orchestrator-driven recipe, manual downloads |
 | [ROADMAP.md](ROADMAP.md) | **Status, scope & open work** — incl. the methodology decisions |
 | [paper/literature_review.md](paper/literature_review.md) | Thematic literature review |
 | [paper/references.bib](paper/references.bib) | BibTeX bibliography (partial) |
 | [data/](data/) | Raw-data acquisition and preprocessing scripts |
-| [processing/](processing/) | National OA pipeline (`pipeline_oa.py` — CityNetwork API, all 7,147 BUAs) |
-| [stats/](stats/) | Case figures, NEPI scorecard, access penalty model, planning tool |
-| [docs/](docs/) | GitHub Pages mirror of [stats/nepi_static/](stats/nepi_static/) |
+| [processing/](processing/) | National OA pipeline (`pipeline_oa.py` — CityNetwork API) |
+| [stats/](stats/) | Two-axis analysis (travel energy, access profile, lock-in) + legacy A–G tools |
+| [docs/](docs/) | GitHub Pages mirror of [stats/nepi_static/](stats/nepi_static/) (deferred Atlas) |
 
 The `data/`, `processing/`, and `stats/` directories contain code only — see
 [CLAUDE.md](CLAUDE.md) for the full inventory of scripts and outputs.
@@ -113,19 +133,17 @@ The `data/`, `processing/`, and `stats/` directories contain code only — see
 uv sync
 echo "URBAN_ENERGY_DATA_DIR=$(pwd)/temp" > .env
 
-# Regenerate all OA case figures + tables
-uv run python stats/build_case_oa.py
+# Two-axis analysis (current) — energy gradient, lock-in, access profile
+uv run python stats/lock_in.py          # energy now 1.78× → optimised 1.44×
+uv run python stats/access_profile.py   # ~10× access per kWh, counts within 1,600 m
 
-# NEPI scorecard, bands, surface decomposition
-uv run python stats/nepi.py
-uv run python stats/access_penalty_model.py
-
-# Interactive planning tool
-uv run streamlit run stats/nepi_app.py
+# Legacy three-surface / A–G tools (DEFERRED — old framing)
+# uv run python stats/nepi.py
+# uv run streamlit run stats/nepi_app.py
 ```
 
-Full reproduction recipe (raw downloads → national pipeline → trained models → Atlas)
-is in [REPRODUCTION.md](REPRODUCTION.md), driven by the orchestrator
+Full reproduction recipe (raw downloads → national pipeline → analysis) is in
+[REPRODUCTION.md](REPRODUCTION.md), driven by the orchestrator
 (`uv run python -m urban_energy.pipeline doctor`).
 
 ---

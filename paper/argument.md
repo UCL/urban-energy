@@ -6,7 +6,7 @@ or supports it:
 | Doc | Role |
 |-----|------|
 | **`paper/argument.md`** (this file) | The argument: hypothesis + claims + reasoning, distilled |
-| [`PAPER.md`](../PAPER.md) | The formal IMRaD expansion |
+| [`PAPER.md`](../PAPER.md) | The formal IMRaD expansion — **⏸ DEFERRED** (old three-surface framing; next phase) |
 | [`paper/methodology_review.md`](methodology_review.md) | Adversarial audit — where it's weak |
 | [`paper/robustness_plan.md`](robustness_plan.md) | The worklist of fixes |
 | [`README.md`](../README.md) | Public pitch + status |
@@ -14,6 +14,15 @@ or supports it:
 Confidence tags: **[solid]** (verified, multiple methods agree), **[provisional]** (one
 method), **[open]** (identified, not yet done). Numbers are current national-OA estimates
 (~174k OAs, all from open measured data).
+
+> ## ⏸ Scope — current focus (read this first)
+>
+> The live work is **this argument** and the **processing pipeline** — making both watertight.
+> The **paper (`PAPER.md`) and the Atlas** (the static planning tool + `docs/`, the four NEPI
+> XGBoost models, the A–G banding, `stats/nepi.py` / `nepi_model.py` /
+> `access_penalty_model.py`) are **explicitly DEFERRED to a later phase.** They still carry the
+> old *three-surface / A–G* framing and are **not being maintained right now.** Wherever
+> anything conflicts, **this document is authoritative.**
 
 ---
 
@@ -29,8 +38,8 @@ So the argument has **two measured axes** and a **rate**, not three summed surfa
 
 - **⚡ Energy** (kWh/household/year) = **heat** (metered) + **car travel** (anchored to
   measured NTS mileage). What the household spends.
-- **🌳 Access** = **nearest distance** to everyday services (measured from the street
-  network). What the place gives back.
+- **🌳 Access** = the **count of everyday services within a walkable catchment** (measured from
+  the street network; can report **zero**). What the place gives back.
 - **📐 The rate** = access ÷ energy. The headline: compact form delivers more access per kWh.
 
 Each axis must survive the same test: *is the association with form real, or an artefact of
@@ -172,14 +181,14 @@ walk.
 
 ## 4. The rate, and what explains it
 
-**The rate [solid].** Energy and access, side by side: a flat neighbourhood spends **0.55×**
-the energy of a detached one (13,675 vs 24,363) **and** reaches everything ~2–3× closer.
-**Compact form delivers far more access per unit energy.** This is a ratio of two measured
-quantities — descriptive, *no model required*.
+**The rate [solid].** Energy and access, side by side: a flat neighbourhood spends **0.56×**
+the energy of a detached one (13,675 vs 24,363) **and** reaches **~10× the everyday services
+per kWh** (§3). **Compact form delivers far more access per unit energy.** This is a ratio of
+two measured quantities — descriptive, *no model required*.
 
 **What explains it [solid].** Neighbourhood structure — **residential density + dwelling mix** —
 explains a large share of *both* axes:
-- **Access (distances):** directly structural — compact form puts destinations close.
+- **Access (catchment counts):** directly structural — compact form puts destinations close.
 - **Energy:** density + dwelling mix explain **~46% of total household energy** (R²), via two
   channels: **dwelling mix → heating** (flat-heavy areas use less; R²≈0.23) and **density →
   travel** (compact areas drive far less; R²≈0.33–0.58). *(Network *pattern* alone — meshedness
@@ -218,10 +227,10 @@ floor area — + full electrification):
 
 | Flat→Detached | Flat | Detached | gap |
 |---|---:|---:|---:|
-| Energy now | 13,435 | 24,536 | **1.83×** |
-| Energy optimised | 9,690 | 14,115 | **1.46×** |
+| Energy now | 13,675 | 24,363 | **1.78×** |
+| Energy optimised | 9,788 | 14,136 | **1.44×** |
 
-Perfect optimisation closes ~60% of the energy **gap**, but a residual **~1.46×** survives, and it
+Perfect optimisation closes ~60% of the energy **gap**, but a residual **~1.44×** survives, and it
 splits across **both** halves — **heat/size ~2,375 kWh and travel/miles ~2,050 kWh**:
 
 - **Heat lock-in is hard** — at best fabric, detached still uses **1.28×** a flat's heat, driven
@@ -263,24 +272,36 @@ can clean the energy, but you cannot make the desert a rainforest without rebuil
 | R2 | Structure (density + dwelling mix) explains ~46% of total energy *and* the access gradient — both axes structural | **solid** |
 | R3 | Energy & access are cost & return of one structural cause; differ in tech-optimisability (the lock-in) | provisional |
 | **Lock-in** | | |
-| L1 | Perfect optimisation leaves ~40% of the energy gap (residual ~1.46×), split heat/size (1.28×) + travel/miles (2.8×) | **solid** |
+| L1 | Perfect optimisation leaves ~40% of the energy gap (residual ~1.44×), split heat/size (1.28×) + travel/miles (2.8×) | **solid** |
 | L2 | Tech optimises per-unit efficiency, not structural quantities (size, miles); access is 100% tech-immune | **solid** |
 
 ---
 
 ## 7. Open items — next
 
-- **Lock-in — done** (`stats/lock_in.py`, best-fabric × size + full EV): optimised gradient
-  1.83×→**1.46×**, ~40% of the penalty survives, split heat/size (1.28×) + travel/miles (2.8×),
-  access 100% locked. *(Minor caveat: optimised heat is EPC-modelled potential × area while
-  current is metered — a basis mix that doesn't change the conclusion.)*
-- **Rate circularity.** Travel energy is the *cost of low access*, so the rate (access ÷ energy)
-  partly contains the inverse of its own numerator. Consider rating against heat + an
-  idealised/electrified travel cost, so the rate measures the *structural* return cleanly.
-- **Access axis firm-up.** Finalise the nearest-distance access measure and the rate as the
-  headline.
-- **Formal docs.** Reconcile `PAPER.md` results tables + `CLAUDE.md §4` NEPI-models to the
-  two-axis frame (still in the old three-surface numbers).
+**Done.**
+
+- **Lock-in** (`stats/lock_in.py`, best-fabric × size + full EV): current gradient 1.78× →
+  optimised **1.44×**, ~40% of the penalty survives, split heat/size (1.28×) + travel/miles
+  (2.8×), access 100% locked. *(Minor caveat: optimised heat is EPC-modelled potential × area
+  while current is metered — a basis mix that doesn't change the conclusion.)*
+- **Access axis** (`stats/access_profile.py`): finalised as **counts within a 1,600 m
+  catchment** (able to report zero), with the per-kWh rate (~10×) as the headline.
+
+**Open.**
+
+- **Rate circularity.** Travel energy is partly the *cost of low access*, so the rate
+  (access ÷ energy) contains the inverse of its own numerator. Consider rating against heat +
+  an idealised/electrified travel cost, so the rate measures the *structural* return cleanly.
+
+**Deferred — next phase (NOT maintained now; see scope banner at top).**
+
+- **The paper (`PAPER.md`).** The IMRaD body still carries the old three-surface / A–G
+  numbers; to be rewritten to the two-axis frame after the argument + pipeline are locked.
+- **The Atlas / legacy three-surface code.** `stats/nepi.py` (A–G scorecard + bands),
+  `stats/nepi_model.py` (four XGBoost models), `stats/access_penalty_model.py`, and the static
+  tool (`stats/nepi_static/` + `docs/`) still implement the old framing. Migration to the
+  two-axis model is a separate phase.
 
 ---
 
@@ -290,5 +311,6 @@ Earlier drafts summed three kWh "surfaces" (Form + Mobility + Access penalty) an
 total A–G. That cost-stack was abandoned because (a) it inverted the trophic philosophy
 (measuring total consumption, not function-per-energy), and (b) the Access penalty was a
 regression slice of the same transport variable as Mobility, double-counting it. The two-axis
-frame above replaces it: Access is the *return*, measured as distance, never summed into the
-energy cost. The old A–G banding and the empirical access-penalty model are retired.
+frame above replaces it: Access is the *return*, measured as counts within a catchment, never
+summed into the energy cost. The old A–G banding and the empirical access-penalty model are
+retired.

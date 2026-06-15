@@ -1,14 +1,29 @@
 # Roadmap
 
 Single source of truth for status, open work, and methodology decisions.
-Updated 2026-06-09 (lean-pipeline cleanup).
+Updated 2026-06-15 (two-axis reframe; paper + Atlas deferred).
+
+> **⏸ Current focus.** The live work is the **[argument](paper/argument.md)** (canonical
+> two-axis statement) and the **processing pipeline** — making both watertight. **The paper
+> ([PAPER.md](PAPER.md)) and the Atlas / A–G planning tool are DEFERRED** to a later phase;
+> they still carry the old *three-surface / A–G* framing. Sections below describing the A–G
+> scorecard, bands, surface decomposition and the empirical access-penalty model refer to that
+> **deferred** legacy layer.
 
 ## Deliverables & priority
 
-1. **The paper** — IMRaD case in [PAPER.md](PAPER.md). Primary scholarly output.
-2. **The NEPI Atlas** — public, live on GitHub Pages. Primary impact artifact.
-3. **The NEPI planning tool** — four XGBoost models, embedded in the Atlas
-   (static HTML/JS) and available as a Streamlit app.
+### Current focus
+
+1. **The argument** — canonical two-axis statement in
+   [paper/argument.md](paper/argument.md). Single source of truth.
+2. **The processing pipeline** + two-axis analysis layer (`stats/travel_energy.py`,
+   `stats/access_profile.py`, `stats/lock_in.py`).
+
+### ⏸ Deferred (next phase — old three-surface / A–G framing)
+
+1. **The paper** — IMRaD case in [PAPER.md](PAPER.md); rewrite to two axes.
+2. **The NEPI Atlas + planning tool** — public A–G dashboard + four XGBoost models;
+   migrate off the three-surface framing.
 
 ## Scope decisions (2026-06-09 consumption audit)
 

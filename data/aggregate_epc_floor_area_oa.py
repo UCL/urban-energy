@@ -1,11 +1,12 @@
 """
 Aggregate EPC dwelling floor area to Output Area (robustness Step 4).
 
-Produces a per-OA median dwelling floor area, used for the per-m² Form
-normalisation (energy per unit floor area isolates thermal efficiency from
-dwelling size). EPC certificates are mapped to OAs via the postcode→OA lookup
-(a postcode lies within a single OA, so this is fast and sufficient for an OA
-median, avoiding a national UPRN spatial join).
+Produces a per-OA median dwelling floor area. In the two-axis frame this feeds the
+heat-vs-size decomposition (``stats/form_size_decomposition.py``) and the lock-in
+counterfactual (``stats/lock_in.py``: best-fabric intensity × floor area). EPC
+certificates are mapped to OAs via the postcode→OA lookup (a postcode lies within a
+single OA, so this is fast and sufficient for an OA median, avoiding a national UPRN
+spatial join).
 
 Inputs:
     - $DATA_DIR/epc/epc_domestic_spatial.parquet  (POSTCODE, TOTAL_FLOOR_AREA)

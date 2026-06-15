@@ -137,6 +137,10 @@ def build_stages(p: Paths) -> list[Stage]:
         Stage("energy_oa", "acquire", (stats / "oa_energy_consumption.parquet",),
               ("data/aggregate_energy_oa.py",),
               note="primary Form DV; needs energy_postcode + postcode_oa_lookup"),
+        Stage("floor_area_oa", "acquire", (stats / "oa_floor_area.parquet",),
+              ("data/aggregate_epc_floor_area_oa.py",),
+              note="EPC floor area → OA; energy-axis size decomposition + lock_in; "
+                   "needs epc + postcode_oa_lookup"),
         # --- process ---
         Stage("lidar", "process", (p.data / "lidar" / "building_heights.gpkg",),
               ("data/process_lidar.py",), optional=True,
@@ -149,30 +153,37 @@ def build_stages(p: Paths) -> list[Stage]:
               (p.processing / "combined" / "oa_integrated.gpkg",),
               ("processing/pipeline_oa.py",),
               note="national CityNetwork pipeline ~30-50h; resumable per-BUA"),
-        # --- analyse ---
-        Stage("case_figures", "analyse",
-              (p.project / "stats" / "figures" / "oa" / "table1_three_surfaces.csv",),
-              ("stats/build_case_oa.py",)),
-        Stage("nepi", "analyse",
-              (p.project / "stats" / "figures" / "nepi" / "nepi_scores.csv",),
-              ("stats/nepi.py",)),
-        Stage("access_penalty", "analyse",
-              (p.project / "stats" / "figures" / "nepi" / "fig_empirical_penalty.png",),
-              ("stats/access_penalty_model.py",)),
-        Stage("models", "analyse", (models / "nepi_model_form.json",),
-              ("stats/nepi_model.py",), note="4 monotonic XGBoost models + SHAP"),
+        # --- analyse: two-axis (current) ---
         Stage("lock_in", "analyse", (stats / "oa_epc_potential.parquet",),
               ("stats/lock_in.py",),
-              note="lock-in penalty: energy gap surviving best-fabric + full EV"),
-        # --- atlas ---
+              note="two-axis: energy gap after best-fabric + full EV "
+                   "(1.78x->1.44x)"),
+        # --- analyse: legacy three-surface / A-G (DEFERRED, not maintained) ---
+        Stage("case_figures", "analyse",
+              (p.project / "stats" / "figures" / "oa" / "table1_three_surfaces.csv",),
+              ("stats/build_case_oa.py",),
+              note="DEFERRED legacy: three-surface figures"),
+        Stage("nepi", "analyse",
+              (p.project / "stats" / "figures" / "nepi" / "nepi_scores.csv",),
+              ("stats/nepi.py",), note="DEFERRED legacy: A-G scorecard + bands"),
+        Stage("access_penalty", "analyse",
+              (p.project / "stats" / "figures" / "nepi" / "fig_empirical_penalty.png",),
+              ("stats/access_penalty_model.py",),
+              note="DEFERRED legacy: empirical access-penalty OLS"),
+        Stage("models", "analyse", (models / "nepi_model_form.json",),
+              ("stats/nepi_model.py",),
+              note="DEFERRED legacy: 4 monotonic XGBoost models + SHAP"),
+        # --- atlas (DEFERRED legacy) ---
         Stage("static_tool", "atlas", (nepi_static / "nepi_models.json",),
-              ("stats/export_static_tool.py",), note="XGBoost trees → in-browser JSON"),
+              ("stats/export_static_tool.py",),
+              note="DEFERRED legacy: XGBoost trees → in-browser JSON"),
         Stage("atlas", "atlas", (nepi_static / "summary.json",),
               ("stats/export_atlas_data.py", "england"),
-              note="needs tippecanoe + pmtiles on PATH"),
-        # --- deploy ---
+              note="DEFERRED legacy: needs tippecanoe + pmtiles on PATH"),
+        # --- deploy (DEFERRED legacy) ---
         Stage("mirror_docs", "deploy", (p.project / "docs" / "summary.json",),
-              func=mirror_docs, note="copy nepi_static/ → docs/ (R2 stays manual)"),
+              func=mirror_docs,
+              note="DEFERRED legacy: copy nepi_static/ → docs/ (R2 stays manual)"),
     ]
 
 

@@ -33,20 +33,22 @@ urban-energy/
 │   ├── common.py              # Shared pipeline plumbing (PATHS, Stage 1, morphology constants)
 │   ├── process_morphology.py  # Building shape metrics from LiDAR + OS footprints (deferred path)
 │   └── archive/               # Frozen LSOA pipeline + one-offs (not imported — see archive/README.md)
-├── stats/                     # Analysis, NEPI scorecard, planning tool
-│   ├── proof_of_concept_oa.py # Core OA data loading + aggregation functions
-│   ├── oa_figures.py          # Three-surfaces publication figures (fig1–fig8)
-│   ├── build_case_oa.py       # Entry point: regenerates the three-surfaces figures
-│   ├── nepi.py                # NEPI scorecard, A–G bands, surface decomposition
-│   ├── access_penalty_model.py # Empirical OLS access-energy penalty
-│   ├── nepi_model.py          # Train four XGBoost models (form / mobility / cars / commute)
-│   ├── export_static_tool.py  # Export trained models → nepi_static/nepi_models.json
-│   ├── nepi_app.py            # Streamlit interactive planning tool
-│   ├── nepi_static/           # Static HTML/JS planning tool (no Python runtime)
-│   ├── figures/oa/            # Three-surfaces case figures
-│   ├── figures/basket_oa/     # Basket case figures
-│   ├── figures/nepi/          # NEPI scorecard, bands, empirical penalty
-│   ├── figures/archive_lsoa/  # Archived LSOA-era figures
+├── stats/                     # Analysis — TWO-AXIS = current; A–G scorecard = LEGACY (deferred)
+│   ├── proof_of_concept_oa.py # Core OA loading + aggregation (heat + NTS travel energy)
+│   ├── travel_energy.py       # [two-axis] NTS-anchored car-travel energy (constrained disagg.)
+│   ├── access_profile.py      # [two-axis] per-service access counts within catchment + ×/kWh
+│   ├── lock_in.py             # [two-axis] residual energy gap after best fabric + full EV
+│   ├── form_size_decomposition.py # [two-axis] heat vs dwelling/household-size decomposition
+│   ├── oa_figures.py          # [LEGACY/deferred] three-surface publication figures (fig1–fig8)
+│   ├── build_case_oa.py       # [LEGACY/deferred] regenerates the three-surface figures
+│   ├── nepi.py                # [LEGACY/deferred] A–G scorecard, bands, surface decomposition
+│   ├── access_penalty_model.py # [LEGACY/deferred] empirical OLS access-energy penalty
+│   ├── nepi_model.py          # [LEGACY/deferred] four XGBoost models (form/mobility/cars/commute)
+│   ├── export_static_tool.py  # [LEGACY/deferred] export trained models → nepi_static
+│   ├── nepi_app.py            # [LEGACY/deferred] Streamlit interactive planning tool
+│   ├── nepi_static/           # [LEGACY/deferred] static HTML/JS planning tool (no Python runtime)
+│   ├── figures/oa/            # [LEGACY] three-surface case figures
+│   ├── figures/nepi/          # [LEGACY] A–G scorecard, bands, empirical penalty
 │   └── archive/               # Archived LSOA analysis scripts
 ├── docs/                      # GitHub Pages mirror of stats/nepi_static/
 ├── tests/                     # pytest framework configured, tests pending
@@ -154,7 +156,7 @@ Three layers:
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │  stats/       Analysis, scorecard, models, figures              │
-│               Outputs to stats/figures/{oa, basket_oa, nepi}/   │
+│               Outputs to stats/figures/{oa, nepi}/ (legacy/deferred) │
 │               + $DATA_DIR/models/nepi/                          │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -199,7 +201,11 @@ uv run python processing/pipeline_oa.py E63010556        # by code
 
 Per-boundary cache lives in `$DATA_DIR/morphology/cache/` (one `.gpkg` per BUA22CD).
 
-### NEPI planning-tool models (`stats/nepi_model.py`)
+### NEPI planning-tool models (`stats/nepi_model.py`) — ⏸ LEGACY (deferred)
+
+> **⏸ Deferred.** These four XGBoost models belong to the old three-surface / A–G tool, parked
+> for a later phase. The current analysis is the two-axis layer (`travel_energy.py`,
+> `access_profile.py`, `lock_in.py`); see [`paper/argument.md`](paper/argument.md).
 
 Four XGBoost models with **monotonic constraints**, predicting from planner-controllable
 inputs only (no mediators):
@@ -217,7 +223,7 @@ commute×6.04 estimate. More broadly, NEPI is being restructured from the three-
 (banded A–G) to a **two-axis** model — *energy spent* vs *access gained*, plus a lock-in analysis
 (`stats/lock_in.py`) and a per-service access profile (`stats/access_profile.py`) — now canonical
 in [`paper/argument.md`](paper/argument.md). The `nepi.py` scorecard, the A–G bands and the
-empirical access-penalty model are legacy pending that migration.
+empirical access-penalty model are **deferred legacy**, pending that migration.
 
 Trained models live at `$DATA_DIR/models/nepi/nepi_model_{form,mobility,cars,commute}.json`,
 plus `nepi_band_thresholds.json`, `nepi_archetype_profiles.json`, `nepi_feature_stats.json`.
@@ -258,11 +264,19 @@ The deferred LiDAR/morphology stages run only on opt-in:
 uv run python -m urban_energy.pipeline run lidar morphology --include-optional
 ```
 
-### Analysis + NEPI
+### Analysis — two-axis (current)
+
+```bash
+uv run python stats/lock_in.py                   # energy gradient 1.78× → optimised 1.44×
+uv run python stats/access_profile.py            # ~10× access per kWh; counts within 1,600 m
+uv run python stats/form_size_decomposition.py   # heat vs dwelling/household-size decomposition
+```
+
+### Analysis — legacy three-surface / A–G (⏸ deferred, not maintained)
 
 ```bash
 uv run python stats/build_case_oa.py             # Three-surface figures
-uv run python stats/nepi.py                      # NEPI scorecard + bands
+uv run python stats/nepi.py                      # A–G scorecard + bands
 uv run python stats/access_penalty_model.py      # Empirical access-energy penalty
 uv run python stats/nepi_model.py                # Train XGBoost planning-tool models
 uv run streamlit run stats/nepi_app.py           # Launch interactive tool
