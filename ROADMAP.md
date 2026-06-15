@@ -3,12 +3,10 @@
 Single source of truth for status, open work, and methodology decisions.
 Updated 2026-06-15 (two-axis reframe; paper + Atlas deferred).
 
-> **⏸ Current focus.** The live work is the **[argument](paper/argument.md)** (canonical
-> two-axis statement) and the **processing pipeline** — making both watertight. **The paper
-> ([PAPER.md](PAPER.md)) and the Atlas / A–G planning tool are DEFERRED** to a later phase;
-> they still carry the old *three-surface / A–G* framing. Sections below describing the A–G
-> scorecard, bands, surface decomposition and the empirical access-penalty model refer to that
-> **deferred** legacy layer.
+> **⏸ Current focus.** The live work is the **[argument](paper/argument.md)** and the
+> **processing pipeline**. The **paper ([PAPER.md](PAPER.md)) is deferred**; the **Atlas is
+> pending** — its place-scoring and XGBoost planning models are to be reevaluated for the
+> two-axis frame (that code lives in git history).
 
 ## Deliverables & priority
 
@@ -19,11 +17,11 @@ Updated 2026-06-15 (two-axis reframe; paper + Atlas deferred).
 2. **The processing pipeline** + two-axis analysis layer (`stats/travel_energy.py`,
    `stats/access_profile.py`, `stats/lock_in.py`).
 
-### ⏸ Deferred (next phase — old three-surface / A–G framing)
+### ⏸ Pending (next phase)
 
-1. **The paper** — IMRaD case in [PAPER.md](PAPER.md); rewrite to two axes.
-2. **The NEPI Atlas + planning tool** — public A–G dashboard + four XGBoost models;
-   migrate off the three-surface framing.
+1. **The paper** — deferred ([PAPER.md](PAPER.md)).
+2. **The NEPI Atlas + planning tool** — pending: reevaluate the place-scoring and the XGBoost
+   planning models for the two-axis frame (code in git history).
 
 ## Scope decisions (consumption audit)
 
@@ -36,11 +34,12 @@ The rebuild targets only what the two-axis analysis consumes:
 - **DEFER** (heavy, unused columns): LiDAR heights + momepy morphology (~30–45 h)
   and OS Open Map Local footprints. Re-runnable via
   `pipeline run lidar morphology --include-optional`.
-- **CUT / removed** (zero live reads): the retired three-surface / A–G code
+- **Removed from the tree** (in git history): the summed three-surface / A–G code
   (scorecard, bands, empirical access-penalty model, three-surface figures) and the
-  old Atlas (XGBoost planning models + static site) — stripped in the two-axis
-  migration (git history holds them). Plus the earlier archive: Census 2011, DESNZ
-  LSOA energy, MSOA OD flows, BRES+GVA scaling, NESO projections, the basket index.
+  old Atlas (XGBoost planning models + static site), taken out in the two-axis
+  migration. The Atlas scoring + models are **pending reevaluation**, not retired.
+  Plus the earlier archive: Census 2011, DESNZ LSOA energy, MSOA OD flows, BRES+GVA
+  scaling, NESO projections, the basket index.
 
 ## Done
 
@@ -81,7 +80,8 @@ These are the contestable scientific choices; none gate the national run.
   error / lag models on the form/size regression.
 
 ### Forward work (out of current scope)
-- **Rebuild the Atlas** for the two-axis frame (the old A–G tool was stripped).
+- **Atlas (pending):** reevaluate the place-scoring and the XGBoost planning models for the
+  two-axis frame (old code in git history).
 - Bettencourt scaling analysis (BRES + GVA) — source archived; revive if pursued.
 - LiDAR/morphology source (LiDAR vs WALS) and sky-view-factor / shadow features —
   deferred with the morphology dimension; revisit only if it is reinstated.

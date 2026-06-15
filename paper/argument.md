@@ -6,7 +6,7 @@ or supports it:
 | Doc | Role |
 |-----|------|
 | **`paper/argument.md`** (this file) | The argument: hypothesis + claims + reasoning, distilled |
-| [`PAPER.md`](../PAPER.md) | The formal IMRaD expansion — **⏸ DEFERRED** (old three-surface framing; next phase) |
+| [`PAPER.md`](../PAPER.md) | The formal IMRaD paper — **⏸ deferred** |
 | [`paper/methodology_review.md`](methodology_review.md) | Adversarial audit — where it's weak |
 | [`paper/robustness_plan.md`](robustness_plan.md) | The worklist of fixes |
 | [`README.md`](../README.md) | Public pitch + status |
@@ -18,11 +18,9 @@ method), **[open]** (identified, not yet done). Numbers are current national-OA 
 > ## ⏸ Scope — current focus (read this first)
 >
 > The live work is **this argument** and the **processing pipeline** — making both watertight.
-> The **paper (`PAPER.md`) is deferred** (its body still carries the old *three-surface / A–G*
-> framing). The **Atlas and the retired three-surface code** (the A–G scorecard + bands, the
-> empirical access-penalty model, the four XGBoost planning models, and the static site) have
-> been **removed** in the two-axis migration and will be rebuilt fresh later — git history holds
-> them. Wherever anything conflicts, **this document is authoritative.**
+> The **paper (`PAPER.md`) is deferred.** The **Atlas is pending** — its place-scoring and the
+> XGBoost planning models are to be reevaluated for the two-axis frame; that code currently lives
+> in git history, not the tree. Wherever anything conflicts, **this document is authoritative.**
 
 ---
 
@@ -346,14 +344,13 @@ can clean the energy, but you cannot make the desert a rainforest without rebuil
   (access ÷ energy) contains the inverse of its own numerator. Consider rating against heat +
   an idealised/electrified travel cost, so the rate measures the *structural* return cleanly.
 
-**Deferred / removed — next phase (see scope banner at top).**
+**Pending — next phase (see scope banner at top).**
 
-- **The paper (`PAPER.md`)** — deferred. The IMRaD body still carries the old three-surface /
-  A–G numbers; to be rewritten to the two-axis frame after the argument + pipeline are locked.
-- **The Atlas + retired three-surface code** — the A–G scorecard + bands, the empirical
-  access-penalty model, the four XGBoost planning models, and the static site have been
-  **removed** in the two-axis migration (git history holds them); a two-axis Atlas will be
-  rebuilt fresh.
+- **The paper (`PAPER.md`)** — deferred.
+- **The Atlas** — pending: reevaluate the place-scoring and the XGBoost planning models for the
+  two-axis frame (their code lives in git history, removed from the tree in the migration). The
+  summed cost-stack and its access-penalty regression are superseded — they double-counted
+  travel (see Appendix) — but the scoring and models can be reapplied to the two-axis output.
 
 ---
 
@@ -364,5 +361,5 @@ total A–G. That cost-stack was abandoned because (a) it inverted the trophic p
 (measuring total consumption, not function-per-energy), and (b) the Access penalty was a
 regression slice of the same transport variable as Mobility, double-counting it. The two-axis
 frame above replaces it: Access is the *return*, measured as counts within a catchment, never
-summed into the energy cost. The old A–G banding and the empirical access-penalty model are
-retired.
+summed into the energy cost. The old summed-total A–G banding and the empirical access-penalty
+model are superseded; any future Atlas would score the two-axis output instead.

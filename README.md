@@ -10,9 +10,9 @@ removed pending a fresh two-axis rebuild — see below).*
 
 > **⏸ Current focus.** The live work is the **[argument](paper/argument.md)** (the canonical
 > two-axis statement) and the **processing pipeline**. The **paper ([PAPER.md](PAPER.md)) is
-> deferred** (still the old framing), and the **Atlas has been removed** — it implemented the
-> retired *three-surface / A–G* model and will be rebuilt fresh for the two-axis frame (git
-> history holds the old code). The theory + headline below are the current two-axis frame.
+> deferred**, and the **Atlas is pending** — its scoring and the XGBoost planning models are to
+> be reevaluated for the two-axis frame (that code lives in git history). The theory + headline
+> below are the current two-axis frame.
 
 ---
 
@@ -94,13 +94,11 @@ the access deficit is **100% tech-immune**. Built form fixes demand for generati
    (`stats/travel_energy.py`, `stats/access_profile.py`, `stats/lock_in.py`), reproducible
    end-to-end via the orchestrator.
 
-### ⏸ Deferred / removed (next phase)
+### ⏸ Pending (next phase)
 
-1. **The paper** — full IMRaD case in [PAPER.md](PAPER.md); deferred, to be rewritten to the
-   two-axis frame once the argument + pipeline are locked.
-2. **The NEPI Atlas + planning tool** — the old public A–G dashboard and the four XGBoost
-   planning models implemented the retired three-surface framing and have been **removed**; a
-   two-axis Atlas will be **rebuilt fresh** later (git history holds the old code).
+1. **The paper** — deferred ([PAPER.md](PAPER.md)).
+2. **The NEPI Atlas + planning tool** — pending: reevaluate the place-scoring and the XGBoost
+   planning models for the two-axis frame (their code lives in git history).
 
 ---
 
@@ -152,13 +150,13 @@ Full status, open work, and scope decisions (KEEP / DEFER / CUT) live in
 NTS-anchored car-travel energy, the lock-in quantification, the per-service access profile,
 and the heat-vs-size decomposition (`stats/`); storage centralised behind
 `URBAN_ENERGY_DATA_DIR`; methodology #6 Form under-recording flags; and an executable rebuild
-orchestrator (`urban_energy.pipeline`). The retired three-surface code and the old A–G Atlas
-were stripped in the two-axis migration.
+orchestrator (`urban_energy.pipeline`). The old three-surface code and A–G Atlas were removed
+from the tree in the migration (in git history, pending reevaluation).
 
 **Current focus:** keeping the argument + processing pipeline watertight.
 
-**⏸ Deferred (next phase):** rewrite the paper ([PAPER.md](PAPER.md)) to the two-axis frame;
-rebuild the Atlas fresh; deferred LiDAR/morphology.
+**⏸ Pending (next phase):** the paper ([PAPER.md](PAPER.md)); reevaluating the Atlas scoring +
+planning models for the two-axis frame; deferred LiDAR/morphology.
 
 ---
 

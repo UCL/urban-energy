@@ -1,13 +1,9 @@
 # The Neighbourhood Energy Performance Index: Energy Spent versus Access Gained
 
-> **⏸ DEFERRED — parked, not maintained now.** This paper is set aside for a later phase. The
-> current focus is the canonical argument ([`paper/argument.md`](paper/argument.md)) and the
-> processing pipeline. Only the **abstract** has been updated to the **two-axis** model
-> (*energy spent* vs *access gained*); the methods/results body below still uses the original
-> *three-surface* framing (Form + Mobility + Access penalty, summed in kWh and banded A–G),
-> which is **superseded** (the kWh-stack, A–G banding and empirical access-penalty model are
-> retired). The full rewrite to two axes happens **next**. Until then, wherever anything
-> conflicts, **`argument.md` is authoritative.**
+> **⏸ DEFERRED.** Parked for a later phase; the current focus is the canonical argument
+> ([`paper/argument.md`](paper/argument.md)) and the pipeline. The abstract reflects the
+> two-axis model; the body below is the older draft. Where they conflict, `argument.md` is
+> authoritative.
 
 ## Abstract
 

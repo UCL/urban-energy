@@ -201,10 +201,11 @@ are run on demand rather than wired as pipeline stages.
 | `lock_in.py` | Energy gap surviving best-fabric + full EV (1.78× → 1.44×) |
 | `form_size_decomposition.py` | Heat vs dwelling/household-size, via floor-area elasticity + a total→direct regression ladder |
 
-> **⏸ Deferred.** The earlier three-surface / A–G scorecard, the empirical access-penalty
-> model, and the Atlas (XGBoost planning models + static site) were **removed** in the
-> two-axis migration and will be rebuilt fresh later; see [`paper/argument.md`](paper/argument.md)
-> and [ROADMAP.md](ROADMAP.md). Git history holds the old code.
+> **⏸ Pending.** The earlier three-surface / A–G scorecard, the empirical access-penalty model,
+> and the Atlas (XGBoost planning models + static site) were removed from the tree in the
+> two-axis migration (git history holds them). The Atlas scoring + models are **pending
+> reevaluation** for the two-axis frame; the paper is deferred. See
+> [`paper/argument.md`](paper/argument.md) and [ROADMAP.md](ROADMAP.md).
 
 ---
 
