@@ -288,8 +288,7 @@ def main() -> None:
     print(f"\nLoaded {len(lsoa):,} OAs\n")
 
     if "oa_median_floor_area_m2" not in lsoa.columns:
-        print("ERROR: oa_epc.parquet not merged — run "
-              "data/aggregate_epc_oa.py first.")
+        print("ERROR: oa_epc.parquet not merged — run data/aggregate_epc_oa.py first.")
         return
 
     bivariate_floor_area_elasticity(lsoa)

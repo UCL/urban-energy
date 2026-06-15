@@ -65,9 +65,7 @@ def load_built_up_areas(path: Path) -> gpd.GeoDataFrame:
 
     layer_names = {name for name, _ in list_layers(str(path))}
     layer = (
-        "os_open_built_up_areas"
-        if "os_open_built_up_areas" in layer_names
-        else None
+        "os_open_built_up_areas" if "os_open_built_up_areas" in layer_names else None
     )
     gdf = gpd.read_file(path, layer=layer)
     print(f"  Loaded {len(gdf):,} polygons" + (f" (layer={layer})" if layer else ""))

@@ -51,15 +51,26 @@ _TS044_FLAT = "ts044_Accommodation type: In a purpose-built block of flats or te
 
 # Metered energy, postcode-aggregated to OA (per-meter mean × meter count).
 _OA_ENERGY = [
-    "oa_gas_mean_kwh", "oa_gas_num_meters",
-    "oa_elec_mean_kwh", "oa_elec_num_meters",
+    "oa_gas_mean_kwh",
+    "oa_gas_num_meters",
+    "oa_elec_mean_kwh",
+    "oa_elec_num_meters",
 ]
 
 # Census columns the loader requires (a hard error if absent).
 _CENSUS_REQUIRED = [
-    _TS001_POP, _TS017_TOTAL, _TS017_ZERO,
-    _TS045_TOTAL, _TS045_ONE, _TS045_TWO, _TS045_THREE,
-    _TS044_TOTAL, _TS044_DETACHED, _TS044_SEMI, _TS044_TERRACED, _TS044_FLAT,
+    _TS001_POP,
+    _TS017_TOTAL,
+    _TS017_ZERO,
+    _TS045_TOTAL,
+    _TS045_ONE,
+    _TS045_TWO,
+    _TS045_THREE,
+    _TS044_TOTAL,
+    _TS044_DETACHED,
+    _TS044_SEMI,
+    _TS044_TERRACED,
+    _TS044_FLAT,
     *TS058_BAND_MIDPOINTS_KM,  # commute distance → travel disaggregation
 ]
 _REQUIRED = ["OA21CD", *_OA_ENERGY, *_CENSUS_REQUIRED]
@@ -68,8 +79,10 @@ _REQUIRED = ["OA21CD", *_OA_ENERGY, *_CENSUS_REQUIRED]
 _EXTRA = ["city", "n_uprns", "median_build_year", "bev_share"]
 
 _TYPE_MAP = {
-    "pct_flat": "Flat", "pct_terraced": "Terraced",
-    "pct_semi": "Semi", "pct_detached": "Detached",
+    "pct_flat": "Flat",
+    "pct_terraced": "Terraced",
+    "pct_semi": "Semi",
+    "pct_detached": "Detached",
 }
 _TYPE_ORDER = ["Flat", "Terraced", "Semi", "Detached"]
 
@@ -210,9 +223,7 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
         f"    travel median {oa['transport_kwh_per_hh_total_est'].median():>8,.0f} "
         "kWh/hh"
     )
-    counts = "  ".join(
-        f"{t} {(oa['dominant_type'] == t).sum():,}" for t in _TYPE_ORDER
-    )
+    counts = "  ".join(f"{t} {(oa['dominant_type'] == t).sum():,}" for t in _TYPE_ORDER)
     print(f"    dominant type: {counts}")
     return oa
 
@@ -233,9 +244,7 @@ def _sigstars(p: float) -> str:
     return "ns"
 
 
-def _demean_by_group(
-    df: pd.DataFrame, cols: list[str], group_col: str
-) -> pd.DataFrame:
+def _demean_by_group(df: pd.DataFrame, cols: list[str], group_col: str) -> pd.DataFrame:
     """Within-group demean (Frisch-Waugh-Lovell): absorb a fixed effect."""
     return df[cols] - df.groupby(group_col)[cols].transform("mean")
 

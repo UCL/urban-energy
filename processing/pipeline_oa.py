@@ -89,10 +89,7 @@ def load_all_buas() -> dict[str, str]:
     # Sort largest first — heavy cities processed early for better ETA
     bua["_area"] = bua.geometry.area
     bua = bua.sort_values("_area", ascending=False)
-    return {
-        row["BUA22CD"]: _sanitise_name(row["BUA22NM"])
-        for _, row in bua.iterrows()
-    }
+    return {row["BUA22CD"]: _sanitise_name(row["BUA22NM"]) for _, row in bua.iterrows()}
 
 
 def _bua_dir(bua_code: str, city_name: str) -> Path:
@@ -658,9 +655,7 @@ def run_stage3_oa_aggregation(
 # ---------------------------------------------------------------------------
 
 
-def save_city_oa(
-    bua_code: str, city_name: str, oa: gpd.GeoDataFrame | None
-) -> None:
+def save_city_oa(bua_code: str, city_name: str, oa: gpd.GeoDataFrame | None) -> None:
     """Save OA GeoPackage for a single BUA under the BUA22CD-prefixed scheme."""
     if oa is None:
         return
@@ -716,8 +711,10 @@ def combine_oa_cities(buas: dict[str, str]) -> None:
         print("  No BUA data to combine.")
         return
 
-    print(f"  Combining {len(frames)} BUAs"
-          f" ({n_collisions} skipped due to legacy-path collisions)...")
+    print(
+        f"  Combining {len(frames)} BUAs"
+        f" ({n_collisions} skipped due to legacy-path collisions)..."
+    )
     combined = pd.concat(frames, ignore_index=True)
 
     # Belt-and-braces: if a per-BUA file ever contains duplicate OA21CDs

@@ -25,9 +25,7 @@ import numpy as np
 import pandas as pd
 
 # Census TS044 accommodation-type columns (the domestic dwelling counts).
-TS044_FLAT = (
-    "ts044_Accommodation type: In a purpose-built block of flats or tenement"
-)
+TS044_FLAT = "ts044_Accommodation type: In a purpose-built block of flats or tenement"
 TS044_TOTAL = "ts044_Accommodation type: Total: All households"
 
 # Domestic gas-meter count per OA (from aggregate_energy_oa.py).

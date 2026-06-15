@@ -39,8 +39,7 @@ OUTPUT_DIR = DATA_DIR / "epc"
 # the per-LA `all-domestic-certificates/` download.
 EPC_INPUT_DIR = epc_input_dir() or DATA_DIR / "all-domestic-certificates"
 UPRN_PATH = (
-    latest_uprn_gpkg()
-    or DATA_DIR / "osopenuprn_202601_gpkg" / "osopenuprn_202601.gpkg"
+    latest_uprn_gpkg() or DATA_DIR / "osopenuprn_202601_gpkg" / "osopenuprn_202601.gpkg"
 )
 
 # EPC columns to extract from bulk download CSVs

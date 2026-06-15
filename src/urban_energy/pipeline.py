@@ -95,55 +95,128 @@ def build_stages(p: Paths) -> list[Stage]:
 
     return [
         # --- acquire ---
-        Stage("census", "acquire", (stats / "census_oa_joined.gpkg",),
-              ("data/download_census.py",)),
-        Stage("energy_postcode", "acquire",
-              (stats / "postcode_energy_consumption.parquet",),
-              ("data/download_energy_postcode.py",)),
-        Stage("imd", "acquire", (stats / "lsoa_imd2025.parquet",),
-              ("data/download_imd.py",)),
-        Stage("vehicles", "acquire", (stats / "lsoa_vehicles.parquet",),
-              ("data/download_vehicles.py",)),
-        Stage("nts_mileage", "acquire", (stats / "nts_mileage_by_ruc.parquet",),
-              ("data/download_nts_mileage.py",),
-              note="travel-energy anchor: car miles/person by 2021 RUC"),
-        Stage("ruc", "acquire", (stats / "oa21_ruc21.parquet",),
-              ("data/download_ons_ruc.py",), note="OA→2021 rural-urban class"),
-        Stage("fsa", "acquire", (p.data / "fsa" / "fsa_establishments.gpkg",),
-              ("data/download_fsa.py",)),
-        Stage("naptan", "acquire", (p.data / "transport" / "naptan_england.gpkg",),
-              ("data/download_naptan.py",)),
-        Stage("gias", "acquire", (p.data / "education" / "gias_schools.gpkg",),
-              ("data/prepare_gias.py",)),
-        Stage("nhs", "acquire", (p.data / "health" / "nhs_facilities.gpkg",),
-              ("data/prepare_nhs.py",)),
-        Stage("epc", "acquire", (p.data / "epc" / "epc_domestic_spatial.parquet",),
-              ("data/process_epc.py",),
-              note="~8 GB raw; yields build year + floor area + best-fabric intensity"),
-        Stage("boundaries", "acquire", (p.data / "boundaries" / "built_up_areas.gpkg",),
-              ("data/process_boundaries.py",)),
+        Stage(
+            "census",
+            "acquire",
+            (stats / "census_oa_joined.gpkg",),
+            ("data/download_census.py",),
+        ),
+        Stage(
+            "energy_postcode",
+            "acquire",
+            (stats / "postcode_energy_consumption.parquet",),
+            ("data/download_energy_postcode.py",),
+        ),
+        Stage(
+            "imd",
+            "acquire",
+            (stats / "lsoa_imd2025.parquet",),
+            ("data/download_imd.py",),
+        ),
+        Stage(
+            "vehicles",
+            "acquire",
+            (stats / "lsoa_vehicles.parquet",),
+            ("data/download_vehicles.py",),
+        ),
+        Stage(
+            "nts_mileage",
+            "acquire",
+            (stats / "nts_mileage_by_ruc.parquet",),
+            ("data/download_nts_mileage.py",),
+            note="travel-energy anchor: car miles/person by 2021 RUC",
+        ),
+        Stage(
+            "ruc",
+            "acquire",
+            (stats / "oa21_ruc21.parquet",),
+            ("data/download_ons_ruc.py",),
+            note="OA→2021 rural-urban class",
+        ),
+        Stage(
+            "fsa",
+            "acquire",
+            (p.data / "fsa" / "fsa_establishments.gpkg",),
+            ("data/download_fsa.py",),
+        ),
+        Stage(
+            "naptan",
+            "acquire",
+            (p.data / "transport" / "naptan_england.gpkg",),
+            ("data/download_naptan.py",),
+        ),
+        Stage(
+            "gias",
+            "acquire",
+            (p.data / "education" / "gias_schools.gpkg",),
+            ("data/prepare_gias.py",),
+        ),
+        Stage(
+            "nhs",
+            "acquire",
+            (p.data / "health" / "nhs_facilities.gpkg",),
+            ("data/prepare_nhs.py",),
+        ),
+        Stage(
+            "epc",
+            "acquire",
+            (p.data / "epc" / "epc_domestic_spatial.parquet",),
+            ("data/process_epc.py",),
+            note="~8 GB raw; yields build year + floor area + best-fabric intensity",
+        ),
+        Stage(
+            "boundaries",
+            "acquire",
+            (p.data / "boundaries" / "built_up_areas.gpkg",),
+            ("data/process_boundaries.py",),
+        ),
         # dependent aggregations
-        Stage("postcode_oa_lookup", "acquire", (stats / "postcode_oa_lookup.parquet",),
-              ("data/build_postcode_oa_lookup.py",), note="needs census + Code-Point"),
-        Stage("energy_oa", "acquire", (stats / "oa_energy_consumption.parquet",),
-              ("data/aggregate_energy_oa.py",),
-              note="primary heat DV; needs energy_postcode + postcode_oa_lookup"),
-        Stage("epc_oa", "acquire", (stats / "oa_epc.parquet",),
-              ("data/aggregate_epc_oa.py",),
-              note="EPC floor area + best-fabric intensity → OA; size decomposition "
-                   "+ lock_in; needs epc + postcode_oa_lookup"),
+        Stage(
+            "postcode_oa_lookup",
+            "acquire",
+            (stats / "postcode_oa_lookup.parquet",),
+            ("data/build_postcode_oa_lookup.py",),
+            note="needs census + Code-Point",
+        ),
+        Stage(
+            "energy_oa",
+            "acquire",
+            (stats / "oa_energy_consumption.parquet",),
+            ("data/aggregate_energy_oa.py",),
+            note="primary heat DV; needs energy_postcode + postcode_oa_lookup",
+        ),
+        Stage(
+            "epc_oa",
+            "acquire",
+            (stats / "oa_epc.parquet",),
+            ("data/aggregate_epc_oa.py",),
+            note="EPC floor area + best-fabric intensity → OA; size decomposition "
+            "+ lock_in; needs epc + postcode_oa_lookup",
+        ),
         # --- process ---
-        Stage("lidar", "process", (p.data / "lidar" / "building_heights.gpkg",),
-              ("data/process_lidar.py",), optional=True,
-              note="DEFERRED ~20-30h; only height_mean is consumed (one table cell)"),
-        Stage("morphology", "process",
-              (p.data / "morphology" / "buildings_morphology.gpkg",),
-              ("processing/process_morphology.py",), optional=True,
-              note="DEFERRED ~10-15h; momepy metrics consumed by nothing"),
-        Stage("pipeline", "process",
-              (p.processing / "combined" / "oa_integrated.gpkg",),
-              ("processing/pipeline_oa.py",),
-              note="national CityNetwork pipeline ~30-50h; resumable per-BUA"),
+        Stage(
+            "lidar",
+            "process",
+            (p.data / "lidar" / "building_heights.gpkg",),
+            ("data/process_lidar.py",),
+            optional=True,
+            note="DEFERRED ~20-30h; only height_mean is consumed (one table cell)",
+        ),
+        Stage(
+            "morphology",
+            "process",
+            (p.data / "morphology" / "buildings_morphology.gpkg",),
+            ("processing/process_morphology.py",),
+            optional=True,
+            note="DEFERRED ~10-15h; momepy metrics consumed by nothing",
+        ),
+        Stage(
+            "pipeline",
+            "process",
+            (p.processing / "combined" / "oa_integrated.gpkg",),
+            ("processing/pipeline_oa.py",),
+            note="national CityNetwork pipeline ~30-50h; resumable per-BUA",
+        ),
     ]
 
 
@@ -173,8 +246,11 @@ def _manual_prereqs(p: Paths) -> list[Check]:
     for label, path, needed in [
         ("OS Built Up Areas", d / "OS_Open_Built_Up_Areas_GeoPackage", "boundaries"),
         ("OS Open Roads", d / "oproad_gpkg_gb" / "Data" / "oproad_gb.gpkg", "pipeline"),
-        ("OS Open Greenspace", d / "opgrsp_gpkg_gb" / "Data" / "opgrsp_gb.gpkg",
-         "pipeline"),
+        (
+            "OS Open Greenspace",
+            d / "opgrsp_gpkg_gb" / "Data" / "opgrsp_gb.gpkg",
+            "pipeline",
+        ),
         ("OS Code-Point Open", d / "codepo_gpkg_gb", "postcode_oa_lookup"),
     ]:
         checks.append(Check(f"{label}  ←{needed}", path.exists()))
@@ -186,9 +262,7 @@ def _manual_prereqs(p: Paths) -> list[Check]:
             latest_uprn_gpkg() is not None,
         )
     )
-    checks.append(
-        Check("EPC domestic certificates  ←epc", epc_input_dir() is not None)
-    )
+    checks.append(Check("EPC domestic certificates  ←epc", epc_input_dir() is not None))
     nhs_ok = any(
         (directory / "epraccur.csv").exists()
         for directory in (p.data, p.data / "nhs_ods", p.cache / "nhs_ods")
@@ -224,16 +298,20 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     try:
         free_gb = shutil.disk_usage(base).free / 1e9
         icon = "✓" if free_gb >= MIN_FREE_GB else "⚠"
-        print(f"\n  {icon} free disk on {base}: {free_gb:,.0f} GB "
-              f"(rebuild wants ~{MIN_FREE_GB}+ GB)")
+        print(
+            f"\n  {icon} free disk on {base}: {free_gb:,.0f} GB "
+            f"(rebuild wants ~{MIN_FREE_GB}+ GB)"
+        )
     except OSError:
         print(f"\n  ⚠ could not stat free disk on {base}")
 
     # Summary
     print("\n" + "-" * 68)
     if missing:
-        print(f"{len(missing)} manual download(s) missing — acquire/pipeline stages "
-              "that need them will fail until provided.")
+        print(
+            f"{len(missing)} manual download(s) missing — acquire/pipeline stages "
+            "that need them will fail until provided."
+        )
     else:
         print("All manual downloads present.")
     print("Env OK. Run `… pipeline status` to see what's built.")
@@ -342,7 +420,8 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="urban_energy.pipeline", description=__doc__,
+        prog="urban_energy.pipeline",
+        description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     sub = parser.add_subparsers(dest="command", required=True)
@@ -358,8 +437,11 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--all", action="store_true", help="run every non-optional stage")
     run.add_argument("--force", action="store_true", help="rebuild even if built")
     run.add_argument("--dry-run", action="store_true", help="print plan, run nothing")
-    run.add_argument("--include-optional", action="store_true",
-                     help="allow the deferred LiDAR/morphology stages")
+    run.add_argument(
+        "--include-optional",
+        action="store_true",
+        help="allow the deferred LiDAR/morphology stages",
+    )
 
     args = parser.parse_args(argv)
     dispatch: dict[str, Callable[[argparse.Namespace], int]] = {
