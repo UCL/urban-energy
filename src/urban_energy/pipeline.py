@@ -1,16 +1,17 @@
 """
 Lean orchestrator for the urban-energy rebuild.
 
-Encodes the load-bearing pipeline as an executable, resumable stage manifest —
-replacing the prose runbook that previously lived only in CLAUDE.md. Each stage
-wraps an existing script (no rewrites) and declares its output files, so the
-runner can skip stages whose outputs already exist and report exactly what is
-built.
+Encodes the load-bearing data pipeline as an executable, resumable stage
+manifest. Each stage wraps an existing script and declares its output files, so
+the runner can skip stages whose outputs already exist and report exactly what
+is built. The end product is ``oa_integrated.gpkg`` plus the per-OA tables the
+two-axis analysis layer (``stats/travel_energy.py``, ``stats/access_profile.py``,
+``stats/lock_in.py``, ``stats/form_size_decomposition.py``) consumes.
 
-Scope is the **KEEP set** from the 2026-06-09 consumption audit. The heavy
-LiDAR/morphology path is included but tagged ``optional`` and skipped by default
-(nothing published or live consumes its columns; see ROADMAP.md). The R2 tile
-upload is human-gated and only printed, never run.
+Scope is the **KEEP set** from the consumption audit. The heavy LiDAR/morphology
+path is included but tagged ``optional`` and skipped by default (nothing consumes
+its columns; see ROADMAP.md). The two-axis analyses are print-only and run
+on-demand (not build artefacts), so they are not stages here.
 
 Usage::
 
@@ -21,7 +22,6 @@ Usage::
     uv run python -m urban_energy.pipeline run --layer acquire
     uv run python -m urban_energy.pipeline run census energy_oa
     uv run python -m urban_energy.pipeline run --from pipeline
-    uv run python -m urban_energy.pipeline run --all --dry-run
     uv run python -m urban_energy.pipeline run lidar --include-optional   # opt in
 
 Flags: ``--force`` (rebuild even if outputs exist), ``--dry-run`` (print only),
@@ -38,7 +38,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-LAYERS = ["acquire", "process", "analyse", "atlas", "deploy"]
+LAYERS = ["acquire", "process"]
 
 # Heads-up threshold for free disk on the data volume (GB).
 MIN_FREE_GB = 100
@@ -46,13 +46,12 @@ MIN_FREE_GB = 100
 
 @dataclass(frozen=True)
 class Stage:
-    """One pipeline step: a wrapped script (or callable) with declared outputs."""
+    """One pipeline step: a wrapped script with declared outputs."""
 
     name: str
     layer: str
     outputs: tuple[Path, ...]
     argv: tuple[str, ...] = ()  # script + args, run under sys.executable from repo root
-    func: Callable[[], None] | None = None
     optional: bool = False
     note: str = ""
 
@@ -93,11 +92,6 @@ def load_paths() -> Paths:
 def build_stages(p: Paths) -> list[Stage]:
     """Construct the ordered stage manifest for the KEEP-set rebuild."""
     stats = p.data / "statistics"
-    nepi_static = p.project / "stats" / "nepi_static"
-    models = p.data / "models" / "nepi"
-
-    def mirror_docs() -> None:
-        _mirror_docs(p)
 
     return [
         # --- acquire ---
@@ -125,22 +119,19 @@ def build_stages(p: Paths) -> list[Stage]:
               ("data/prepare_nhs.py",)),
         Stage("epc", "acquire", (p.data / "epc" / "epc_domestic_spatial.parquet",),
               ("data/process_epc.py",),
-              note="~8 GB raw; yields median_build_year (sole source)"),
+              note="~8 GB raw; yields build year + floor area + best-fabric intensity"),
         Stage("boundaries", "acquire", (p.data / "boundaries" / "built_up_areas.gpkg",),
               ("data/process_boundaries.py",)),
-        Stage("projections", "acquire",
-              (p.data / "projections" / "projections.parquet",),
-              ("data/build_projections.py",), note="Atlas year/scenario factors"),
         # dependent aggregations
         Stage("postcode_oa_lookup", "acquire", (stats / "postcode_oa_lookup.parquet",),
               ("data/build_postcode_oa_lookup.py",), note="needs census + Code-Point"),
         Stage("energy_oa", "acquire", (stats / "oa_energy_consumption.parquet",),
               ("data/aggregate_energy_oa.py",),
-              note="primary Form DV; needs energy_postcode + postcode_oa_lookup"),
-        Stage("floor_area_oa", "acquire", (stats / "oa_floor_area.parquet",),
-              ("data/aggregate_epc_floor_area_oa.py",),
-              note="EPC floor area → OA; energy-axis size decomposition + lock_in; "
-                   "needs epc + postcode_oa_lookup"),
+              note="primary heat DV; needs energy_postcode + postcode_oa_lookup"),
+        Stage("epc_oa", "acquire", (stats / "oa_epc.parquet",),
+              ("data/aggregate_epc_oa.py",),
+              note="EPC floor area + best-fabric intensity → OA; size decomposition "
+                   "+ lock_in; needs epc + postcode_oa_lookup"),
         # --- process ---
         Stage("lidar", "process", (p.data / "lidar" / "building_heights.gpkg",),
               ("data/process_lidar.py",), optional=True,
@@ -153,66 +144,7 @@ def build_stages(p: Paths) -> list[Stage]:
               (p.processing / "combined" / "oa_integrated.gpkg",),
               ("processing/pipeline_oa.py",),
               note="national CityNetwork pipeline ~30-50h; resumable per-BUA"),
-        # --- analyse: two-axis (current) ---
-        Stage("lock_in", "analyse", (stats / "oa_epc_potential.parquet",),
-              ("stats/lock_in.py",),
-              note="two-axis: energy gap after best-fabric + full EV "
-                   "(1.78x->1.44x)"),
-        # --- analyse: legacy three-surface / A-G (DEFERRED, not maintained) ---
-        Stage("case_figures", "analyse",
-              (p.project / "stats" / "figures" / "oa" / "table1_three_surfaces.csv",),
-              ("stats/build_case_oa.py",),
-              note="DEFERRED legacy: three-surface figures"),
-        Stage("nepi", "analyse",
-              (p.project / "stats" / "figures" / "nepi" / "nepi_scores.csv",),
-              ("stats/nepi.py",), note="DEFERRED legacy: A-G scorecard + bands"),
-        Stage("access_penalty", "analyse",
-              (p.project / "stats" / "figures" / "nepi" / "fig_empirical_penalty.png",),
-              ("stats/access_penalty_model.py",),
-              note="DEFERRED legacy: empirical access-penalty OLS"),
-        Stage("models", "analyse", (models / "nepi_model_form.json",),
-              ("stats/nepi_model.py",),
-              note="DEFERRED legacy: 4 monotonic XGBoost models + SHAP"),
-        # --- atlas (DEFERRED legacy) ---
-        Stage("static_tool", "atlas", (nepi_static / "nepi_models.json",),
-              ("stats/export_static_tool.py",),
-              note="DEFERRED legacy: XGBoost trees → in-browser JSON"),
-        Stage("atlas", "atlas", (nepi_static / "summary.json",),
-              ("stats/export_atlas_data.py", "england"),
-              note="DEFERRED legacy: needs tippecanoe + pmtiles on PATH"),
-        # --- deploy (DEFERRED legacy) ---
-        Stage("mirror_docs", "deploy", (p.project / "docs" / "summary.json",),
-              func=mirror_docs,
-              note="DEFERRED legacy: copy nepi_static/ → docs/ (R2 stays manual)"),
     ]
-
-
-# Files mirrored from the static-tool source of truth into docs/ for Pages.
-_DOCS_MIRROR_FILES = (
-    "index.html",
-    "about.html",
-    "summary.json",
-    "nepi_models.json",
-)
-
-
-def _mirror_docs(p: Paths) -> None:
-    """Copy the static-tool deploy set from stats/nepi_static/ into docs/."""
-    src = p.project / "stats" / "nepi_static"
-    dst = p.project / "docs"
-    dst.mkdir(parents=True, exist_ok=True)
-    copied = []
-    for name in _DOCS_MIRROR_FILES:
-        f = src / name
-        if f.exists():
-            shutil.copy2(f, dst / name)
-            copied.append(name)
-    for tiles in src.glob("*.pmtiles"):
-        shutil.copy2(tiles, dst / tiles.name)
-        copied.append(tiles.name)
-    print(f"  mirrored {len(copied)} files → {dst}: {', '.join(copied)}")
-    print("  NOTE: OA pmtiles upload to Cloudflare R2 is manual (set "
-          "ATLAS_OA_TILES_URL_BASE and upload *_oa.pmtiles).")
 
 
 # ---------------------------------------------------------------------------
@@ -244,8 +176,6 @@ def _manual_prereqs(p: Paths) -> list[Check]:
         ("OS Open Greenspace", d / "opgrsp_gpkg_gb" / "Data" / "opgrsp_gb.gpkg",
          "pipeline"),
         ("OS Code-Point Open", d / "codepo_gpkg_gb", "postcode_oa_lookup"),
-        ("OS Boundary Line", d / "bdline_gpkg_gb" / "Data" / "bdline_gb.gpkg",
-         "atlas LAD layer"),
     ]:
         checks.append(Check(f"{label}  ←{needed}", path.exists()))
 
@@ -289,14 +219,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     print("  (GIAS schools downloads automatically; NHS ODS is a manual DSE export)")
     missing = [c for c in prereqs if not c.ok]
 
-    # 3. External binaries (Atlas tile generation)
-    print("\nExternal binaries (Atlas tiles):")
-    bins = {name: shutil.which(name) for name in ("tippecanoe", "pmtiles")}
-    for name, where in bins.items():
-        detail = where or f"not on PATH (brew install {name})"
-        print(f"  {'✓' if where else '✗'} {name}: {detail}")
-
-    # 4. Disk
+    # 3. Disk
     base = p.data if p.data.exists() else p.data.parent
     try:
         free_gb = shutil.disk_usage(base).free / 1e9
@@ -404,15 +327,10 @@ def cmd_run(args: argparse.Namespace) -> int:
             print(f"[would run] {s.name}: {cmd}")
             continue
         print(f"\n{'=' * 68}\n[run] {s.name}: {cmd}\n{'=' * 68}")
-        if s.func is not None:
-            s.func()
-        else:
-            result = subprocess.run(
-                [sys.executable, *s.argv], cwd=p.project, check=False
-            )
-            if result.returncode != 0:
-                print(f"\n[FAIL] {s.name} exited {result.returncode}; stopping.")
-                return result.returncode
+        result = subprocess.run([sys.executable, *s.argv], cwd=p.project, check=False)
+        if result.returncode != 0:
+            print(f"\n[FAIL] {s.name} exited {result.returncode}; stopping.")
+            return result.returncode
     print("\n[done]")
     return 0
 
@@ -429,7 +347,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    sub.add_parser("doctor", help="preflight: env, manual downloads, binaries, disk")
+    sub.add_parser("doctor", help="preflight: env, manual downloads, disk")
     sub.add_parser("status", help="show which stage outputs exist")
     sub.add_parser("list", help="print the stage manifest")
 

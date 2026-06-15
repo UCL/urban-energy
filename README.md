@@ -5,14 +5,14 @@ access) shapes household energy consumption in England, packaged as the **Neighb
 Energy Performance Index (NEPI)** — a place-level rating analogous to a building EPC,
 computed from open data.
 
-**Live tool:** <https://UCL.github.io/urban-energy/> *(currently the legacy A–G Atlas; the
-two-axis migration is deferred — see below).*
+**Live tool:** <https://UCL.github.io/urban-energy/> *(the old A–G Atlas; its source has been
+removed pending a fresh two-axis rebuild — see below).*
 
 > **⏸ Current focus.** The live work is the **[argument](paper/argument.md)** (the canonical
-> two-axis statement) and the **processing pipeline** — making both watertight. **The paper
-> ([PAPER.md](PAPER.md)) and the Atlas are explicitly DEFERRED** to a later phase; they still
-> carry the older *three-surface / A–G* framing. The theory + headline below are the current
-> two-axis frame; the deferred artefacts will be migrated next.
+> two-axis statement) and the **processing pipeline**. The **paper ([PAPER.md](PAPER.md)) is
+> deferred** (still the old framing), and the **Atlas has been removed** — it implemented the
+> retired *three-surface / A–G* model and will be rebuilt fresh for the two-axis frame (git
+> history holds the old code). The theory + headline below are the current two-axis frame.
 
 ---
 
@@ -94,14 +94,13 @@ the access deficit is **100% tech-immune**. Built form fixes demand for generati
    (`stats/travel_energy.py`, `stats/access_profile.py`, `stats/lock_in.py`), reproducible
    end-to-end via the orchestrator.
 
-### ⏸ Deferred (next phase — old three-surface / A–G framing, not maintained now)
+### ⏸ Deferred / removed (next phase)
 
-1. **The paper** — full IMRaD case in [PAPER.md](PAPER.md); to be rewritten to the two-axis
-   frame once the argument + pipeline are locked.
-2. **The NEPI Atlas + planning tool** — the public A–G dashboard (live on GitHub Pages) and
-   the four XGBoost planning models ([stats/nepi_app.py](stats/nepi_app.py); static tool in
-   [stats/nepi_static/](stats/nepi_static/) mirrored to [docs/](docs/)). Migration to the
-   two-axis model is a separate phase.
+1. **The paper** — full IMRaD case in [PAPER.md](PAPER.md); deferred, to be rewritten to the
+   two-axis frame once the argument + pipeline are locked.
+2. **The NEPI Atlas + planning tool** — the old public A–G dashboard and the four XGBoost
+   planning models implemented the retired three-surface framing and have been **removed**; a
+   two-axis Atlas will be **rebuilt fresh** later (git history holds the old code).
 
 ---
 
@@ -118,8 +117,7 @@ the access deficit is **100% tech-immune**. Built form fixes demand for generati
 | [paper/references.bib](paper/references.bib) | BibTeX bibliography (partial) |
 | [data/](data/) | Raw-data acquisition and preprocessing scripts |
 | [processing/](processing/) | National OA pipeline (`pipeline_oa.py` — CityNetwork API) |
-| [stats/](stats/) | Two-axis analysis (travel energy, access profile, lock-in) + legacy A–G tools |
-| [docs/](docs/) | GitHub Pages mirror of [stats/nepi_static/](stats/nepi_static/) (deferred Atlas) |
+| [stats/](stats/) | Two-axis analysis: `oa_data` core + travel energy, access profile, lock-in, form/size |
 
 The `data/`, `processing/`, and `stats/` directories contain code only — see
 [CLAUDE.md](CLAUDE.md) for the full inventory of scripts and outputs.
@@ -133,13 +131,10 @@ The `data/`, `processing/`, and `stats/` directories contain code only — see
 uv sync
 echo "URBAN_ENERGY_DATA_DIR=$(pwd)/temp" > .env
 
-# Two-axis analysis (current) — energy gradient, lock-in, access profile
-uv run python stats/lock_in.py          # energy now 1.78× → optimised 1.44×
-uv run python stats/access_profile.py   # ~10× access per kWh, counts within 1,600 m
-
-# Legacy three-surface / A–G tools (DEFERRED — old framing)
-# uv run python stats/nepi.py
-# uv run streamlit run stats/nepi_app.py
+# Two-axis analysis — energy gradient, lock-in, access profile, form/size
+uv run python stats/lock_in.py                  # energy now 1.78× → optimised 1.44×
+uv run python stats/access_profile.py           # ~10× access per kWh, counts within 1,600 m
+uv run python stats/form_size_decomposition.py  # heat vs dwelling/household size
 ```
 
 Full reproduction recipe (raw downloads → national pipeline → analysis) is in
@@ -150,17 +145,20 @@ Full reproduction recipe (raw downloads → national pipeline → analysis) is i
 
 ## Status
 
-Full status, open work, and the 2026-06-09 lean-pipeline scope decisions
-(KEEP / DEFER / CUT) live in **[ROADMAP.md](ROADMAP.md)**. Headline state:
+Full status, open work, and scope decisions (KEEP / DEFER / CUT) live in
+**[ROADMAP.md](ROADMAP.md)**. Headline state:
 
-**Done:** national OA pipeline (198,779 OAs), NEPI scorecard + A–G bands + surface
-decomposition, empirical access-penalty OLS, four monotonic XGBoost models + SHAP,
-Streamlit + static HTML/JS tool live on GitHub Pages, the IMRaD case ([PAPER.md](PAPER.md)),
-storage centralised behind `URBAN_ENERGY_DATA_DIR`, methodology #6 Form under-recording
-flags, and an executable rebuild orchestrator (`urban_energy.pipeline`).
+**Done:** national OA pipeline (~199k OAs); the two-axis frame ([paper/argument.md](paper/argument.md));
+NTS-anchored car-travel energy, the lock-in quantification, the per-service access profile,
+and the heat-vs-size decomposition (`stats/`); storage centralised behind
+`URBAN_ENERGY_DATA_DIR`; methodology #6 Form under-recording flags; and an executable rebuild
+orchestrator (`urban_energy.pipeline`). The retired three-surface code and the old A–G Atlas
+were stripped in the two-axis migration.
 
-**Open:** see [ROADMAP.md](ROADMAP.md) — analysis decisions (per-capita unit, SHAP
-interpretation, lock-in framing), paper finalisation, and deferred LiDAR/morphology.
+**Current focus:** keeping the argument + processing pipeline watertight.
+
+**⏸ Deferred (next phase):** rewrite the paper ([PAPER.md](PAPER.md)) to the two-axis frame;
+rebuild the Atlas fresh; deferred LiDAR/morphology.
 
 ---
 

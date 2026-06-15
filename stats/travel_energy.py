@@ -162,10 +162,7 @@ def compute_travel_energy(lsoa: pd.DataFrame) -> pd.DataFrame:
 
 def _demo() -> None:
     """Print the disaggregation: marginal check + by-type gradient."""
-    import sys
-
-    sys.argv = ["x"]
-    from proof_of_concept_oa import load_and_aggregate
+    from oa_data import load_and_aggregate
 
     df = compute_travel_energy(load_and_aggregate())
 

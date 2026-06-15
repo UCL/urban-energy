@@ -58,10 +58,7 @@ def _series(df: pd.DataFrame, dtype: str, col: str) -> pd.Series:
 
 def main() -> None:
     """Print the three access perspectives."""
-    import sys
-
-    sys.argv = ["x"]
-    from proof_of_concept_oa import load_and_aggregate
+    from oa_data import load_and_aggregate
 
     df = _with_counts(load_and_aggregate())
     hdr = f"  {'':<12s}" + "".join(f"{t:>9s}" for t in TYPES)

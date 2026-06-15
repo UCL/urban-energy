@@ -33,24 +33,14 @@ urban-energy/
 │   ├── common.py              # Shared pipeline plumbing (PATHS, Stage 1, morphology constants)
 │   ├── process_morphology.py  # Building shape metrics from LiDAR + OS footprints (deferred path)
 │   └── archive/               # Frozen LSOA pipeline + one-offs (not imported — see archive/README.md)
-├── stats/                     # Analysis — TWO-AXIS = current; A–G scorecard = LEGACY (deferred)
-│   ├── proof_of_concept_oa.py # Core OA loading + aggregation (heat + NTS travel energy)
-│   ├── travel_energy.py       # [two-axis] NTS-anchored car-travel energy (constrained disagg.)
-│   ├── access_profile.py      # [two-axis] per-service access counts within catchment + ×/kWh
-│   ├── lock_in.py             # [two-axis] residual energy gap after best fabric + full EV
-│   ├── form_size_decomposition.py # [two-axis] heat vs dwelling/household-size decomposition
-│   ├── oa_figures.py          # [LEGACY/deferred] three-surface publication figures (fig1–fig8)
-│   ├── build_case_oa.py       # [LEGACY/deferred] regenerates the three-surface figures
-│   ├── nepi.py                # [LEGACY/deferred] A–G scorecard, bands, surface decomposition
-│   ├── access_penalty_model.py # [LEGACY/deferred] empirical OLS access-energy penalty
-│   ├── nepi_model.py          # [LEGACY/deferred] four XGBoost models (form/mobility/cars/commute)
-│   ├── export_static_tool.py  # [LEGACY/deferred] export trained models → nepi_static
-│   ├── nepi_app.py            # [LEGACY/deferred] Streamlit interactive planning tool
-│   ├── nepi_static/           # [LEGACY/deferred] static HTML/JS planning tool (no Python runtime)
-│   ├── figures/oa/            # [LEGACY] three-surface case figures
-│   ├── figures/nepi/          # [LEGACY] A–G scorecard, bands, empirical penalty
+├── stats/                     # Two-axis analysis (energy spent vs access gained)
+│   ├── oa_data.py             # Core OA loader + aggregation (heat + NTS travel) + OLS helpers
+│   ├── travel_energy.py       # NTS-anchored car-travel energy (constrained disaggregation)
+│   ├── access_profile.py      # Per-service access counts within a catchment + ×/kWh
+│   ├── lock_in.py             # Residual energy gap after best fabric + full EV
+│   ├── form_size_decomposition.py # Heat vs dwelling/household-size decomposition
+│   ├── figures/{oa,nepi}/     # Legacy three-surface PNGs (referenced only by the deferred PAPER)
 │   └── archive/               # Archived LSOA analysis scripts
-├── docs/                      # GitHub Pages mirror of stats/nepi_static/
 ├── tests/                     # pytest framework configured, tests pending
 ├── temp/                      # Default $URBAN_ENERGY_DATA_DIR (gitignored)
 └── .claude/settings.local.json # Claude Code permissions
@@ -67,7 +57,7 @@ and exports:
 - `DATA_DIR` = `$URBAN_ENERGY_DATA_DIR/data` — all datasets
 - `PROCESSING_DIR` = `$URBAN_ENERGY_DATA_DIR/processing` — per-BUA pipeline outputs
 - `CACHE_DIR` = `$URBAN_ENERGY_DATA_DIR/cache` — download caches
-- `PROJECT_DIR` — source repo root (used for `stats/figures/` outputs)
+- `PROJECT_DIR` — source repo root
 
 **Never hardcode `temp/` paths** — always import from `urban_energy.paths`.
 
@@ -83,22 +73,20 @@ $URBAN_ENERGY_DATA_DIR/
     ├── morphology/buildings_morphology.gpkg
     ├── statistics/
     │   ├── census_oa_joined.gpkg              ← Census 2021 (10 topic tables joined to OAs)
-    │   ├── census_2011_commute_oa.parquet    ← Census 2011 QS701/QS702 (pre-pandemic validation)
     │   ├── postcode_energy_consumption.parquet ← DESNZ metered (postcode level — primary)
     │   ├── postcode_oa_lookup.parquet         ← Postcode → OA21CD spatial lookup
     │   ├── oa_energy_consumption.parquet      ← Postcode energy aggregated to OA (meter-weighted)
-    │   ├── lsoa_energy_consumption.parquet    ← DESNZ metered (LSOA level — legacy)
+    │   ├── oa_epc.parquet                     ← EPC floor area + best-fabric intensity → OA
     │   ├── lsoa_imd2025.parquet               ← IoD25 (7 domains)
-    │   ├── lsoa_vehicles.parquet              ← DVLA vehicle licensing
-    │   ├── lsoa_scaling.parquet               ← BRES + small-area GVA
-    │   ├── msoa_od_commute.parquet            ← Census 2021 OD workplace flows
+    │   ├── lsoa_vehicles.parquet              ← DVLA vehicle licensing (bev_share)
+    │   ├── nts_mileage_by_ruc.parquet         ← NTS9904 car miles/person by 2021 RUC (travel anchor)
+    │   ├── oa21_ruc21.parquet                 ← OA → 2021 rural-urban class
     │   └── census_ts*_oa.parquet              ← Individual Census topic tables
     ├── epc/epc_domestic_spatial.parquet
     ├── fsa/fsa_establishments.gpkg
     ├── transport/naptan_england.gpkg
     ├── education/gias_schools.gpkg
-    ├── health/nhs_facilities.gpkg
-    └── models/nepi/                           ← trained XGBoost models + band thresholds + archetypes
+    └── health/nhs_facilities.gpkg
 ```
 
 ---
@@ -113,28 +101,25 @@ rebuild recipe are in [REPRODUCTION.md](REPRODUCTION.md). The load-bearing (KEEP
 |--------|--------|--------|------|
 | Census 2021 (10 topic tables) | `download_census.py` | `census_oa_joined.gpkg` | Population, dwelling type (TS044), commute, cars, deprivation |
 | DESNZ postcode energy | `download_energy_postcode.py` → `aggregate_energy_oa.py` | `oa_energy_consumption.parquet` | **Primary DV (Form)**: metered gas + electricity → OA |
-| EPC domestic | `process_epc.py` | `epc_domestic_spatial.parquet` | Construction age → `median_build_year` (Form-model feature) |
+| EPC domestic | `process_epc.py` → `aggregate_epc_oa.py` | `epc_domestic_spatial.parquet`, `oa_epc.parquet` | Build year + dwelling floor area + best-fabric (POTENTIAL) intensity |
 | OS Open Roads | (manual) | `oproad_gpkg_gb/` | CityNetwork centrality + accessibility |
 | OS Open Greenspace | (manual) | `opgrsp_gpkg_gb/` | Recreation accessibility |
 | OS Open UPRN | (manual) | `osopenuprn_*/` | Property geocoding (aggregation key) |
 | OS Code-Point Open | (manual) | `codepo_gpkg_gb/` | Postcode→OA + NHS geocoding |
 | OS Built Up Areas | `process_boundaries.py` | `built_up_areas.gpkg` | ~7,244 English BUA processing units |
-| OS Boundary Line | (manual) | `bdline_gpkg_gb/` | Atlas LAD layer |
 | FSA establishments | `download_fsa.py` | `fsa_establishments.gpkg` | Food accessibility (~500k) |
 | NaPTAN stops | `download_naptan.py` | `naptan_england.gpkg` | Bus/rail accessibility (~434k) |
 | GIAS schools | `prepare_gias.py` | `gias_schools.gpkg` | Education accessibility (~25k) |
 | NHS ODS | `prepare_nhs.py` | `nhs_facilities.gpkg` | Health accessibility (GPs/pharmacies/hospitals) |
 | IoD 2025 | `download_imd.py` | `lsoa_imd2025.parquet` | Deprivation control (income domain in OLS) |
-| DVLA vehicles | `download_vehicles.py` | `lsoa_vehicles.parquet` | Fleet composition (Atlas `bev_share`); travel-energy fleet intensity |
-| NESO projections | `build_projections.py` | `projections.parquet` | Atlas scenario factors |
+| DVLA vehicles | `download_vehicles.py` | `lsoa_vehicles.parquet` | Fleet composition (`bev_share` → travel-energy fleet intensity) |
 | NTS9904 mileage | `download_nts_mileage.py` | `nts_mileage_by_ruc.parquet` | **Travel-energy anchor**: measured car miles/person by 2021 RUC class |
 | ONS RUC 2021 | `download_ons_ruc.py` | `oa21_ruc21.parquet` | OA→rural-urban class (travel-energy disaggregation) |
 
 For the per-variable derivation table see [PAPER.md §3.2](PAPER.md).
 
-The manual-download checklist (exact target paths, EPC registration), the external
-binaries (`tippecanoe`/`pmtiles`), and the deferred sources (OS Map Local, EA LiDAR)
-are all in [REPRODUCTION.md](REPRODUCTION.md).
+The manual-download checklist (exact target paths, EPC registration) and the deferred
+sources (OS Map Local, EA LiDAR) are in [REPRODUCTION.md](REPRODUCTION.md).
 
 ---
 
@@ -155,9 +140,9 @@ Three layers:
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│  stats/       Analysis, scorecard, models, figures              │
-│               Outputs to stats/figures/{oa, nepi}/ (legacy/deferred) │
-│               + $DATA_DIR/models/nepi/                          │
+│  stats/       Two-axis analysis (print-only, run on demand)     │
+│               oa_data.py → travel_energy · access_profile ·     │
+│               lock_in · form_size_decomposition                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -201,39 +186,25 @@ uv run python processing/pipeline_oa.py E63010556        # by code
 
 Per-boundary cache lives in `$DATA_DIR/morphology/cache/` (one `.gpkg` per BUA22CD).
 
-### NEPI planning-tool models (`stats/nepi_model.py`) — ⏸ LEGACY (deferred)
+### Two-axis analysis layer (`stats/`)
 
-> **⏸ Deferred.** These four XGBoost models belong to the old three-surface / A–G tool, parked
-> for a later phase. The current analysis is the two-axis layer (`travel_energy.py`,
-> `access_profile.py`, `lock_in.py`); see [`paper/argument.md`](paper/argument.md).
+The analysis is **two measured axes and a rate** (canonical statement:
+[`paper/argument.md`](paper/argument.md)). All four scripts load the same core,
+[`stats/oa_data.py`](stats/oa_data.py) (`load_and_aggregate` + shared OLS helpers), and
+are **print-only** — they consume the built data artefacts and report to stdout, so they
+are run on demand rather than wired as pipeline stages.
 
-Four XGBoost models with **monotonic constraints**, predicting from planner-controllable
-inputs only (no mediators):
+| Script | What it computes |
+|--------|------------------|
+| `travel_energy.py` | Total car-travel energy by constrained disaggregation of measured NTS9904 mileage (the `compute_travel_energy` the loader calls) |
+| `access_profile.py` | Per-service access counts within a 1,600 m catchment + ×/kWh (the ~10× headline) |
+| `lock_in.py` | Energy gap surviving best-fabric + full EV (1.78× → 1.44×) |
+| `form_size_decomposition.py` | Heat vs dwelling/household-size, via floor-area elasticity + a total→direct regression ladder |
 
-| Model | Target | Features |
-|-------|--------|----------|
-| Form | `building_kwh_per_hh` | density, type mix, build year |
-| Mobility | `transport_kwh_per_hh_total_est` | density, type mix, local coverage, bus + rail access |
-| Cars | `cars_per_hh` | density, type mix, local coverage, bus + rail access |
-| Commute | `avg_commute_km` | local coverage, bus + rail access |
-
-**Reframing note.** The Mobility target `transport_kwh_per_hh_total_est` is now the
-**NTS-disaggregated total car-travel energy** (`stats/travel_energy.py`), not the old
-commute×6.04 estimate. More broadly, NEPI is being restructured from the three-surface kWh stack
-(banded A–G) to a **two-axis** model — *energy spent* vs *access gained*, plus a lock-in analysis
-(`stats/lock_in.py`) and a per-service access profile (`stats/access_profile.py`) — now canonical
-in [`paper/argument.md`](paper/argument.md). The `nepi.py` scorecard, the A–G bands and the
-empirical access-penalty model are **deferred legacy**, pending that migration.
-
-Trained models live at `$DATA_DIR/models/nepi/nepi_model_{form,mobility,cars,commute}.json`,
-plus `nepi_band_thresholds.json`, `nepi_archetype_profiles.json`, `nepi_feature_stats.json`.
-SHAP TreeExplainer provides exact attributions in the Streamlit app.
-
-### Static planning tool
-
-`stats/nepi_static/index.html` + `nepi_models.json` runs the same XGBoost trees in
-JavaScript with **no Python runtime**. The two files are mirrored to `docs/` for GitHub
-Pages deployment.
+> **⏸ Deferred.** The earlier three-surface / A–G scorecard, the empirical access-penalty
+> model, and the Atlas (XGBoost planning models + static site) were **removed** in the
+> two-axis migration and will be rebuilt fresh later; see [`paper/argument.md`](paper/argument.md)
+> and [ROADMAP.md](ROADMAP.md). Git history holds the old code.
 
 ---
 
@@ -272,28 +243,8 @@ uv run python stats/access_profile.py            # ~10× access per kWh; counts 
 uv run python stats/form_size_decomposition.py   # heat vs dwelling/household-size decomposition
 ```
 
-### Analysis — legacy three-surface / A–G (⏸ deferred, not maintained)
-
-```bash
-uv run python stats/build_case_oa.py             # Three-surface figures
-uv run python stats/nepi.py                      # A–G scorecard + bands
-uv run python stats/access_penalty_model.py      # Empirical access-energy penalty
-uv run python stats/nepi_model.py                # Train XGBoost planning-tool models
-uv run streamlit run stats/nepi_app.py           # Launch interactive tool
-```
-
-### Static-tool export (after retraining models)
-
-```bash
-# Export the XGBoost trees → stats/nepi_static/nepi_models.json, then mirror docs/
-uv run python stats/export_static_tool.py
-uv run python -m urban_energy.pipeline run mirror_docs
-```
-
-The export logic (previously an inline `python -c` one-liner here) is now
-[stats/export_static_tool.py](stats/export_static_tool.py), wired as the
-orchestrator's `static_tool` stage so the browser models cannot drift from the
-trained `$DATA_DIR/models/nepi/` artifacts.
+The two-axis scripts need `oa_integrated.gpkg` + `oa_epc.parquet` built first (the
+`pipeline` and `epc_oa` stages).
 
 ---
 
@@ -350,11 +301,13 @@ Claude assists. New commits, never `--amend` after a hook failure.
 ## 7. Dependencies
 
 Core geospatial: **geopandas, shapely, rasterio, pyproj, momepy**
-Analysis: **numpy, pandas, scipy, statsmodels** (NEPI access-penalty OLS), **xgboost + shap** (planning-tool models with monotonic constraints), **scikit-learn** (stratified splits + CV)
+Analysis: **numpy, pandas, scipy, statsmodels** (the form/size OLS ladder)
 Network: **cityseer ≥ 4.25** (CityNetwork API used by `pipeline_oa.py`)
 Spatial stats: **esda, libpysal**
-Visualisation: **seaborn / matplotlib** (figures), **streamlit** (interactive tool)
-I/O: **requests / aiohttp**, **openpyxl** (DESNZ XLSX), **pyarrow** (parquet)
+Visualisation: **seaborn / matplotlib**
+I/O: **requests / aiohttp**, **openpyxl** (DESNZ XLSX), **odfpy** (NTS ODS), **pyarrow** (parquet)
 Dev: **ruff, ty, pytest**
 
-Full pin list in `uv.lock` (112 packages).
+Full pin list in `uv.lock`. (The old Atlas/figure deps — xgboost, shap, streamlit,
+scikit-learn, seaborn, esda, fpdf2 — were pruned with the two-axis strip; re-add when the
+Atlas is rebuilt.)

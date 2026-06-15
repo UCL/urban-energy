@@ -18,11 +18,11 @@ method), **[open]** (identified, not yet done). Numbers are current national-OA 
 > ## ⏸ Scope — current focus (read this first)
 >
 > The live work is **this argument** and the **processing pipeline** — making both watertight.
-> The **paper (`PAPER.md`) and the Atlas** (the static planning tool + `docs/`, the four NEPI
-> XGBoost models, the A–G banding, `stats/nepi.py` / `nepi_model.py` /
-> `access_penalty_model.py`) are **explicitly DEFERRED to a later phase.** They still carry the
-> old *three-surface / A–G* framing and are **not being maintained right now.** Wherever
-> anything conflicts, **this document is authoritative.**
+> The **paper (`PAPER.md`) is deferred** (its body still carries the old *three-surface / A–G*
+> framing). The **Atlas and the retired three-surface code** (the A–G scorecard + bands, the
+> empirical access-penalty model, the four XGBoost planning models, and the static site) have
+> been **removed** in the two-axis migration and will be rebuilt fresh later — git history holds
+> them. Wherever anything conflicts, **this document is authoritative.**
 
 ---
 
@@ -294,14 +294,14 @@ can clean the energy, but you cannot make the desert a rainforest without rebuil
   (access ÷ energy) contains the inverse of its own numerator. Consider rating against heat +
   an idealised/electrified travel cost, so the rate measures the *structural* return cleanly.
 
-**Deferred — next phase (NOT maintained now; see scope banner at top).**
+**Deferred / removed — next phase (see scope banner at top).**
 
-- **The paper (`PAPER.md`).** The IMRaD body still carries the old three-surface / A–G
-  numbers; to be rewritten to the two-axis frame after the argument + pipeline are locked.
-- **The Atlas / legacy three-surface code.** `stats/nepi.py` (A–G scorecard + bands),
-  `stats/nepi_model.py` (four XGBoost models), `stats/access_penalty_model.py`, and the static
-  tool (`stats/nepi_static/` + `docs/`) still implement the old framing. Migration to the
-  two-axis model is a separate phase.
+- **The paper (`PAPER.md`)** — deferred. The IMRaD body still carries the old three-surface /
+  A–G numbers; to be rewritten to the two-axis frame after the argument + pipeline are locked.
+- **The Atlas + retired three-surface code** — the A–G scorecard + bands, the empirical
+  access-penalty model, the four XGBoost planning models, and the static site have been
+  **removed** in the two-axis migration (git history holds them); a two-axis Atlas will be
+  rebuilt fresh.
 
 ---
 

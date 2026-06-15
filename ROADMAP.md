@@ -25,30 +25,34 @@ Updated 2026-06-15 (two-axis reframe; paper + Atlas deferred).
 2. **The NEPI Atlas + planning tool** — public A–G dashboard + four XGBoost models;
    migrate off the three-surface framing.
 
-## Scope decisions (2026-06-09 consumption audit)
+## Scope decisions (consumption audit)
 
-The rebuild targets only what the deliverables consume:
+The rebuild targets only what the two-axis analysis consumes:
 
 - **KEEP** (load-bearing): Census 2021, DESNZ postcode metered energy, EPC
-  (build-year only), OS Roads/Greenspace/UPRN/Code-Point/Boundary-Line/BUAs,
-  FSA, NaPTAN, GIAS, NHS, IoD 2025, DVLA vehicles, NESO projections.
+  (build year + dwelling floor area + best-fabric intensity), OS Roads/Greenspace/
+  UPRN/Code-Point/BUAs, FSA, NaPTAN, GIAS, NHS, IoD 2025, DVLA vehicles (`bev_share`),
+  NTS9904 mileage, ONS 2021 RUC.
 - **DEFER** (heavy, unused columns): LiDAR heights + momepy morphology (~30–45 h)
-  and OS Open Map Local footprints. Only `height_mean` is consumed (one figure
-  table cell). Re-runnable via `pipeline run lidar morphology --include-optional`.
-- **CUT** (archived, zero live reads): Census 2011, DESNZ LSOA energy, MSOA OD
-  flows, BRES+GVA scaling, the basket index. See the `*/archive/README.md` files.
+  and OS Open Map Local footprints. Re-runnable via
+  `pipeline run lidar morphology --include-optional`.
+- **CUT / removed** (zero live reads): the retired three-surface / A–G code
+  (scorecard, bands, empirical access-penalty model, three-surface figures) and the
+  old Atlas (XGBoost planning models + static site) — stripped in the two-axis
+  migration (git history holds them). Plus the earlier archive: Census 2011, DESNZ
+  LSOA energy, MSOA OD flows, BRES+GVA scaling, NESO projections, the basket index.
 
 ## Done
 
-- National OA pipeline (CityNetwork API), NEPI scorecard + A–G bands + surface
-  decomposition, empirical access-penalty OLS, four monotonic XGBoost models +
-  SHAP, Streamlit + static HTML/JS tool, Atlas live on GitHub Pages.
-- **Lean-pipeline cleanup:** consumption audit; CUT scripts archived; live
-  pipeline constants extracted out of `archive/` into `processing/common.py`;
-  executable orchestrator (`urban_energy.pipeline`); `REPRODUCTION.md`;
-  static-tool export promoted to `stats/export_static_tool.py`.
-- **Methodology #6** (Form under-recording flags) implemented in
-  `urban_energy.form_bias` + Stage 3, with tests.
+- **National OA pipeline** (CityNetwork API) → `oa_integrated.gpkg`.
+- **Two-axis analysis** ([paper/argument.md](paper/argument.md)): NTS-anchored
+  car-travel energy, lock-in (1.78× → 1.44×), per-service access profile (~10×/kWh),
+  heat-vs-size decomposition — all on the shared `stats/oa_data.py` core.
+- **Two-axis migration cleanup:** stripped the retired three-surface / A–G code and
+  the old Atlas; unified the EPC→OA aggregation (`data/aggregate_epc_oa.py`); lean
+  orchestrator (`urban_energy.pipeline`, acquire + process); `REPRODUCTION.md`.
+- **Methodology #6** (Form under-recording flags) in `urban_energy.form_bias` +
+  Stage 3, with tests.
 - **Accessibility bands** settled on the minute-clean ladder (400/800/1600/4800/
   9600 m ≈ 5/10/20/60/120 min at ~80 m/min) — kept as-is.
 
@@ -62,28 +66,23 @@ The rebuild targets only what the deliverables consume:
 ### Analyse (computed in `stats/`, post-pipeline; cheap to revise — minutes)
 These are the contestable scientific choices; none gate the national run.
 
-- **Per-household vs per-capita unit.** NEPI is published per household. Household
-  size varies with archetype (flats are smaller households than detached), so
-  per-hh understates the per-capita intensity of compact types. Per-hh is natural
-  for billed energy; per-capita for emissions/equity. Decide: keep per-hh canonical
-  + a per-capita toggle / switch / publish both.
-- **SHAP interpretation.** SHAP attributions are conditional on the model's joint
-  feature distribution, not structural causal effects — co-linear features
-  (density, type, build year) share explanatory power. The workbench "vs actual"
-  baseline is the mid-archetype interpolation (a convenience reference, not a
-  counterfactual). Document this; consider exposing alternative baselines.
-- **Lock-in surface.** Resolve audience (planners siting new build vs analysts
-  targeting retrofit), end-state definition (100% HP+EV vs a realistic 80/80
-  ceiling), and whether to expose per-pillar (form-only / mobility-only) residuals.
-- **#6 follow-on.** Surface the new `form_*` under-recording flags on the Atlas
-  About page and in the paper; consider an EPC-based Form correction for the most
-  affected OA classes (high-flat / off-gas).
+- **Per-household vs per-capita unit.** Reported per household; household size varies
+  with type (flats are smaller households than detached), so per-hh understates the
+  per-capita intensity of compact types. Per-hh suits billed energy; per-capita suits
+  emissions/equity. Decide: keep per-hh canonical + a per-capita view, or publish both.
+- **Lock-in end-state.** Resolve the optimisation ceiling (100% HP+EV vs a realistic
+  80/80) and whether to expose per-half (heat-only / travel-only) residuals.
+- **Rate circularity.** Travel energy is partly the cost of low access, so the rate
+  contains the inverse of its own numerator; consider rating access against heat + an
+  idealised/electrified travel cost (see argument.md §7).
+- **#6 follow-on.** Consider an EPC-based heat correction for the most affected OA
+  classes (high-flat / off-gas); surface the `form_*` flags in the paper.
 - **Spatial autocorrelation.** BUA-clustered SEs are partial; consider spatial
-  error / lag models.
+  error / lag models on the form/size regression.
 
 ### Forward work (out of current scope)
+- **Rebuild the Atlas** for the two-axis frame (the old A–G tool was stripped).
 - Bettencourt scaling analysis (BRES + GVA) — source archived; revive if pursued.
-- DVLA fleet-electrification scenarios for lock-in quantification.
 - LiDAR/morphology source (LiDAR vs WALS) and sky-view-factor / shadow features —
   deferred with the morphology dimension; revisit only if it is reinstated.
 

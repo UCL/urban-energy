@@ -41,7 +41,7 @@ import pandas as pd
 
 # Reuse the canonical loader and OLS plumbing (data construction is already
 # correct: genuine per-household energy, EPC floor-area merge, dominant_type).
-from proof_of_concept_oa import _run_ols, load_and_aggregate
+from oa_data import _run_ols, load_and_aggregate
 
 # Type shares are in percent (0–100); semi-detached is the omitted reference.
 _FORM = ["pct_detached", "pct_flat", "pct_terraced"]
@@ -147,8 +147,9 @@ def descriptive_panel(lsoa: pd.DataFrame) -> None:
     if "Flat" in medians and "Detached" in medians:
         print(f"\n  {'Flat→Detached gradient:':<24s}", end="")
         for _lbl, col, _fmt in have:
-            f, d = medians["Flat"].get(col), medians["Detached"].get(col)
-            ratio = d / f if f else float("nan")
+            f = medians["Flat"].get(col)
+            d = medians["Detached"].get(col)
+            ratio = d / f if (f and d) else float("nan")
             print(f"  {col.split('_')[-1]}={ratio:.2f}×", end="")
         print(
             "\n  (per-hh/per-person rise toward detached; per-m² reverses — "
@@ -287,8 +288,8 @@ def main() -> None:
     print(f"\nLoaded {len(lsoa):,} OAs\n")
 
     if "oa_median_floor_area_m2" not in lsoa.columns:
-        print("ERROR: oa_floor_area.parquet not merged — run "
-              "data/aggregate_epc_floor_area_oa.py first.")
+        print("ERROR: oa_epc.parquet not merged — run "
+              "data/aggregate_epc_oa.py first.")
         return
 
     bivariate_floor_area_elasticity(lsoa)

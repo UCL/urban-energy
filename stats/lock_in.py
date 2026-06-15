@@ -17,60 +17,32 @@ technology optimises per-unit efficiency but not the structural quantities. The
 access axis is unchanged by construction (no technology moves destinations
 closer).
 
-Output cache: $DATA_DIR/statistics/oa_epc_potential.parquet
+Both EPC inputs (floor area + best-fabric intensity) come from
+``data/aggregate_epc_oa.py`` via the loader. Run:
+
+    uv run python stats/lock_in.py
 """
 
 from __future__ import annotations
 
 import pandas as pd
+from oa_data import load_and_aggregate
 from travel_energy import KWH_PER_MILE_EV, fleet_intensity_kwh_per_mile
 
-from urban_energy.paths import DATA_DIR
 
-_POT_PATH = DATA_DIR / "statistics" / "oa_epc_potential.parquet"
-
-
-def oa_epc_potential() -> pd.DataFrame:
-    """OA-median EPC best-fabric (POTENTIAL) energy intensity, kWh/m²/yr."""
-    if _POT_PATH.exists():
-        return pd.read_parquet(_POT_PATH)
-    epc = pd.read_parquet(
-        DATA_DIR / "epc" / "epc_domestic_spatial.parquet",
-        columns=["POSTCODE", "ENERGY_CONSUMPTION_POTENTIAL"],
-    )
-    epc["POSTCODE"] = epc["POSTCODE"].astype(str).str.upper().str.strip()
-    pot = pd.to_numeric(epc["ENERGY_CONSUMPTION_POTENTIAL"], errors="coerce")
-    ok = pot.between(10, 1000)
-    epc = epc[ok].assign(pot=pot[ok])
-    lk = pd.read_parquet(
-        DATA_DIR / "statistics" / "postcode_oa_lookup.parquet",
-        columns=["Postcode", "OA21CD"],
-    )
-    lk["Postcode"] = lk["Postcode"].astype(str).str.upper().str.strip()
-    oa = (
-        epc.merge(lk, left_on="POSTCODE", right_on="Postcode", how="inner")
-        .groupby("OA21CD")["pot"].median().reset_index()
-        .rename(columns={"pot": "epc_potential_kwh_m2"})
-    )
-    _POT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    oa.to_parquet(_POT_PATH, index=False)
-    return oa
+def _num(series: pd.Series) -> pd.Series:
+    return pd.to_numeric(series, errors="coerce")
 
 
 def main() -> None:
     """Print the lock-in: current vs perfectly-optimised energy gap, by type."""
-    import sys
-
-    sys.argv = ["x"]
-    from proof_of_concept_oa import load_and_aggregate
-
-    df = load_and_aggregate().merge(oa_epc_potential(), on="OA21CD", how="left")
-    fa = pd.to_numeric(df["oa_median_floor_area_m2"], errors="coerce")
+    df = load_and_aggregate()
+    fa = _num(df["oa_median_floor_area_m2"])
     cur_int = fleet_intensity_kwh_per_mile(df)
 
     df["heat"] = df["building_kwh_per_hh"]
-    df["travel"] = pd.to_numeric(df["transport_kwh_per_hh_total_est"], errors="coerce")
-    df["heat_opt"] = df["epc_potential_kwh_m2"] * fa  # best-fabric × size
+    df["travel"] = _num(df["transport_kwh_per_hh_total_est"])
+    df["heat_opt"] = _num(df["epc_potential_kwh_m2"]) * fa  # best-fabric × size
     df["travel_opt"] = df["travel"] * (KWH_PER_MILE_EV / cur_int)  # full EV
     # Gradients use the median of the per-OA TOTAL (consistent with the energy
     # axis in argument.md §2), not the sum of per-component medians.

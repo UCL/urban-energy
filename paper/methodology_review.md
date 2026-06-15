@@ -1,5 +1,11 @@
 # NEPI — Methodological Rigour Review
 
+> **⏸ Predates the two-axis migration.** This audit was written against the old
+> three-surface / A–G analysis, much of which has since been **removed** (its file:line
+> citations point at deleted code). Kept for the methodological concerns that carry over to
+> the two-axis work (spatial autocorrelation, climate/tenure confounds, the per-household fix);
+> [`argument.md`](argument.md) is the current canonical statement.
+
 An intensive, literature-grounded audit of the NEPI methodology, identifying
 opportunities to strengthen the rigour of the argument. Produced 2026-06-10 from
 a fan-out of eight specialist reviews (four internal methodology critics, four
