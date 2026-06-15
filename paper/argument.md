@@ -50,6 +50,54 @@ difference is the lock-in story.
 
 ---
 
+## At a glance
+
+**The claim in one line.** A compact neighbourhood spends **0.56× the energy** of a sprawling
+one **and** buys **~10× the everyday access per kWh** — the measure of a place is not how much
+energy it consumes, but how much access that energy buys.
+
+| Axis | Headline |
+|---|---|
+| ⚡ **Energy** | Flat 13,675 → Detached **24,363** kWh/hh/yr (**1.78×**) |
+| 🌳 **Access** | a flat reaches **~10×** the everyday services per kWh (5× buses → 24× shops) |
+| 🔒 **Lock-in** | full insulation + EVs still leave a **1.44×** energy gap; the access deficit is **100%** locked |
+
+**Evidence base — data → method → finding** (all sources open and measured):
+
+| Component | Data source | Method | Finding |
+|---|---|---|---|
+| **Heat** | DESNZ metered gas + electricity → OA; Census 2021 TS044 dwelling type | median per household by dominant type; same-size + full-sample decomposition | Detached ≈ **1.5×** a flat (intrinsic ≈ 1.15×) |
+| **Travel** | NTS9904 mileage × ONS 2021 RUC; Census TS045 cars, TS058 commute; DVLA fleet | constrained disaggregation (class marginal conserved) × fleet intensity | Detached ≈ **2.8×** a flat; 24–37% of energy |
+| **Energy (total)** | the two rows above | median of the per-OA total | **1.78×** flat → detached |
+| **Access** | cityseer counts within 1,600 m of FSA, NaPTAN, GIAS, NHS, OS greenspace | count per service ÷ household energy; flat vs detached | **~10×** more access per kWh |
+| **Lock-in** | EPC best-fabric (POTENTIAL) intensity × floor area; EV fleet intensity | recompute the energy axis at best fabric + full electrification | residual **1.44×**; access unchanged |
+
+**How the argument builds.** One structural cause drives a *cost* and a *return*; technology
+reaches only the cost.
+
+```mermaid
+flowchart LR
+  S["Neighbourhood structure<br/>(density + dwelling mix)"]
+  C["⚡ Energy COST ↑<br/>heat + travel"]
+  R["🌳 Access RETURN ↓<br/>services within reach"]
+  Rate["📐 Rate<br/>access ÷ energy"]
+  Lock["🔒 Lock-in<br/>residual after full tech"]
+  S --> C --> Rate
+  S --> R --> Rate
+  Rate --> Lock
+```
+
+*Technology can cut the **cost** (insulate the homes, electrify the cars); it cannot move the
+**return** (the GP stays far) — so even fully decarbonised, sprawl delivers less access per Joule.*
+
+**The two axes, measured** (reproduce both: `uv run python stats/argument_figures.py`):
+
+![Energy axis — stacked heat + travel by dwelling type, Flat 13,675 → Detached 24,363 kWh/hh (1.78×)](../stats/figures/argument/energy_gradient.png)
+
+![Access axis — everyday access bought per kWh by service, a flat vs a detached home (~10×)](../stats/figures/argument/access_per_kwh.png)
+
+---
+
 ## 2. The Energy axis (heat + travel)
 
 Energy is the one thing we can largely **measure**: metered heating, plus car travel
@@ -135,6 +183,10 @@ and one within-class commute elasticity (0.3).
 | Detached | 15,462 | 9,073 | **24,363** |
 
 **Flat→Detached total energy gradient = 1.78×.**
+
+*(The **total** is the median of each OA's heat + travel; medians are not additive, so it does
+not equal the heat and travel column medians summed. The gradient uses this per-OA total —
+consistent with the lock-in baseline in §5.)*
 
 ---
 
