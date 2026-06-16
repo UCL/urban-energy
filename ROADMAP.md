@@ -49,8 +49,6 @@ The rebuild targets only what the two-axis analysis consumes:
 - **Two-axis migration cleanup:** stripped the retired three-surface / A–G code and
   the old Atlas; unified the EPC→OA aggregation (`data/aggregate_epc_oa.py`); lean
   orchestrator (`urban_energy.pipeline`, acquire-only); removed cityseer + the network pipeline; `REPRODUCTION.md`.
-- **Methodology #6** (Form under-recording flags) in `urban_energy.form_bias` +
-  Stage 3, with tests.
 - **Accessibility bands** settled on the minute-clean ladder (400/800/1600/4800/
   9600 m ≈ 5/10/20/60/120 min at ~80 m/min) — kept as-is.
 
@@ -71,8 +69,9 @@ These are the contestable scientific choices; none gate acquisition.
 - **Rate circularity.** Travel energy is partly the cost of low access, so the rate
   contains the inverse of its own numerator; consider rating access against heat + an
   idealised/electrified travel cost (see argument.md §7).
-- **#6 follow-on.** Consider an EPC-based heat correction for the most affected OA
-  classes (high-flat / off-gas); surface the `form_*` flags in the paper.
+- **Under-recording robustness.** Flat metered energy omits communal/bulk gas (district
+  heating); detached omits off-gas. Re-add an under-recording check before publishing the
+  heat gradient (the old `form_bias` flags were removed with the pipeline).
 - **Spatial autocorrelation.** Consider spatial error / lag models (or spatially-clustered SEs)
   on the form/size regression.
 

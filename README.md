@@ -148,7 +148,7 @@ Full status, open work, and scope decisions (KEEP / DEFER / CUT) live in
 **Done:** the national OA dataset (~178k OAs, straight-line access — no heavy pipeline); the two-axis frame ([paper/argument.md](paper/argument.md));
 NTS-anchored car-travel energy, the lock-in quantification, the per-service access profile,
 and the heat-vs-size decomposition (`stats/`); storage centralised behind
-`URBAN_ENERGY_DATA_DIR`; methodology #6 Form under-recording flags; and an executable rebuild
+`URBAN_ENERGY_DATA_DIR`; and an executable rebuild
 orchestrator (`urban_energy.pipeline`). The old three-surface code and A–G Atlas were removed
 from the tree in the migration (in git history, pending reevaluation).
 

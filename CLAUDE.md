@@ -25,8 +25,7 @@ urban-energy/
 │   └── references.bib         # BibTeX (partial)
 ├── src/urban_energy/
 │   ├── paths.py               # Centralised storage paths (loads URBAN_ENERGY_DATA_DIR from .env)
-│   ├── pipeline.py            # Acquisition orchestrator: doctor / status / list / run
-│   └── form_bias.py           # Form under-recording flags (methodology #6)
+│   └── pipeline.py            # Acquisition orchestrator: doctor / status / list / run
 ├── data/                      # Raw data acquisition + OA aggregation scripts
 ├── stats/                     # Two-axis analysis (energy spent vs access gained)
 │   ├── oa_data.py             # Core OA loader — assembles from primary artefacts + OLS helpers
