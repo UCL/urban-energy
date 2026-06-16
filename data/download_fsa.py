@@ -30,14 +30,19 @@ CACHE_DIR = _CACHE_ROOT / "fsa"
 # FSA API configuration
 FSA_BASE_URL = "https://ratings.food.gov.uk"
 
-# Business types to include (eating/drinking establishments)
-# These are the FSA BusinessType values for food service establishments
+# Business types to include. Food SERVICE (eating/drinking out) plus food RETAIL
+# (groceries) — the supermarket/convenience trip is the most frequent everyday
+# errand, so the retailer categories are kept as distinct grocery layers.
 INCLUDE_BUSINESS_TYPES = {
+    # food service
     "Restaurant/Cafe/Canteen",
     "Pub/bar/nightclub",
     "Takeaway/sandwich shop",
     "Mobile caterer",
     "Hotel/bed & breakfast/guest house",
+    # food retail (groceries)
+    "Retailers - supermarkets/hypermarkets",
+    "Retailers - other",
 }
 
 # England local authority XML files
@@ -484,7 +489,7 @@ def download_all_establishments() -> pd.DataFrame:
         establishments = parse_establishments(xml_content)
         all_establishments.extend(establishments)
 
-    print(f"Downloaded {len(all_establishments):,} eating/drinking establishments")
+    print(f"Downloaded {len(all_establishments):,} food establishments (svc + retail)")
     return pd.DataFrame(all_establishments)
 
 

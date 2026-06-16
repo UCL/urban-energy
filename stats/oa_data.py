@@ -1,20 +1,21 @@
 """
 Core OA dataset for the two-axis analysis (energy spent vs access gained).
 
-Loads the national integrated OA GeoPackage produced by
-``processing/pipeline_oa.py`` and derives the household-level variables the
-two-axis layer consumes:
+Assembled in the stats layer from lightweight, fast-to-build artefacts — no
+cityseer pipeline, no 2.4 GB integrated GeoPackage:
 
-* **Heat** — genuine metered building energy per household (DESNZ gas + elec).
-* **Travel** — total car-travel energy from the NTS-anchored disaggregation
-  (``stats/travel_energy.py``).
-* **Form** — Census dwelling-type shares and the dominant type.
-* **Size** — EPC median dwelling floor area and best-fabric (POTENTIAL)
-  intensity (``data/aggregate_epc_oa.py``).
+* **Census 2021** — ``census_oa_joined.gpkg`` (dwelling type, cars, household
+  size, commute bands) + the OA→LSOA key.
+* **Heat** — ``oa_energy_consumption.parquet`` (DESNZ metered gas + elec → OA).
+* **Size / fabric** — ``oa_epc.parquet`` (floor area, best-fabric intensity,
+  build year).
+* **Fleet / deprivation** — ``lsoa_vehicles.parquet`` (BEV share) and
+  ``lsoa_imd2025.parquet`` (income), joined via LSOA.
+* **Travel** — NTS-anchored disaggregation (``travel_energy.py``).
+* **Access** — straight-line KD-tree counts (``oa_access.py``).
 
-Consumers: ``access_profile``, ``lock_in``, ``form_size_decomposition`` and
-``travel_energy`` (which this module calls). The small OLS helpers used by the
-form/size decomposition live here too, so the analysis scripts share one core.
+Consumers: ``access_profile``, ``lock_in``, ``form_size_decomposition``,
+``travel_energy``. The shared OLS helpers live here too.
 
 Usage::
 
@@ -28,12 +29,13 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
+from oa_access import access_table
 from travel_energy import TS058_BAND_MIDPOINTS_KM, compute_travel_energy
 
-from urban_energy.paths import DATA_DIR, PROCESSING_DIR
+from urban_energy.paths import DATA_DIR
 
-DATA_PATH = PROCESSING_DIR / "combined" / "oa_integrated.gpkg"
-_EPC_PATH = DATA_DIR / "statistics" / "oa_epc.parquet"
+_STATS = DATA_DIR / "statistics"
+_CENSUS = _STATS / "census_oa_joined.gpkg"
 
 # --- Census 2021 column names ---
 _TS001_POP = "ts001_Residence type: Lives in a household; measures: Value"
@@ -49,40 +51,21 @@ _TS044_SEMI = "ts044_Accommodation type: Semi-detached"
 _TS044_TERRACED = "ts044_Accommodation type: Terraced"
 _TS044_FLAT = "ts044_Accommodation type: In a purpose-built block of flats or tenement"
 
-# Metered energy, postcode-aggregated to OA (per-meter mean × meter count).
-_OA_ENERGY = [
-    "oa_gas_mean_kwh",
-    "oa_gas_num_meters",
-    "oa_elec_mean_kwh",
-    "oa_elec_num_meters",
-]
-
-# Census columns the loader requires (a hard error if absent).
-_CENSUS_REQUIRED = [
-    _TS001_POP,
-    _TS017_TOTAL,
-    _TS017_ZERO,
-    _TS045_TOTAL,
-    _TS045_ONE,
-    _TS045_TWO,
-    _TS045_THREE,
-    _TS044_TOTAL,
-    _TS044_DETACHED,
-    _TS044_SEMI,
-    _TS044_TERRACED,
-    _TS044_FLAT,
+_CENSUS_COLS = [
+    "OA21CD", "LSOA21CD",
+    _TS001_POP, _TS017_TOTAL, _TS017_ZERO,
+    _TS045_TOTAL, _TS045_ONE, _TS045_TWO, _TS045_THREE,
+    _TS044_TOTAL, _TS044_DETACHED, _TS044_SEMI, _TS044_TERRACED, _TS044_FLAT,
     *TS058_BAND_MIDPOINTS_KM,  # commute distance → travel disaggregation
 ]
-_REQUIRED = ["OA21CD", *_OA_ENERGY, *_CENSUS_REQUIRED]
-
-# Kept when present; no error if absent.
-_EXTRA = ["city", "n_uprns", "median_build_year", "bev_share"]
+_ENERGY_COLS = [
+    "OA21CD", "oa_gas_mean_kwh", "oa_gas_num_meters",
+    "oa_elec_mean_kwh", "oa_elec_num_meters",
+]
 
 _TYPE_MAP = {
-    "pct_flat": "Flat",
-    "pct_terraced": "Terraced",
-    "pct_semi": "Semi",
-    "pct_detached": "Detached",
+    "pct_flat": "Flat", "pct_terraced": "Terraced",
+    "pct_semi": "Semi", "pct_detached": "Detached",
 }
 _TYPE_ORDER = ["Flat", "Terraced", "Semi", "Detached"]
 
@@ -92,99 +75,50 @@ def _num(series: pd.Series) -> pd.Series:
     return pd.to_numeric(series, errors="coerce")
 
 
-def _validate(available: set[str]) -> None:
-    """Raise if any hard-required column is missing from the dataset."""
-    missing = [c for c in _REQUIRED if c not in available]
-    if missing:
-        raise ValueError(
-            f"Missing {len(missing)} required columns:\n"
-            + "\n".join(f"  - {c}" for c in missing)
-        )
-
-
 def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
     """
-    Load the integrated OA GeoPackage and derive the two-axis variables.
+    Assemble the per-OA two-axis dataset from the primary artefacts.
 
-    Parameters
-    ----------
-    cities : list[str] or None
-        Restrict to these ``city`` values, or ``None`` for all of England.
-
-    Returns
-    -------
-    pandas.DataFrame
-        One row per OA with ``building_kwh_per_hh`` (heat),
-        ``transport_kwh_per_hh_total_est`` (travel), ``dominant_type``, the
-        dwelling-type shares, household size, EPC floor area + best-fabric
-        intensity, and the travel-energy intermediates.
+    Returns one row per OA with ``building_kwh_per_hh`` (heat),
+    ``transport_kwh_per_hh_total_est`` (travel), ``dominant_type``, the
+    dwelling-type shares, household size, EPC floor area + best-fabric intensity +
+    build year, fleet/deprivation context, and straight-line access columns.
     """
-    print("Loading OA data …")
-    probe = gpd.read_file(DATA_PATH, rows=1)
-    available = set(probe.columns)
-    del probe
-    _validate(available)
+    print("Assembling OA data …")
+    oa = gpd.read_file(_CENSUS, columns=_CENSUS_COLS, ignore_geometry=True)
+    oa = pd.DataFrame(oa)
 
-    imd_cols = [
-        c for c in available if "imd_income" in c.lower() and "score" in c.lower()
-    ]
-    cols = sorted({*_REQUIRED, *_EXTRA, *imd_cols} & available)
-    oa = gpd.read_file(DATA_PATH, columns=cols)
-    if "geometry" in oa.columns:
-        oa = pd.DataFrame(oa.drop(columns="geometry"))
-    print(f"  {len(oa):,} OA rows, {len(oa.columns)} columns")
+    oa = oa.merge(pd.read_parquet(_STATS / "oa_energy_consumption.parquet",
+                                  columns=_ENERGY_COLS), on="OA21CD", how="left")
+    oa = oa.merge(pd.read_parquet(_STATS / "oa_epc.parquet"), on="OA21CD", how="left")
+    oa = oa.merge(access_table().reset_index(), on="OA21CD", how="left")
 
-    # EPC median floor area + best-fabric (POTENTIAL) intensity, per OA.
-    if _EPC_PATH.exists():
-        keep = ["OA21CD", "oa_median_floor_area_m2", "epc_potential_kwh_m2"]
-        epc = pd.read_parquet(_EPC_PATH)
-        oa = oa.merge(
-            epc[[c for c in keep if c in epc.columns]], on="OA21CD", how="left"
-        )
-
-    oa = oa[oa["OA21CD"].notna()].copy()
-    if cities and "city" in oa.columns:
-        oa = oa[oa["city"].isin(cities)].copy()
-
-    # De-duplicate boundary-straddling OAs. An OA intersecting more than one
-    # Built-Up Area is emitted once per BUA; census + energy columns are
-    # BUA-invariant. Keep the row from the OA's "home" BUA (max n_uprns) so
-    # boundary replicas don't inflate N and deflate regression SEs.
-    if oa["OA21CD"].duplicated().any():
-        n0 = len(oa)
-        rank = (
-            _num(oa["n_uprns"]).fillna(0)
-            if "n_uprns" in oa.columns
-            else pd.Series(0, index=oa.index)
-        )
-        oa = (
-            oa.assign(_rank=rank)
-            .sort_values("_rank", ascending=False, kind="stable")
-            .drop_duplicates("OA21CD", keep="first")
-            .drop(columns="_rank")
-            .reset_index(drop=True)
-        )
-        print(f"  de-duplicated {n0 - len(oa):,} boundary rows → {len(oa):,}")
+    # Fleet (BEV share) and deprivation (income), via the OA→LSOA key.
+    veh = pd.read_parquet(_STATS / "lsoa_vehicles.parquet")
+    veh["bev_share"] = _num(veh["ulev_battery_electric"]) / _num(
+        veh["cars_total"]
+    ).replace(0, np.nan)
+    oa = oa.merge(veh[["LSOA21CD", "bev_share"]], on="LSOA21CD", how="left")
+    imd = pd.read_parquet(_STATS / "lsoa_imd2025.parquet",
+                          columns=["LSOA21CD", "imd_income_score"])
+    oa = oa.merge(imd, on="LSOA21CD", how="left")
+    oa = oa.rename(columns={"oa_median_build_year": "median_build_year"})
 
     # --- Population and households ---
     oa["total_people"] = _num(oa[_TS001_POP])
     oa["total_hh"] = _num(oa[_TS017_TOTAL]) - _num(oa[_TS017_ZERO])
     oa["avg_hh_size"] = oa["total_people"] / oa["total_hh"].replace(0, np.nan)
 
-    # --- Heat: genuine metered energy per household ---
-    # OA total = per-meter mean × meter count, summed across fuels over a common
-    # household denominator (TS017). Off-gas / communal-gas under-recording is
-    # flagged separately by urban_energy.form_bias (pipeline Stage 3).
+    # --- Heat: genuine metered energy per household (gas + elec, common denom) ---
     energy_total = (_num(oa["oa_gas_mean_kwh"]) * _num(oa["oa_gas_num_meters"])).fillna(
         0
     ) + (_num(oa["oa_elec_mean_kwh"]) * _num(oa["oa_elec_num_meters"])).fillna(0)
     oa["building_kwh_per_hh"] = energy_total / oa["total_hh"].replace(0, np.nan)
     oa["building_kwh_per_person"] = energy_total / oa["total_people"].replace(0, np.nan)
     oa["log_building_kwh_per_hh"] = np.log(oa["building_kwh_per_hh"].clip(lower=1))
-    if "oa_median_floor_area_m2" in oa.columns:
-        oa["building_kwh_per_m2"] = oa["building_kwh_per_hh"] / _num(
-            oa["oa_median_floor_area_m2"]
-        ).replace(0, np.nan)
+    oa["building_kwh_per_m2"] = oa["building_kwh_per_hh"] / _num(
+        oa["oa_median_floor_area_m2"]
+    ).replace(0, np.nan)
 
     # --- Cars per household (TS045) ---
     oa["cars_per_hh"] = (
@@ -207,17 +141,14 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
     oa = compute_travel_energy(oa)
     oa["transport_kwh_per_hh_total_est"] = oa["travel_kwh_per_hh_car"]
 
-    # --- Filter (relaxed for small OA units) ---
-    valid = (
+    # --- Filter (relaxed; one row per OA, so no dedup needed) ---
+    oa = oa[
         (oa["total_people"] > 10)
         & oa["building_kwh_per_hh"].notna()
         & (oa["building_kwh_per_hh"] > 0)
-    )
-    if "n_uprns" in oa.columns:
-        valid &= _num(oa["n_uprns"]) >= 5
-    oa = oa[valid].copy()
+    ].copy()
 
-    print(f"  {len(oa):,} OAs after filter")
+    print(f"  {len(oa):,} OAs")
     print(f"    heat   median {oa['building_kwh_per_hh'].median():>8,.0f} kWh/hh")
     print(
         f"    travel median {oa['transport_kwh_per_hh_total_est'].median():>8,.0f} "
@@ -257,17 +188,7 @@ def _run_ols(
     cluster_col: str | None = None,
     fe_col: str | None = None,
 ) -> sm.regression.linear_model.RegressionResultsWrapper | None:
-    """
-    Run OLS with HC1 robust SEs on complete cases.
-
-    Parameters
-    ----------
-    cluster_col : str or None
-        If given, also fit cluster-robust SEs, stored on ``result._clustered_fit``.
-    fe_col : str or None
-        If given, absorb this categorical as a fixed effect via within-group
-        demeaning (coefficients identical to explicit dummies).
-    """
+    """Run OLS with HC1 robust SEs on complete cases (optional FE / clustering)."""
     extra: list[str] = []
     if cluster_col and cluster_col not in [y_col, *x_cols]:
         extra.append(cluster_col)

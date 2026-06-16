@@ -9,7 +9,7 @@ computed from open data.
 removed pending a fresh two-axis rebuild — see below).*
 
 > **⏸ Current focus.** The live work is the **[argument](paper/argument.md)** (the canonical
-> two-axis statement) and the **processing pipeline**. The **paper ([PAPER.md](PAPER.md)) is
+> two-axis statement) and the **data + analysis pipeline**. The **paper ([PAPER.md](PAPER.md)) is
 > deferred**, and the **Atlas is pending** — its scoring and the XGBoost planning models are to
 > be reevaluated for the two-axis frame (that code lives in git history). The theory + headline
 > below are the current two-axis frame.
@@ -59,23 +59,23 @@ less access per Joule.** This is the carbon/infrastructure lock-in (Seto et al. 
 
 ---
 
-## Headline result (~174k OAs with complete energy + form data)
+## Headline result (~178k OAs, England)
 
-**Energy** — a detached neighbourhood spends **1.78× a flat's household energy**:
+**Energy** — a detached neighbourhood spends **1.74× a flat's household energy**:
 
 | kWh/household/year | Flat | Detached | gap |
 | --- | ---: | ---: | ---: |
-| Heat (metered) | 10,196 | 15,462 | 1.5× |
-| Car travel (NTS-anchored) | 3,239 | 9,073 | 2.8× |
-| **Total energy** | **13,675** | **24,363** | **1.78×** |
+| Heat (metered) | 10,194 | 15,020 | 1.5× |
+| Car travel (NTS-anchored) | 3,240 | 9,272 | 2.9× |
+| **Total energy** | **13,674** | **23,832** | **1.74×** |
 
 **Access** — for the *same* energy, compact form buys **~10× more everyday access**
-(geometric mean over eight services): 11× the GPs, 24× the shops, 20× the rail. **39% of
-detached neighbourhoods have no GP within 1,600 m; 73% have no railway station.** *Pay more,
-get less.*
+(geometric mean over nine services): 11× the GPs, 18× the shops, 20× the rail, **14× the jobs**.
+**42% of detached neighbourhoods have no GP within 1,600 m; 72% have no railway station.**
+*Pay more, get less.*
 
 **Lock-in** — perfect optimisation (best-practice insulation + full electrification) closes
-only ~60% of the energy gap: a residual **1.44×** survives (bigger homes + longer trips), and
+only ~54% of the energy gap: a residual **1.47×** survives (bigger homes + longer trips), and
 the access deficit is **100% tech-immune**. Built form fixes demand for generations.
 
 (Numbers and confidence tags: [paper/argument.md](paper/argument.md); reproduce with
@@ -90,9 +90,9 @@ the access deficit is **100% tech-immune**. Built form fixes demand for generati
 1. **The argument** — the canonical two-axis statement in
    [paper/argument.md](paper/argument.md): hypothesis, claims ladder, and every headline
    number with its confidence tag. This is the single source of truth.
-2. **The processing pipeline** — the national OA pipeline + the two-axis analysis layer
-   (`stats/travel_energy.py`, `stats/access_profile.py`, `stats/lock_in.py`), reproducible
-   end-to-end via the orchestrator.
+2. **The data + analysis pipeline** — acquisition orchestrator + the two-axis analysis layer
+   (`oa_data` + `oa_access` → `travel_energy`, `access_profile`, `lock_in`, `form_size`),
+   reproducible from open data with no heavy processing step.
 
 ### ⏸ Pending (next phase)
 
@@ -114,10 +114,9 @@ the access deficit is **100% tech-immune**. Built form fixes demand for generati
 | [paper/literature_review.md](paper/literature_review.md) | Thematic literature review |
 | [paper/references.bib](paper/references.bib) | BibTeX bibliography (partial) |
 | [data/](data/) | Raw-data acquisition and preprocessing scripts |
-| [processing/](processing/) | National OA pipeline (`pipeline_oa.py` — CityNetwork API) |
 | [stats/](stats/) | Two-axis analysis: `oa_data` core + travel energy, access profile, lock-in, form/size |
 
-The `data/`, `processing/`, and `stats/` directories contain code only — see
+The `data/` and `stats/` directories contain code only — see
 [CLAUDE.md](CLAUDE.md) for the full inventory of scripts and outputs.
 
 ---
@@ -130,12 +129,12 @@ uv sync
 echo "URBAN_ENERGY_DATA_DIR=$(pwd)/temp" > .env
 
 # Two-axis analysis — energy gradient, lock-in, access profile, form/size
-uv run python stats/lock_in.py                  # energy now 1.78× → optimised 1.44×
-uv run python stats/access_profile.py           # ~10× access per kWh, counts within 1,600 m
+uv run python stats/lock_in.py                  # energy 1.74× → optimised 1.47×
+uv run python stats/access_profile.py           # ~10× access per kWh (+ grocery, jobs)
 uv run python stats/form_size_decomposition.py  # heat vs dwelling/household size
 ```
 
-Full reproduction recipe (raw downloads → national pipeline → analysis) is in
+Full reproduction recipe (raw downloads → analysis) is in
 [REPRODUCTION.md](REPRODUCTION.md), driven by the orchestrator
 (`uv run python -m urban_energy.pipeline doctor`).
 
@@ -146,7 +145,7 @@ Full reproduction recipe (raw downloads → national pipeline → analysis) is i
 Full status, open work, and scope decisions (KEEP / DEFER / CUT) live in
 **[ROADMAP.md](ROADMAP.md)**. Headline state:
 
-**Done:** national OA pipeline (~199k OAs); the two-axis frame ([paper/argument.md](paper/argument.md));
+**Done:** the national OA dataset (~178k OAs, straight-line access — no heavy pipeline); the two-axis frame ([paper/argument.md](paper/argument.md));
 NTS-anchored car-travel energy, the lock-in quantification, the per-service access profile,
 and the heat-vs-size decomposition (`stats/`); storage centralised behind
 `URBAN_ENERGY_DATA_DIR`; methodology #6 Form under-recording flags; and an executable rebuild
@@ -156,7 +155,7 @@ from the tree in the migration (in git history, pending reevaluation).
 **Current focus:** keeping the argument + processing pipeline watertight.
 
 **⏸ Pending (next phase):** the paper ([PAPER.md](PAPER.md)); reevaluating the Atlas scoring +
-planning models for the two-axis frame; deferred LiDAR/morphology.
+planning models for the two-axis frame.
 
 ---
 
