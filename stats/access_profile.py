@@ -13,6 +13,10 @@ set is a true subset of the drivable):
       car-travel energy: the access-per-kWh rate (~2.9×). Same amenities as [1]/[2] at a
       larger radius — paid for in travel energy.
 
+Jobs are reported alongside the amenities in all three sections (a weighted SUM of
+reachable jobs rather than a unit count), so the same flat→detached comparison can be
+read for employment access.
+
 Run:
     uv run python stats/oa_network_access.py   # build the cache first
     uv run python stats/access_profile.py
@@ -88,11 +92,30 @@ def main() -> None:
         "  walkable basket (of 7 on foot, mean):  "
         + "   ".join(f"{t} {mb[t]:.1f}" for t in TYPES)
     )
+    mj = _med(d, "net_jobs_1600")
+    print(
+        "  jobs within 1,600 m (median):  "
+        + "  ".join(f"{t} {mj[t]:,.0f}" for t in TYPES)
+        + f"   (Flat:Det {_ratio(mj):.1f}x)"
+    )
+
+    # ---- [1b] STRUCTURAL INTENSITY (network + population, within 1,600 m) ----
+    print("\n  [1b] STRUCTURAL INTENSITY — by type (compactness → complexity)")
+    print(f"  {'':16s}" + "".join(f"{t:>10s}" for t in TYPES) + f"{'Flat:Det':>10s}")
+    for label, col, fmt in [
+        ("closeness", "net_closeness_1600", "{:>10.2f}"),
+        ("node density", "net_density_1600", "{:>10.0f}"),
+        ("pop /ha", "pop_density", "{:>10.1f}"),
+    ]:
+        m = _med(d, col)
+        print(
+            f"  {label:<16s}"
+            + "".join(fmt.format(m[t]) for t in TYPES)
+            + f"{_ratio(m):>8.1f}x"
+        )
 
     # ---- [2] LIKE-FOR-LIKE DRIVABLE (same network distance for both) ----
-    print(
-        "\n  [2] LIKE-FOR-LIKE — amenities within the SAME network distance, by type"
-    )
+    print("\n  [2] LIKE-FOR-LIKE — amenities within the SAME network distance, by type")
     print(
         f"  {'dist (m)':<10s}"
         + "".join(f"{t:>10s}" for t in TYPES)
@@ -106,13 +129,28 @@ def main() -> None:
             + f"{_ratio(m):>8.1f}x"
         )
 
+    # ---- [2b] LIKE-FOR-LIKE JOBS (same network distance, weighted sum) ----
+    print(
+        "\n  [2b] LIKE-FOR-LIKE JOBS — jobs reachable within the SAME network distance"
+    )
+    print(
+        f"  {'dist (m)':<10s}"
+        + "".join(f"{t:>12s}" for t in TYPES)
+        + f"{'Flat:Det':>10s}"
+    )
+    for dist in ladder:
+        m = _med(d, f"net_jobs_{dist}")
+        print(
+            f"  {dist:<10d}"
+            + "".join(f"{m[t]:>12,.0f}" for t in TYPES)
+            + f"{_ratio(m):>8.1f}x"
+        )
+
     # ---- [3] DRIVABLE RATE (each OA at its own catchment) ----
     d["trip_km"] = _num(d["trip_m"]) / 1000
     d["amenities"] = _num(d["net_amen"])
     d["rate"] = d["amenities"] / d["transport"].replace(0, np.nan)
-    print(
-        "\n  [3] DRIVABLE RATE — amenities per kWh, at each OA's own catchment"
-    )
+    print("\n  [3] DRIVABLE RATE — amenities per kWh, at each OA's own catchment")
     print(f"  {'':14s}" + "".join(f"{t:>10s}" for t in TYPES) + f"{'Flat:Det':>10s}")
     for label, col in [
         ("trip dist (km)", "trip_km"),
@@ -124,6 +162,19 @@ def main() -> None:
         print(
             f"  {label:<14s}"
             + "".join(f"{m[t]:>10.1f}" for t in TYPES)
+            + f"{_ratio(m):>8.1f}x"
+        )
+    # jobs at the same own-catchment radius (weighted sum, then per kWh)
+    d["jobs_catch"] = _num(d["net_jobs_catch"])
+    d["jobs_rate"] = d["jobs_catch"] / d["transport"].replace(0, np.nan)
+    for label, col, fmt in [
+        ("jobs (catchment)", "jobs_catch", "{:>10,.0f}"),
+        ("jobs / kWh", "jobs_rate", "{:>10,.0f}"),
+    ]:
+        m = _med(d, col)
+        print(
+            f"  {label:<14s}"
+            + "".join(fmt.format(m[t]) for t in TYPES)
             + f"{_ratio(m):>8.1f}x"
         )
 

@@ -3,7 +3,7 @@
 Single source of truth for status, open work, and methodology decisions.
 Updated 2026-06-15 (two-axis reframe; paper + Atlas deferred).
 
-> **⏸ Current focus.** The live work is the **[argument](paper/argument.md)** and the
+> **⏸ Current focus.** The live work is the **[argument](paper/summary.md)** and the
 > **data + analysis pipeline**. The **paper ([PAPER.md](PAPER.md)) is deferred**; the **Atlas is
 > pending** — its place-scoring and XGBoost planning models are to be reevaluated for the
 > two-axis frame (that code lives in git history).
@@ -13,7 +13,7 @@ Updated 2026-06-15 (two-axis reframe; paper + Atlas deferred).
 ### Current focus
 
 1. **The argument** — canonical two-axis statement in
-   [paper/argument.md](paper/argument.md). Single source of truth.
+   [paper/summary.md](paper/summary.md). Single source of truth.
 2. **The data + analysis pipeline** — `oa_data` + `oa_access` → `travel_energy`,
    `access_profile`, `lock_in`, `form_size` (assembled in the stats layer, no network run).
 
@@ -48,7 +48,7 @@ The rebuild targets only what the two-axis analysis consumes:
 - **Network access** (`stats/oa_network_access.py`): cityseer over OS Open Roads, national network
   built **once** and queried per catchment band, each OA at its own NTS car-trip catchment;
   rate **~2.9×/kWh**, validated to ~2% of a literal per-OA computation (~12 min).
-- **Two-axis analysis** ([paper/argument.md](paper/argument.md)): NTS-anchored
+- **Two-axis analysis** ([paper/summary.md](paper/summary.md)): NTS-anchored
   car-travel energy, lock-in (1.74× → 1.47×), network access rate (~2.9×/kWh) + walkable
   richness (~10×), heat-vs-size decomposition — all on the shared `stats/oa_data.py` core.
 - **Two-axis migration cleanup:** stripped the retired three-surface / A–G code and
@@ -73,7 +73,7 @@ These are the contestable scientific choices; none gate acquisition.
   80/80) and whether to expose per-half (heat-only / travel-only) residuals.
 - **Rate circularity.** Travel energy is partly the cost of low access, so the rate
   contains the inverse of its own numerator; consider rating access against heat + an
-  idealised/electrified travel cost (see argument.md §7).
+  idealised/electrified travel cost (see summary.md §7).
 - **Under-recording robustness.** Flat metered energy omits communal/bulk gas (district
   heating); detached omits off-gas. Re-add an under-recording check before publishing the
   heat gradient (the old `form_bias` flags were removed with the pipeline).
@@ -85,7 +85,7 @@ These are the contestable scientific choices; none gate acquisition.
   two-axis frame (old code in git history).
 - Bettencourt scaling analysis (BRES + GVA) — source archived; revive if pursued.
 - Morphology features (LiDAR/momepy network centrality) — only if a future Atlas needs them.
-  (The network-distance access measure is now done — `stats/oa_network_access.py`, argument.md §3.)
+  (The network-distance access measure is now done — `stats/oa_network_access.py`, summary.md §3.)
 
 ### Paper / repo
 - Finalise `paper/references.bib`.

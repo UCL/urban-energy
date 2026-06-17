@@ -1,8 +1,8 @@
 # The Neighbourhood Energy Performance Index: Energy Spent versus Access Gained
 
 > **⏸ DEFERRED.** Parked for a later phase; the current focus is the canonical argument
-> ([`paper/argument.md`](paper/argument.md)) and the pipeline. The abstract reflects the
-> two-axis model; the body below is the older draft. Where they conflict, `argument.md` is
+> ([`paper/summary.md`](paper/summary.md)) and the pipeline. The abstract reflects the
+> two-axis model; the body below is the older draft. Where they conflict, `summary.md` is
 > authoritative.
 
 ## Abstract

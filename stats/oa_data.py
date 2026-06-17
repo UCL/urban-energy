@@ -52,20 +52,35 @@ _TS044_TERRACED = "ts044_Accommodation type: Terraced"
 _TS044_FLAT = "ts044_Accommodation type: In a purpose-built block of flats or tenement"
 
 _CENSUS_COLS = [
-    "OA21CD", "LSOA21CD",
-    _TS001_POP, _TS017_TOTAL, _TS017_ZERO,
-    _TS045_TOTAL, _TS045_ONE, _TS045_TWO, _TS045_THREE,
-    _TS044_TOTAL, _TS044_DETACHED, _TS044_SEMI, _TS044_TERRACED, _TS044_FLAT,
+    "OA21CD",
+    "LSOA21CD",
+    _TS001_POP,
+    _TS017_TOTAL,
+    _TS017_ZERO,
+    _TS045_TOTAL,
+    _TS045_ONE,
+    _TS045_TWO,
+    _TS045_THREE,
+    _TS044_TOTAL,
+    _TS044_DETACHED,
+    _TS044_SEMI,
+    _TS044_TERRACED,
+    _TS044_FLAT,
     *TS058_BAND_MIDPOINTS_KM,  # commute distance → travel disaggregation
 ]
 _ENERGY_COLS = [
-    "OA21CD", "oa_gas_mean_kwh", "oa_gas_num_meters",
-    "oa_elec_mean_kwh", "oa_elec_num_meters",
+    "OA21CD",
+    "oa_gas_mean_kwh",
+    "oa_gas_num_meters",
+    "oa_elec_mean_kwh",
+    "oa_elec_num_meters",
 ]
 
 _TYPE_MAP = {
-    "pct_flat": "Flat", "pct_terraced": "Terraced",
-    "pct_semi": "Semi", "pct_detached": "Detached",
+    "pct_flat": "Flat",
+    "pct_terraced": "Terraced",
+    "pct_semi": "Semi",
+    "pct_detached": "Detached",
 }
 _TYPE_ORDER = ["Flat", "Terraced", "Semi", "Detached"]
 
@@ -88,8 +103,20 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
     oa = gpd.read_file(_CENSUS, columns=_CENSUS_COLS, ignore_geometry=True)
     oa = pd.DataFrame(oa)
 
-    oa = oa.merge(pd.read_parquet(_STATS / "oa_energy_consumption.parquet",
-                                  columns=_ENERGY_COLS), on="OA21CD", how="left")
+    # OA land area (hectares), for population density.
+    area = gpd.read_file(_CENSUS, columns=["OA21CD"]).to_crs(27700)
+    area["oa_area_ha"] = area.geometry.area / 1e4
+    oa = oa.merge(
+        pd.DataFrame(area.drop(columns="geometry"))[["OA21CD", "oa_area_ha"]],
+        on="OA21CD",
+        how="left",
+    )
+
+    oa = oa.merge(
+        pd.read_parquet(_STATS / "oa_energy_consumption.parquet", columns=_ENERGY_COLS),
+        on="OA21CD",
+        how="left",
+    )
     oa = oa.merge(pd.read_parquet(_STATS / "oa_epc.parquet"), on="OA21CD", how="left")
     oa = oa.merge(access_table().reset_index(), on="OA21CD", how="left")
 
@@ -99,13 +126,15 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
         veh["cars_total"]
     ).replace(0, np.nan)
     oa = oa.merge(veh[["LSOA21CD", "bev_share"]], on="LSOA21CD", how="left")
-    imd = pd.read_parquet(_STATS / "lsoa_imd2025.parquet",
-                          columns=["LSOA21CD", "imd_income_score"])
+    imd = pd.read_parquet(
+        _STATS / "lsoa_imd2025.parquet", columns=["LSOA21CD", "imd_income_score"]
+    )
     oa = oa.merge(imd, on="LSOA21CD", how="left")
     oa = oa.rename(columns={"oa_median_build_year": "median_build_year"})
 
     # --- Population and households ---
     oa["total_people"] = _num(oa[_TS001_POP])
+    oa["pop_density"] = oa["total_people"] / _num(oa["oa_area_ha"]).replace(0, np.nan)
     oa["total_hh"] = _num(oa[_TS017_TOTAL]) - _num(oa[_TS017_ZERO])
     oa["avg_hh_size"] = oa["total_people"] / oa["total_hh"].replace(0, np.nan)
 

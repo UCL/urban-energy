@@ -34,7 +34,7 @@ urban-energy/
 │   ├── access_profile.py      # Per-service access counts + ×/kWh (incl. grocery, jobs)
 │   ├── lock_in.py             # Residual energy gap after best fabric + full EV
 │   ├── form_size_decomposition.py # Heat vs dwelling/household-size decomposition
-│   ├── argument_figures.py    # The two paper/argument.md figures
+│   ├── argument_figures.py    # The two paper/summary.md figures
 │   ├── figures/{oa,nepi}/     # Legacy three-surface PNGs (referenced only by the deferred PAPER)
 │   └── archive/               # Archived LSOA analysis scripts
 ├── tests/                     # pytest framework configured, tests pending
@@ -155,7 +155,7 @@ Cached to `statistics/oa_access.parquet` in ~6 s.
 ### Two-axis analysis layer (`stats/`)
 
 The analysis is **two measured axes and a rate** (canonical statement:
-[`paper/argument.md`](paper/argument.md)). All four scripts load the same core,
+[`paper/summary.md`](paper/summary.md)). All four scripts load the same core,
 [`stats/oa_data.py`](stats/oa_data.py) (`load_and_aggregate` + shared OLS helpers), and
 are **print-only** — they consume the built data artefacts and report to stdout, so they
 are run on demand rather than wired as pipeline stages.
@@ -173,7 +173,7 @@ are run on demand rather than wired as pipeline stages.
 > and the Atlas (XGBoost planning models + static site) were removed from the tree in the
 > two-axis migration (git history holds them). The Atlas scoring + models are **pending
 > reevaluation** for the two-axis frame; the paper is deferred. See
-> [`paper/argument.md`](paper/argument.md) and [ROADMAP.md](ROADMAP.md).
+> [`paper/summary.md`](paper/summary.md) and [ROADMAP.md](ROADMAP.md).
 
 ---
 

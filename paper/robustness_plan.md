@@ -3,7 +3,7 @@
 > **⏸ Predates the two-axis migration.** Derived from the pre-migration audit; many steps
 > targeted the old three-surface / A–G code that has since been **removed**, and several
 > construction fixes (per-household energy, NTS travel, EPC floor area) are already done. Kept
-> for the carry-over items; [`argument.md`](argument.md) is the current canonical statement.
+> for the carry-over items; [`summary.md`](summary.md) is the current canonical statement.
 
 A sequenced, executable plan to improve the robustness of the NEPI argument,
 derived from [methodology_review.md](methodology_review.md). Ordered by
