@@ -1,15 +1,18 @@
 """
-Figures for paper/argument.md — the two-axis story in two charts.
+Figures for paper/argument.md — the two-axis story in three charts.
 
 1. ``energy_gradient.png`` — stacked heat + car-travel energy by dominant dwelling
-   type, showing the Flat→Detached total-energy gradient.
-2. ``access_per_kwh.png`` — everyday access bought per kWh, a flat vs a detached
-   home, one bar per service (the headline rate).
+   type, showing the Flat→Detached total-energy gradient (1.74×).
+2. ``access_per_kwh.png`` — network amenities reachable per kWh within each OA's own
+   car-trip catchment, by dwelling type (the drivable rate, ~2.9×).
+3. ``access_curve.png`` — amenities reachable vs network distance by type: the
+   like-for-like gap (4.5–9.5×) and how detached drives far to match the flat's count.
 
-Both are computed from the same canonical loader as the prose (``oa_data`` +
-``oa_access``), so the figures cannot drift from the numbers.
+All are computed from the canonical loader (``oa_data``) plus the network-access
+cache (``oa_network_access.parquet``), so the figures cannot drift from the numbers.
 
-Reproduce:
+Reproduce (build the network cache first):
+    uv run python stats/oa_network_access.py
     uv run python stats/argument_figures.py
 """
 
@@ -24,10 +27,11 @@ from pathlib import Path  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
-from access_profile import SERVICES, _series  # noqa: E402
 from oa_data import load_and_aggregate  # noqa: E402
 
-from urban_energy.paths import PROJECT_DIR  # noqa: E402
+from urban_energy.paths import DATA_DIR, PROJECT_DIR  # noqa: E402
+
+_NET_CACHE = DATA_DIR / "statistics" / "oa_network_access.parquet"
 
 _OUT = PROJECT_DIR / "stats" / "figures" / "argument"
 _TYPES = ["Flat", "Terraced", "Semi", "Detached"]
@@ -106,59 +110,115 @@ def energy_gradient(df: pd.DataFrame, out: Path) -> None:
     print(f"  wrote {out}  (Flat {totals[0]:,.0f} → Detached {totals[-1]:,.0f})")
 
 
-def access_per_kwh(df: pd.DataFrame, out: Path) -> None:
-    """Per-service access bought per kWh, flat vs detached, + the geometric mean."""
-    energy = {t: df.loc[df["dominant_type"] == t, "energy"].mean() for t in _TYPES}
-    names, ratios = [], []
-    for label, stem in SERVICES:
-        col = f"{stem}_n"
-        det = _series(df, "Detached", col).mean() / energy["Detached"]
-        flt = _series(df, "Flat", col).mean() / energy["Flat"]
-        names.append(label)
-        ratios.append(flt / det if det else np.nan)
-    order = np.argsort(ratios)
-    names = [names[i] for i in order]
-    ratios = [ratios[i] for i in order]
-    geomean = float(np.exp(np.nanmean(np.log(ratios))))
+def access_per_kwh(df: pd.DataFrame, net: pd.DataFrame, out: Path) -> None:
+    """Network amenities reachable per kWh within each OA's catchment, by type."""
+    d = df.merge(net[["net_amen"]], left_on="OA21CD", right_index=True, how="left")
+    # divide by TRAVEL energy (the catchment is the car travel) — matches access_profile
+    d["rate"] = _num(d["net_amen"]) / _num(d["transport_kwh_per_hh_total_est"])
+    rate = [d.loc[d["dominant_type"] == t, "rate"].median() for t in _TYPES]
+    ratio = rate[0] / rate[-1] if rate[-1] else float("nan")
 
     fig, ax = plt.subplots(figsize=(7, 4.5))
-    y = np.arange(len(names))
-    ax.barh(y, ratios, 0.66, color=_ACCESS_C)
-    for i, r in enumerate(ratios):
-        ax.text(r + 0.3, i, f"{r:.0f}×", va="center", fontsize=10)
-    ax.axvline(geomean, color="#444", ls="--", lw=1.2)
-    ax.text(
-        geomean + 0.3,
-        -0.7,
-        f"geometric mean {geomean:.0f}×",
-        color="#444",
-        fontsize=10,
+    x = np.arange(len(_TYPES))
+    ax.bar(x, rate, 0.62, color=_ACCESS_C)
+    for i, r in enumerate(rate):
+        ax.text(i, r + 0.01, f"{r:.2f}", ha="center", va="bottom", fontsize=10)
+    ax.annotate(
+        f"{ratio:.1f}× the access per kWh",
+        xy=(0, rate[0]),
+        xytext=(1.5, rate[0] + 0.08),
+        ha="center",
+        fontsize=11,
         fontweight="bold",
+        color="#444",
+        arrowprops=dict(arrowstyle="->", color="#888", lw=1.2),
     )
-    ax.set_yticks(y, names)
-    ax.set_xlabel("× more access per kWh (a flat vs a detached home)")
+    ax.set_xticks(x, _TYPES)
+    ax.set_ylabel("Network amenities reachable per kWh")
     ax.set_title(
-        "Access axis — same energy, ~10× the everyday access",
+        f"Access axis — a flat reaches {ratio:.1f}× the amenities per kWh",
         fontsize=12,
         fontweight="bold",
     )
     ax.spines[["top", "right"]].set_visible(False)
-    ax.margins(x=0.12)
+    ax.margins(y=0.18)
     fig.tight_layout()
     fig.savefig(out, dpi=150)
     plt.close(fig)
-    print(f"  wrote {out}  (geometric mean {geomean:.1f}×)")
+    print(f"  wrote {out}  (Flat:Det {ratio:.1f}×)")
+
+
+def access_curve(df: pd.DataFrame, net: pd.DataFrame, out: Path) -> None:
+    """Amenities reachable vs network distance, by type — the like-for-like gap."""
+    d = df[["OA21CD", "dominant_type"]].merge(net, left_on="OA21CD", right_index=True)
+    dists = sorted(
+        int(c.rsplit("_", 1)[1]) for c in net.columns if c.startswith("net_total_")
+    )
+    km = np.array(dists) / 1000
+    colours = {
+        "Flat": "#3d8a5f",
+        "Terraced": "#7aa66b",
+        "Semi": "#c9a13b",
+        "Detached": "#c1543b",
+    }
+    catch = {  # median car-trip catchment (km) per type
+        t: _num(d.loc[d["dominant_type"] == t, "trip_m"]).median() / 1000
+        for t in _TYPES
+    }
+
+    fig, ax = plt.subplots(figsize=(7, 4.5))
+    curves = {}
+    for t in _TYPES:
+        y = [
+            _num(d.loc[d["dominant_type"] == t, f"net_total_{dd}"]).median()
+            for dd in dists
+        ]
+        curves[t] = np.array(y)
+        ax.plot(km, y, color=colours[t], lw=2, label=t)
+    # mark flat vs detached catchments: detached drives far to reach the flat's level
+    for t in ("Flat", "Detached"):
+        c = catch[t]
+        yc = float(np.interp(c, km, curves[t]))
+        ax.plot([c, c], [0, yc], color=colours[t], ls=":", lw=1.2)
+        ax.scatter([c], [yc], color=colours[t], zorder=5)
+    ax.annotate(
+        "detached drives 2.4× as far\nto reach what a flat reaches on a short trip",
+        xy=(
+            catch["Detached"],
+            float(np.interp(catch["Detached"], km, curves["Detached"])),
+        ),
+        xytext=(11, curves["Flat"].max() * 0.55),
+        fontsize=9,
+        color="#444",
+        arrowprops=dict(arrowstyle="->", color="#888", lw=1.0),
+    )
+    ax.set_xlabel("Network distance reachable (km)")
+    ax.set_ylabel("Everyday amenities reachable (median)")
+    ax.set_title(
+        "Like-for-like — at any distance, a flat reaches far more (4.5–9.5×)",
+        fontsize=12,
+        fontweight="bold",
+    )
+    ax.legend(frameon=False, loc="upper left")
+    ax.spines[["top", "right"]].set_visible(False)
+    ax.margins(x=0.02, y=0.05)
+    fig.tight_layout()
+    fig.savefig(out, dpi=150)
+    plt.close(fig)
+    print(f"  wrote {out}  (like-for-like curve)")
 
 
 def main() -> None:
-    """Build both argument figures into stats/figures/argument/."""
+    """Build the argument figures into stats/figures/argument/."""
     _OUT.mkdir(parents=True, exist_ok=True)
     df = load_and_aggregate()
     df["energy"] = df["building_kwh_per_hh"] + _num(
         df["transport_kwh_per_hh_total_est"]
     )
     energy_gradient(df, _OUT / "energy_gradient.png")
-    access_per_kwh(df, _OUT / "access_per_kwh.png")
+    net = pd.read_parquet(_NET_CACHE)
+    access_per_kwh(df, net, _OUT / "access_per_kwh.png")
+    access_curve(df, net, _OUT / "access_curve.png")
 
 
 if __name__ == "__main__":

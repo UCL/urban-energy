@@ -131,6 +131,22 @@ def access_table(rebuild: bool = False) -> pd.DataFrame:
     return acc
 
 
+#: Everyday destinations counted into the access measure (the network catchment in
+#: ``oa_network_access`` and the walkable-richness comparison in ``access_profile``).
+DEST = ["gp", "pharmacy", "hospital", "school", "food", "grocery", "greenspace"]
+
+
+def oa_centroids(oa_codes: pd.Series) -> np.ndarray:
+    """EPSG:27700 (x, y) of each OA's representative point, aligned to ``oa_codes``."""
+    cen = gpd.read_file(_CENSUS, columns=["OA21CD"]).to_crs(27700)
+    pts = cen.geometry.representative_point()
+    cen = cen.assign(x=pts.x.to_numpy(), y=pts.y.to_numpy())
+    m = pd.DataFrame({"OA21CD": np.asarray(oa_codes)}).merge(
+        cen[["OA21CD", "x", "y"]], on="OA21CD", how="left"
+    )
+    return m[["x", "y"]].to_numpy()
+
+
 def main() -> None:
     """(Re)build the access cache and print a quick by-service summary."""
     acc = access_table(rebuild=True)

@@ -125,22 +125,32 @@ Two layers — acquire, then analyse (no heavy processing pipeline):
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │  stats/   Two-axis analysis (print-only, run on demand)         │
-│           oa_data assembles the frame + straight-line KD-tree   │
-│           access → travel_energy · access_profile · lock_in ·   │
-│           form_size_decomposition                               │
+│           oa_data assembles the frame + network access          │
+│           (oa_network_access) + straight-line walkable          │
+│           (oa_access) → travel_energy · access_profile ·        │
+│           lock_in · form_size_decomposition                     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Access is straight-line, not a network pipeline
+### Access is measured over the road network (cityseer)
 
-[`stats/oa_access.py`](stats/oa_access.py) builds a KD-tree over the point layers (NHS, GIAS,
-FSA food + grocery, OS greenspace, NaPTAN, Census jobs) and counts each service within 1,600 m
-of every OA centroid — plus the nearest distance and the weighted jobs reachable. It caches to
-`statistics/oa_access.parquet` in ~6 s; rebuild with `uv run python stats/oa_access.py`.
+[`stats/oa_network_access.py`](stats/oa_network_access.py) is the access measure. It builds the
+**whole England road network into a single cityseer Rust structure once** (OS Open Roads
+`road_link`, ~3.6 M nodes, ~6 min), then — because cityseer's accessibility skips non-live nodes
+as origins — sets every OA's nearest node live and computes the **full amenity-vs-distance curve**
+in one pass: counts at each ladder rung from **1,600 m to 25,600 m**. From that one curve per OA,
+three numbers are read (`access_profile.py`): the **walkable doorstep** (1,600 m), the
+**like-for-like** reach (matched distance, **4.5–9.5×**), and the **drivable rate** (each OA
+interpolated at its own NTS catchment ÷ travel energy, **~2.9×**/kWh). Caches to
+`statistics/oa_network_access.parquet` (~15 min total).
 
-Straight-line distance is a deliberate, *conservative* simplification: it can only over-credit
-access, so the flat→detached gradient it reports is a floor. cityseer + the 30–50 h national
-network run were **removed** in the simplification (git history holds them).
+[`stats/oa_access.py`](stats/oa_access.py) is retained for the **straight-line** KD-tree counts
+within 1,600 m (a fast cross-check; `access_profile` now uses the network walkable instead).
+Cached to `statistics/oa_access.parquet` in ~6 s.
+
+> The earlier *straight-line-only* simplification (cityseer removed) was reverted: scoping access
+> to the real network is the rigorous measure. Like-for-like a flat reaches **4.5–9.5×** more at
+> any distance; sprawl only matches the count by driving ~2.4× as far, for **~2.9×** the energy.
 
 ### Two-axis analysis layer (`stats/`)
 
@@ -152,9 +162,10 @@ are run on demand rather than wired as pipeline stages.
 
 | Script | What it computes |
 |--------|------------------|
-| `oa_access.py` | Straight-line KD-tree access — counts per service within 1,600 m (+ jobs, grocery), cached |
+| `oa_network_access.py` | **Network access** (cityseer over OS Open Roads): network built **once**, then the full amenity-vs-distance curve (1,600 m → 25.6 km) for every OA in one pass → `oa_network_access.parquet` (~15 min) |
+| `oa_access.py` | Straight-line KD-tree counts within 1,600 m — a fast cross-check, cached |
 | `travel_energy.py` | Total car-travel energy by constrained disaggregation of measured NTS9904 mileage (the `compute_travel_energy` the loader calls) |
-| `access_profile.py` | Per-service access counts + ×/kWh (the ~10× headline; incl. grocery, jobs) |
+| `access_profile.py` | Three access numbers: walkable doorstep (network 1,600 m), like-for-like **4.5–9.5×**, drivable rate **~2.9×**/kWh |
 | `lock_in.py` | Energy gap surviving best-fabric + full EV (1.74× → 1.47×) |
 | `form_size_decomposition.py` | Heat vs dwelling/household-size, via floor-area elasticity + a total→direct regression ladder |
 
@@ -191,13 +202,15 @@ Individual scripts also run standalone (e.g. `uv run python data/download_census
 ### Analysis — two-axis (current)
 
 ```bash
+uv run python stats/oa_network_access.py         # build network-access cache (cityseer, ~12 min)
 uv run python stats/lock_in.py                   # energy gradient 1.74× → optimised 1.47×
-uv run python stats/access_profile.py            # ~10× access per kWh (+ grocery, jobs)
+uv run python stats/access_profile.py            # network ~2.9×/kWh + walkable richness ~10×
 uv run python stats/form_size_decomposition.py   # heat vs dwelling/household-size decomposition
 ```
 
-The analysis assembles the frame in-process from the acquired artefacts; access counts are
-computed + cached by `oa_access` on first run.
+The analysis assembles the frame in-process from the acquired artefacts. The straight-line
+walkable counts are cached by `oa_access` on first run; the **network** access rate needs the
+`oa_network_access.parquet` cache (build it first with `oa_network_access.py`).
 
 ---
 
@@ -254,12 +267,14 @@ Claude assists. New commits, never `--amend` after a hook failure.
 ## 7. Dependencies
 
 Core geospatial: **geopandas, shapely, pyproj**
-Analysis: **numpy, pandas, scipy** (KD-tree access), **statsmodels** (the form/size OLS ladder)
+Network access: **cityseer** (≥4.25.0b24; the road-network accessibility engine — pulls
+fiona/networkx/rasterio). Requires **Python <3.14** (no cityseer wheel for 3.14 yet).
+Analysis: **numpy, pandas, scipy** (KD-tree walkable access), **statsmodels** (the form/size OLS ladder)
 Visualisation: **matplotlib** (the two argument figures)
 I/O: **requests / aiohttp**, **openpyxl** (DESNZ XLSX), **odfpy** (NTS ODS), **pyarrow** (parquet)
 Dev: **ruff, ty, pytest**
 
-Full pin list in `uv.lock`. (Pruned with the simplification: **cityseer, momepy, libpysal,
-rasterio, rasterstats** with the cityseer removal; xgboost, shap, streamlit, scikit-learn,
-seaborn, esda, fpdf2 with the two-axis strip. Re-add only if the network pipeline or Atlas
-is rebuilt.)
+Full pin list in `uv.lock`. **cityseer is back** (network access, §4). Still pruned (two-axis
+strip): xgboost, shap, streamlit, scikit-learn, seaborn, esda, fpdf2 — re-add only if the Atlas
+is rebuilt. (momepy/libpysal/rasterstats stayed out — the morphology layer is not revived; only
+cityseer accessibility is.)

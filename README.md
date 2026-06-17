@@ -45,8 +45,9 @@ NEPI puts this on **two measured axes** and a **rate** (the canonical statement 
 
 - **⚡ Energy** (kWh/household/year) — what a household *spends*: metered **heat** (DESNZ
   gas + electricity) + **car travel** (anchored to measured NTS mileage by rural-urban class).
-- **🌳 Access** — what the place *gives back*: the **count of everyday services within a
-  walkable (1,600 m) catchment** — and, unlike nearest distance, it can report **zero**.
+- **🌳 Access** — what the place *gives back*: the **everyday amenities reachable over the road
+  network within each household's own travel catchment** (cityseer over OS Open Roads), plus the
+  walkable richness within 1,600 m — and, unlike nearest distance, it can report **zero**.
 - **📐 The rate** = access ÷ energy. *The measure of a place is not how much energy it
   consumes, but how much access that energy buys.*
 
@@ -69,10 +70,12 @@ less access per Joule.** This is the carbon/infrastructure lock-in (Seto et al. 
 | Car travel (NTS-anchored) | 3,240 | 9,272 | 2.9× |
 | **Total energy** | **13,674** | **23,832** | **1.74×** |
 
-**Access** — for the *same* energy, compact form buys **~10× more everyday access**
-(geometric mean over nine services): 11× the GPs, 18× the shops, 20× the rail, **14× the jobs**.
-**42% of detached neighbourhoods have no GP within 1,600 m; 72% have no railway station.**
-*Pay more, get less.*
+**Access** — measured over the road network (cityseer), read three ways. **Like-for-like**, at any
+matched distance a flat reaches **4.5–9.5× more** everyday amenities (density). A detached home
+matches that count **only by driving ~2.4× as far** — for **~2.9× the energy**, so **~2.9× the
+access per kWh**. And on foot the gap is starkest: a flat reaches **6.8 of 7** everyday
+destinations within a walk, a detached home **4.6** — **60% of detached neighbourhoods can't reach
+a single GP on foot.** *Same amenities, ~3× the energy — and a far poorer doorstep.*
 
 **Lock-in** — perfect optimisation (best-practice insulation + full electrification) closes
 only ~54% of the energy gap: a residual **1.47×** survives (bigger homes + longer trips), and
@@ -129,8 +132,9 @@ uv sync
 echo "URBAN_ENERGY_DATA_DIR=$(pwd)/temp" > .env
 
 # Two-axis analysis — energy gradient, lock-in, access profile, form/size
+uv run python stats/oa_network_access.py        # build network-access cache (cityseer, ~12 min)
 uv run python stats/lock_in.py                  # energy 1.74× → optimised 1.47×
-uv run python stats/access_profile.py           # ~10× access per kWh (+ grocery, jobs)
+uv run python stats/access_profile.py           # network ~2.9×/kWh + walkable richness ~10×
 uv run python stats/form_size_decomposition.py  # heat vs dwelling/household size
 ```
 
@@ -145,9 +149,10 @@ Full reproduction recipe (raw downloads → analysis) is in
 Full status, open work, and scope decisions (KEEP / DEFER / CUT) live in
 **[ROADMAP.md](ROADMAP.md)**. Headline state:
 
-**Done:** the national OA dataset (~178k OAs, straight-line access — no heavy pipeline); the two-axis frame ([paper/argument.md](paper/argument.md));
-NTS-anchored car-travel energy, the lock-in quantification, the per-service access profile,
-and the heat-vs-size decomposition (`stats/`); storage centralised behind
+**Done:** the national OA dataset (~178k OAs); the two-axis frame ([paper/argument.md](paper/argument.md));
+NTS-anchored car-travel energy, the lock-in quantification, the **network access** measure (cityseer
+over OS Open Roads, full per-OA curve; like-for-like 4.5–9.5×, drivable rate ~2.9×/kWh, 60% of
+detached with no GP on foot), and the heat-vs-size decomposition (`stats/`); storage centralised behind
 `URBAN_ENERGY_DATA_DIR`; and an executable rebuild
 orchestrator (`urban_energy.pipeline`). The old three-surface code and A–G Atlas were removed
 from the tree in the migration (in git history, pending reevaluation).

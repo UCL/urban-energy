@@ -29,10 +29,12 @@ The rebuild targets only what the two-axis analysis consumes:
 
 - **KEEP** (load-bearing): Census 2021, DESNZ postcode metered energy, EPC
   (build year + dwelling floor area + best-fabric intensity), OS Greenspace/UPRN/
-  Code-Point, FSA (food + grocery), NaPTAN, GIAS, NHS, Census workplace jobs, IoD 2025, DVLA vehicles (`bev_share`),
+  Code-Point, **OS Open Roads** (network access via cityseer), FSA (food + grocery), NaPTAN,
+  GIAS, NHS, Census workplace jobs, IoD 2025, DVLA vehicles (`bev_share`),
   NTS9904 mileage, ONS 2021 RUC.
-- **Removed** (nothing consumed them): cityseer network pipeline + LiDAR/momepy morphology
-  + OS Open Map Local footprints + OS Roads/Built-Up-Areas/Boundary-Line. In git history.
+- **Removed** (nothing consumed them): LiDAR/momepy **morphology** (cityseer centrality not
+  revived — accessibility only) + OS Open Map Local footprints + OS Built-Up-Areas/Boundary-Line.
+  In git history.
 - **Removed from the tree** (in git history): the summed three-surface / A–G code
   (scorecard, bands, empirical access-penalty model, three-surface figures) and the
   old Atlas (XGBoost planning models + static site), taken out in the two-axis
@@ -42,13 +44,16 @@ The rebuild targets only what the two-axis analysis consumes:
 
 ## Done
 
-- **National OA dataset** — assembled in the stats layer (straight-line KD-tree access; no network pipeline).
+- **National OA dataset** — assembled in the stats layer.
+- **Network access** (`stats/oa_network_access.py`): cityseer over OS Open Roads, national network
+  built **once** and queried per catchment band, each OA at its own NTS car-trip catchment;
+  rate **~2.9×/kWh**, validated to ~2% of a literal per-OA computation (~12 min).
 - **Two-axis analysis** ([paper/argument.md](paper/argument.md)): NTS-anchored
-  car-travel energy, lock-in (1.74× → 1.47×), per-service access profile (~9.8×/kWh; + grocery, jobs),
-  heat-vs-size decomposition — all on the shared `stats/oa_data.py` core.
+  car-travel energy, lock-in (1.74× → 1.47×), network access rate (~2.9×/kWh) + walkable
+  richness (~10×), heat-vs-size decomposition — all on the shared `stats/oa_data.py` core.
 - **Two-axis migration cleanup:** stripped the retired three-surface / A–G code and
   the old Atlas; unified the EPC→OA aggregation (`data/aggregate_epc_oa.py`); lean
-  orchestrator (`urban_energy.pipeline`, acquire-only); removed cityseer + the network pipeline; `REPRODUCTION.md`.
+  orchestrator (`urban_energy.pipeline`, acquire-only); `REPRODUCTION.md`.
 - **Accessibility bands** settled on the minute-clean ladder (400/800/1600/4800/
   9600 m ≈ 5/10/20/60/120 min at ~80 m/min) — kept as-is.
 
@@ -79,8 +84,8 @@ These are the contestable scientific choices; none gate acquisition.
 - **Atlas (pending):** reevaluate the place-scoring and the XGBoost planning models for the
   two-axis frame (old code in git history).
 - Bettencourt scaling analysis (BRES + GVA) — source archived; revive if pursued.
-- A network-distance access measure (cityseer) and/or morphology features — only if a future
-  Atlas needs them; the straight-line access is a conservative floor (see argument.md §3).
+- Morphology features (LiDAR/momepy network centrality) — only if a future Atlas needs them.
+  (The network-distance access measure is now done — `stats/oa_network_access.py`, argument.md §3.)
 
 ### Paper / repo
 - Finalise `paper/references.bib`.

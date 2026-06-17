@@ -3,8 +3,8 @@
 How to rebuild the urban-energy datasets from scratch. The build is driven by an
 executable orchestrator (`urban_energy.pipeline`) — the dependency order lives in
 code, not prose. There is **no heavy processing pipeline**: it is data acquisition +
-OA aggregation, then the two-axis analysis runs in the stats layer on demand (access
-is a straight-line KD-tree, cached in seconds).
+OA aggregation, then the two-axis analysis runs in the stats layer on demand. The access
+measure is a one-off cityseer build over the national road network (~12 min), then cached.
 
 ```
 acquire  (downloads + OA aggregations)  →  analyse  (stats/, on demand)
@@ -26,6 +26,7 @@ These cannot be scripted (portals / registration). `doctor` verifies each path.
 | ------- | ------ | ------- |
 | EPC "All domestic certificates" | EPC Open Data Communities (**registration**) | `$DATA_DIR/epc/` |
 | OS Open Greenspace | OS Data Hub (open) | `$DATA_DIR/opgrsp_gpkg_gb/Data/opgrsp_gb.gpkg` |
+| OS Open Roads | OS Data Hub (open) | `$DATA_DIR/oproad_gpkg_gb/Data/oproad_gb.gpkg` |
 | OS Open UPRN | OS Data Hub | `$DATA_DIR/osopenuprn_*_gpkg/` |
 | OS Code-Point Open | OS Data Hub | `$DATA_DIR/codepo_gpkg_gb/` |
 | OA 2021 boundaries | ONS Geoportal | `$DATA_DIR/` (`Output_Areas_2021_*`) |
@@ -54,15 +55,17 @@ Stages skip when their declared outputs already exist (`--force` to rebuild).
 ## Step 3 — Analyse (stats layer, on demand)
 
 ```bash
+uv run python stats/oa_network_access.py        # build network-access cache (cityseer, ~12 min)
 uv run python stats/lock_in.py                  # energy 1.74× → optimised 1.47×
-uv run python stats/access_profile.py           # ~10× access per kWh (+ grocery, jobs)
+uv run python stats/access_profile.py           # network ~2.9×/kWh + walkable richness ~10×
 uv run python stats/form_size_decomposition.py  # heat vs dwelling/household size
 ```
 
-The loader (`stats/oa_data.py`) assembles the per-OA frame from the acquired
-artefacts in-process. Access counts are computed + cached by `stats/oa_access.py`
-on first run (`statistics/oa_access.parquet`, ~6 s; rebuild with
-`uv run python stats/oa_access.py`).
+The loader (`stats/oa_data.py`) assembles the per-OA frame from the acquired artefacts
+in-process. The **network** access rate needs `statistics/oa_network_access.parquet`
+(`oa_network_access.py` — cityseer over OS Open Roads, built once + queried per catchment
+band, ~12 min). The straight-line **walkable** counts are cached by `stats/oa_access.py` on
+first run (`statistics/oa_access.parquet`, ~6 s).
 
 ## Verify
 
