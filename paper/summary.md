@@ -27,7 +27,7 @@ We measure household energy in kilowatt-hours per household (and per person) per
 
 ## Heat
 
-A detached neighbourhood uses about **1.41 times** a flat's heat per household, **1.08 times** per person. The gap is the form's, in three parts: detached homes are bigger, hold more people, and have a leakier shape (more exposed wall, no shared party walls). With floor area, occupancy, age, income and tenure all held equal, the shape alone accounts for about **12%** (1.12×); the rest is the larger homes and households that low density brings.
+A detached neighbourhood uses about **1.41 times** a flat's heat per household, **1.08 times** per person. The gap is the form's, in three parts: detached homes are bigger, hold more people, and have a leakier shape (more exposed wall, no shared party walls). With floor area, occupancy, age, income and tenure all held equal, the shape alone accounts for about **12%** (1.12× per household); the rest is the larger homes and households that low density brings.
 
 **How we separated "shape" from "size"**
 
@@ -56,9 +56,9 @@ We want all the car energy a home's location forces, not just the commute — th
 | car travel | 3,240 | 9,272 | 3.23× | 2.47× |
 | **total** | 13,674 | 23,832 | **2.02×** | **1.54×** |
 
-The Flat and Detached columns are observed medians; the ratios are the compositional (method-D) estimate, so they are not the quotient of the two columns. Car travel makes up 24–37% of all household energy.
+The Flat and Detached columns are observed medians; the ratios are the compositional estimate, so they are not the quotient of the two columns. Car travel makes up 24–37% of all household energy.
 
-![Energy axis (method D): a pure detached area spends about 2.0× a pure flat area's household energy, heat plus car travel.](../stats/figures/argument/energy_gradient.png)
+![Energy axis (compositional): a pure detached area spends about 2.0× a pure flat area's household energy, heat plus car travel.](../stats/figures/argument/energy_gradient.png)
 
 ## Access: the units we compare
 
@@ -80,7 +80,7 @@ Access is the count of things reachable from a neighbourhood over the *real road
 
 The Flat and Detached columns are observed medians; the ratios are the compositional estimate. The compactness behind the gap: a flat neighbourhood holds about 79 people per hectare against a detached one's 14, a factor of 5.7.
 
-![Access (method D): predicted amenities reachable against network distance — a pure flat area reaches about 24× more on foot, still about 10× more at a 25 km drive.](../stats/figures/argument/access_curve.png)
+![Access (compositional): predicted amenities reachable against network distance — a pure flat area reaches about 24× more on foot, still about 10× more at a 25 km drive.](../stats/figures/argument/access_curve.png)
 
 ## The ratios
 
@@ -88,14 +88,14 @@ For access the flat is ahead at every distance, and the gap narrows as distance 
 
 **How the rate works, and why it differs from the on-foot gap**
 
-- *The rate.* For access per kilowatt-hour we take, for each neighbourhood, the amenities reachable at its own car catchment divided by its car-travel energy, and compare a pure all-flat against a pure all-detached area the same way as every other ratio — giving the **6.3×** figure. It says how much everyday reach each kilowatt-hour of driving buys.
+- *The rate.* Each area's **own catchment** is how far its residents actually drive — its NTS mileage divided by about 370 car trips per person per year, a trip distance capped between a short walk (1.6 km) and 25.6 km. Access per kilowatt-hour is the amenities reachable within that catchment divided by the area's car-travel energy, compared pure-flat against pure-detached like every other ratio — the **6.3×** figure. It says how much everyday reach each kilowatt-hour of driving buys.
 - *Why the rate (~6.3×) is smaller than the on-foot gap (~24×).* The on-foot figure holds **distance** fixed — at the same reach the flat has far more around it. Let each home drive out to its *own* catchment and the detached home **spends energy to compensate**, pulling its count up until the two nearly converge (about 1.2× apart) — but it burned far more fuel to get there, so **per kilowatt-hour the flat is still 6.3× ahead.**
 
-![The rate (method D): network amenities reachable per kWh of car travel — a pure flat area returns about 6.3× the access per kWh of a pure detached area.](../stats/figures/argument/access_per_kwh.png)
+![The rate (compositional): network amenities reachable per kWh of car travel — a pure flat area returns about 6.3× the access per kWh of a pure detached area.](../stats/figures/argument/access_per_kwh.png)
 
 ## Lock-in: what survives decarbonisation
 
-Does decarbonisation close the gap? We recompute the energy with each home at best-practice insulation (its EPC-potential fabric) and a fully electric fleet.
+Does decarbonisation close the gap? We recompute the energy with each home at best-practice insulation and a fully electric fleet.
 
 **How the optimised scenario is computed**
 
