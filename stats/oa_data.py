@@ -50,6 +50,10 @@ _TS044_DETACHED = "ts044_Accommodation type: Detached"
 _TS044_SEMI = "ts044_Accommodation type: Semi-detached"
 _TS044_TERRACED = "ts044_Accommodation type: Terraced"
 _TS044_FLAT = "ts044_Accommodation type: In a purpose-built block of flats or tenement"
+_TS054_TOTAL = "ts054_Tenure of household: Total: All households"
+_TS054_OWNED = "ts054_Tenure of household: Owned"
+_TS054_SOCIAL = "ts054_Tenure of household: Social rented"
+_TS054_PRIVATE = "ts054_Tenure of household: Private rented"
 
 _CENSUS_COLS = [
     "OA21CD",
@@ -66,6 +70,10 @@ _CENSUS_COLS = [
     _TS044_SEMI,
     _TS044_TERRACED,
     _TS044_FLAT,
+    _TS054_TOTAL,
+    _TS054_OWNED,
+    _TS054_SOCIAL,
+    _TS054_PRIVATE,
     *TS058_BAND_MIDPOINTS_KM,  # commute distance → travel disaggregation
 ]
 _ENERGY_COLS = [
@@ -130,6 +138,13 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
         _STATS / "lsoa_imd2025.parquet", columns=["LSOA21CD", "imd_income_score"]
     )
     oa = oa.merge(imd, on="LSOA21CD", how="left")
+
+    # Climate confound (annual HDD per OA, HadUK-Grid) — optional: present only
+    # once data/process_climate.py has run; the ladder includes it when found.
+    hdd_path = _STATS / "oa_hdd.parquet"
+    if hdd_path.exists():
+        oa = oa.merge(pd.read_parquet(hdd_path), on="OA21CD", how="left")
+
     oa = oa.rename(columns={"oa_median_build_year": "median_build_year"})
 
     # --- Population and households ---
@@ -165,6 +180,14 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
         categories=_TYPE_ORDER,
         ordered=True,
     )
+
+    # --- Tenure shares (TS054) — confound for the form/size ladder ---
+    # Owner-occupation is the omitted reference; social/private renting carry
+    # the energy-relevant tenure gradient (heating control, upgrade ability).
+    tdenom = _num(oa[_TS054_TOTAL]).replace(0, np.nan)
+    oa["pct_owned"] = _num(oa[_TS054_OWNED]) / tdenom * 100
+    oa["pct_social_rented"] = _num(oa[_TS054_SOCIAL]) / tdenom * 100
+    oa["pct_private_rented"] = _num(oa[_TS054_PRIVATE]) / tdenom * 100
 
     # --- Travel: NTS-anchored car-travel energy (constrained disaggregation) ---
     oa = compute_travel_energy(oa)

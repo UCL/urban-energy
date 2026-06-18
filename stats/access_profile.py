@@ -26,8 +26,11 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+import statsmodels.api as sm
+from form_size_decomposition import _SHARE_FRACS, _compositional_frame
 from oa_access import DEST
 from oa_data import load_and_aggregate
+from statsmodels.genmod.generalized_linear_model import GLMResultsWrapper
 
 from urban_energy.paths import DATA_DIR
 
@@ -56,6 +59,92 @@ def _med(df: pd.DataFrame, col: str) -> dict[str, float]:
 
 def _ratio(m: dict[str, float]) -> float:
     return m["Flat"] / m["Detached"] if m["Detached"] else float("nan")
+
+
+def _comp_poisson(
+    df: pd.DataFrame, y_col: str, x_cols: list[str], weight_col: str
+) -> GLMResultsWrapper | None:
+    """No-intercept Poisson (log-link) GLM, frequency-weighted, on complete cases.
+
+    The right estimator for non-negative access counts: the log link makes
+    predictions strictly positive (a linear model predicts negative amenity
+    counts for sparse detached areas), and with shares summing to 1 the
+    Detached:Flat contrast ``exp(b_detached - b_flat)`` is invariant to the
+    (uncentred) confounds.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Source frame.
+    y_col : str
+        Non-negative outcome (an access count or the access-per-kWh rate).
+    x_cols : list of str
+        Type-share fractions plus confounds. No constant (shares carry the level).
+    weight_col : str
+        Household-count column used as frequency weights.
+
+    Returns
+    -------
+    statsmodels results or None
+        Fitted GLM results, or ``None`` if too few valid cases.
+    """
+    cols = [y_col, *x_cols, weight_col]
+    sub = df[cols].apply(pd.to_numeric, errors="coerce").dropna()
+    sub = sub[(sub[y_col] >= 0) & (sub[weight_col] > 0)]
+    if len(sub) < len(x_cols) + 10:
+        return None
+    return sm.GLM(
+        sub[y_col],
+        sub[x_cols],
+        family=sm.families.Poisson(),
+        freq_weights=sub[weight_col],
+    ).fit()
+
+
+def compositional_access(d: pd.DataFrame) -> None:
+    """Option D on the access axis: a pure all-flat vs all-detached area.
+
+    The no-intercept compositional idea from the energy axes, but fitted with a
+    Poisson (log-link) GLM because access measures are non-negative, zero-inflated
+    counts a linear model would push negative. Household-weighted and
+    **income-controlled but not density-controlled** — density is the mechanism by
+    which compact form delivers access, so netting it out would erase the very
+    effect under study. Each ratio is the predicted access of a pure all-flat area
+    over a pure all-detached one (invariant to income; levels shown at mean
+    income).
+
+    Parameters
+    ----------
+    d : pandas.DataFrame
+        The access frame assembled in :func:`main` (dwelling-type shares, network
+        access columns, households, income, travel energy).
+    """
+    cf = _compositional_frame(d)
+    cf["rate"] = _num(cf["net_amen"]) / _num(cf["transport"]).replace(0, np.nan)
+    income = [
+        c for c in cf.columns if "imd_income" in c.lower() and "score" in c.lower()
+    ][:1]
+
+    measures = [
+        ("amenities, walk 1,600 m", "net_total_1600"),
+        ("amenities, catchment", "net_amen"),
+        ("jobs, catchment", "net_jobs_catch"),
+        ("people, catchment", "net_pop_catch"),
+        ("access per kWh (rate)", "rate"),
+    ]
+    print("\n  [4] COMPOSITIONAL (option D) — pure all-flat vs all-detached area")
+    print("      Poisson log-link · household-weighted · income-ctrl · NOT density")
+    print(f"  {'measure':<26s}{'Flat':>14s}{'Det':>14s}{'Flat:Det':>10s}")
+    for label, col in measures:
+        cf["_y"] = _num(cf[col])
+        m = _comp_poisson(cf, "_y", _SHARE_FRACS + income, "total_hh")
+        if m is None:
+            continue
+        base = sum(float(m.params[c]) * _num(cf[c]).mean() for c in income)
+        pf = float(np.exp(m.params["s_flat"] + base))
+        pdet = float(np.exp(m.params["s_detached"] + base))
+        ratio = pf / pdet if pdet else float("nan")
+        print(f"  {label:<26s}{pf:>14,.1f}{pdet:>14,.1f}{ratio:>9.1f}x")
 
 
 def main() -> None:
@@ -177,6 +266,8 @@ def main() -> None:
             + "".join(fmt.format(m[t]) for t in TYPES)
             + f"{_ratio(m):>8.1f}x"
         )
+
+    compositional_access(d)
 
 
 if __name__ == "__main__":

@@ -29,6 +29,10 @@ form effect. This script reports:
 4. The **total → direct regression ladder** on one fixed common-support sample:
    form → + occupancy → + dwelling size, reporting the modelled Detached:Flat
    per-household ratio at each step and the share of the gap mediated by size.
+5. The **compositional (no-intercept) ladder** (option D) — the same mediation,
+   but read from every dwelling-type share at once (fractions summing to 1, with
+   an "other" residual), household-weighted, with no dominant-type label and no
+   dropped reference category, so each coefficient is a pure-type mean.
 
 Run:
     uv run python stats/form_size_decomposition.py
@@ -38,6 +42,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+import statsmodels.api as sm
 
 # Reuse the canonical loader and OLS plumbing (data construction is already
 # correct: genuine per-household energy, EPC floor-area merge, dominant_type).
@@ -52,6 +57,24 @@ def _imd_income_col(df: pd.DataFrame) -> list[str]:
     """Return the IMD income-score column name as a one-element list (or empty)."""
     hits = [c for c in df.columns if "imd_income" in c.lower() and "score" in c.lower()]
     return hits[:1]
+
+
+def _tenure_cols(df: pd.DataFrame) -> list[str]:
+    """Return the tenure-share confound columns present (social + private rented).
+
+    Owner-occupation is the omitted reference, so the two renting shares carry the
+    energy-relevant tenure gradient (heating control, ability to upgrade fabric).
+    """
+    return [c for c in ("pct_social_rented", "pct_private_rented") if c in df.columns]
+
+
+def _hdd_cols(df: pd.DataFrame) -> list[str]:
+    """Return the climate confound column if present (annual heating-degree-days).
+
+    Populated by ``data/process_climate.py`` from HadUK-Grid; absent until that
+    has run, so the ladder runs with or without the climate control.
+    """
+    return ["hdd"] if "hdd" in df.columns else []
 
 
 def _detached_flat_ratio(
@@ -201,14 +224,14 @@ def regression_ladder(lsoa: pd.DataFrame) -> None:
     """
     Total → direct mediation ladder on one fixed common-support sample.
 
-    M0 (total)  : form + confounds (build year, income)
+    M0 (total)  : form + confounds (build year, income, tenure)
     M1          : + occupancy (avg_hh_size)
     M2 (direct) : + dwelling size (log floor area)
 
     The modelled Detached:Flat per-household ratio is reported at each step; its
     attenuation from M0 to M2 is the share of the form gap mediated by size and
-    occupancy. Confounds (build era, income) are held throughout; size/occupancy
-    are mediators, in only for the direct effect.
+    occupancy. Confounds (build era, income, tenure) are held throughout;
+    size/occupancy are mediators, in only for the direct effect.
     """
     print("\n" + "=" * 70)
     print("4. TOTAL → DIRECT REGRESSION LADDER (fixed common-support sample)")
@@ -218,7 +241,9 @@ def regression_ladder(lsoa: pd.DataFrame) -> None:
     df["log_floor_area"] = np.log(
         pd.to_numeric(df["oa_median_floor_area_m2"], errors="coerce").clip(lower=1)
     )
-    confounds = ["median_build_year"] + _imd_income_col(df)
+    confounds = (
+        ["median_build_year"] + _imd_income_col(df) + _tenure_cols(df) + _hdd_cols(df)
+    )
     occupancy = ["avg_hh_size"]
     size = ["log_floor_area"]
 
@@ -276,10 +301,205 @@ def regression_ladder(lsoa: pd.DataFrame) -> None:
             f"the residual {direct_gap:+.0%} is direct fabric/exposure."
         )
 
-    print(
-        "\n  Caveat: tenure (TS054) and climate (HDD) are not yet in the dataset;\n"
-        "  they are confounds to add next, and would adjust the *direct* term."
+    if _hdd_cols(df):
+        print(
+            "\n  Direct term is net of build era, income, tenure and climate (HDD)."
+        )
+    else:
+        print(
+            "\n  Caveat: climate (heating-degree-days) is not yet in the dataset\n"
+            "  (HadUK-Grid pending — run data/process_climate.py once the .nc lands);\n"
+            "  it is the remaining confound, and would further adjust the direct term."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Option D — compositional (no-intercept) ecological regression
+# ---------------------------------------------------------------------------
+# Dwelling-type shares as fractions that sum to 1 (an explicit "other" closes the
+# composition) enter a no-intercept, household-weighted regression, so each
+# coefficient is the (log) per-household energy of a pure area of that type and
+# the whole dwelling mix is used — no single dominant-type label, no dropped
+# reference category. The Detached:Flat ratio is exp(b_detached - b_flat), and is
+# invariant to the (uncentred) confound values.
+
+_SHARE_FRACS = ["s_flat", "s_terraced", "s_semi", "s_detached", "s_other"]
+
+
+def _compositional_frame(df: pd.DataFrame) -> pd.DataFrame:
+    """Add dwelling-type share fractions that sum to 1 for every OA.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        OA frame carrying the ``pct_*`` dwelling-type shares (percent).
+
+    Returns
+    -------
+    pandas.DataFrame
+        ``df`` with ``s_flat`` / ``s_terraced`` / ``s_semi`` / ``s_detached`` and
+        a residual ``s_other`` that closes the composition, row-normalised to sum
+        to exactly 1.
+    """
+    out = df.copy()
+    for frac, pct in [
+        ("s_flat", "pct_flat"),
+        ("s_terraced", "pct_terraced"),
+        ("s_semi", "pct_semi"),
+        ("s_detached", "pct_detached"),
+    ]:
+        out[frac] = pd.to_numeric(out[pct], errors="coerce") / 100
+    four = out[["s_flat", "s_terraced", "s_semi", "s_detached"]].sum(axis=1)
+    out["s_other"] = (1.0 - four).clip(lower=0)
+    rowsum = out[_SHARE_FRACS].sum(axis=1).replace(0, np.nan)
+    out[_SHARE_FRACS] = out[_SHARE_FRACS].div(rowsum, axis=0)
+    return out
+
+
+def _comp_ols(
+    df: pd.DataFrame, y_col: str, x_cols: list[str], weight_col: str
+) -> sm.regression.linear_model.RegressionResultsWrapper | None:
+    """No-intercept WLS (household-weighted, HC1 robust) on complete cases.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Source frame.
+    y_col : str
+        Dependent variable (log per-household energy).
+    x_cols : list of str
+        Regressors — the type-share fractions plus any confounds/mediators. No
+        constant is added; the shares carry the level.
+    weight_col : str
+        Household-count column used as regression weights.
+
+    Returns
+    -------
+    statsmodels results or None
+        Fitted WLS results, or ``None`` if too few complete cases.
+    """
+    cols = [y_col, *x_cols, weight_col]
+    sub = df[cols].apply(pd.to_numeric, errors="coerce").dropna()
+    if len(sub) < len(x_cols) + 10:
+        return None
+    return sm.WLS(sub[y_col], sub[x_cols], weights=sub[weight_col]).fit(cov_type="HC1")
+
+
+def compositional_ladder(lsoa: pd.DataFrame) -> None:
+    """Option D: the no-intercept compositional mediation ladder.
+
+    Mirrors :func:`regression_ladder` (same total → direct mediation), but
+    parameterised with every dwelling-type share at once and no intercept, and
+    household-weighted. The Detached:Flat per-household ratio at each rung is
+    ``exp(b_detached - b_flat)``; its attenuation as occupancy and floor area
+    enter is the size-mediation channel. A pure-type predicted-heat row checks
+    the fit against the descriptive medians.
+
+    Parameters
+    ----------
+    lsoa : pandas.DataFrame
+        National OA frame from :func:`oa_data.load_and_aggregate`.
+    """
+    print("\n" + "=" * 70)
+    print("5. COMPOSITIONAL NO-INTERCEPT LADDER — option D (all shares, hh-weighted)")
+    print("=" * 70)
+
+    df = _compositional_frame(lsoa)
+    df["log_floor_area"] = np.log(
+        pd.to_numeric(df["oa_median_floor_area_m2"], errors="coerce").clip(lower=1)
     )
+    df["_log_travel"] = np.log(
+        pd.to_numeric(df["transport_kwh_per_hh_total_est"], errors="coerce").clip(
+            lower=1
+        )
+    )
+    df["_log_total"] = np.log(
+        (
+            pd.to_numeric(df["building_kwh_per_hh"], errors="coerce")
+            + pd.to_numeric(df["transport_kwh_per_hh_total_est"], errors="coerce")
+        ).clip(lower=1)
+    )
+    confounds = (
+        ["median_build_year"] + _imd_income_col(df) + _tenure_cols(df) + _hdd_cols(df)
+    )
+    occupancy = ["avg_hh_size"]
+    size = ["log_floor_area"]
+
+    keep = [_DV, *_SHARE_FRACS, *confounds, *occupancy, *size, "total_hh"]
+    sample = df.dropna(subset=keep).copy()
+    print(f"\n  Common sample: N = {len(sample):,} OAs (household-weighted, HC1 SEs)")
+    print(f"  Confounds held throughout: {confounds}")
+
+    steps = [
+        ("D0 total  (shares + confounds)", _SHARE_FRACS + confounds),
+        ("D1        (+ occupancy)", _SHARE_FRACS + confounds + occupancy),
+        ("D2 direct (+ dwelling size)", _SHARE_FRACS + confounds + occupancy + size),
+    ]
+    print(f"\n  {'Model':<32s} {'Det:Flat':>9s} {'b_flat':>9s} {'b_det':>9s}")
+    print("  " + "-" * 62)
+    ratios: list[float] = []
+    m0 = None
+    for label, xcols in steps:
+        m = _comp_ols(sample, _DV, xcols, "total_hh")
+        if m is None:
+            print(f"  {label:<32s} SKIPPED")
+            continue
+        bflat, bdet = float(m.params["s_flat"]), float(m.params["s_detached"])
+        ratio = float(np.exp(bdet - bflat))
+        ratios.append(ratio)
+        if m0 is None:
+            m0 = m
+        print(f"  {label:<32s} {ratio:>8.2f}× {bflat:>9.3f} {bdet:>9.3f}")
+
+    if len(ratios) >= 2 and ratios[0] > 1:
+        total_gap, direct_gap = ratios[0] - 1.0, ratios[-1] - 1.0
+        mediated = (total_gap - direct_gap) / total_gap if total_gap else float("nan")
+        print(
+            f"\n  Total form gap (Det:Flat): {ratios[0]:.2f}×  →  "
+            f"direct (size-held): {ratios[-1]:.2f}×"
+        )
+        print(
+            f"  Size + occupancy mediate {mediated:.0%}; "
+            f"residual {direct_gap:+.0%} is direct fabric/exposure."
+        )
+
+    print("\n  Same estimator on each energy axis (shares + confounds):")
+    for label, ycol in (
+        ("heat", _DV),
+        ("travel", "_log_travel"),
+        ("total", "_log_total"),
+    ):
+        m = _comp_ols(sample, ycol, _SHARE_FRACS + confounds, "total_hh")
+        if m is not None:
+            r = float(np.exp(float(m.params["s_detached"] - m.params["s_flat"])))
+            print(f"    {label:<7s} Det:Flat {r:.2f}×")
+
+    if m0 is not None:
+        base = sum(
+            float(m0.params[c]) * pd.to_numeric(sample[c], errors="coerce").mean()
+            for c in confounds
+        )
+        pred = {
+            t: float(np.exp(float(m0.params[s]) + base))
+            for t, s in (("Flat", "s_flat"), ("Detached", "s_detached"))
+        }
+        med = {
+            t: float(
+                pd.to_numeric(
+                    sample.loc[sample["dominant_type"] == t, "building_kwh_per_hh"],
+                    errors="coerce",
+                ).median()
+            )
+            for t in ("Flat", "Detached")
+        }
+        print(
+            "\n  D0 predicted heat at mean confounds (kWh/hh):  "
+            f"Flat {pred['Flat']:,.0f}   Detached {pred['Detached']:,.0f}"
+        )
+        print(
+            "  vs descriptive medians (same sample):          "
+            f"Flat {med['Flat']:,.0f}   Detached {med['Detached']:,.0f}"
+        )
 
 
 def main() -> None:
@@ -295,6 +515,7 @@ def main() -> None:
     descriptive_panel(lsoa)
     quintile_stratification(lsoa)
     regression_ladder(lsoa)
+    compositional_ladder(lsoa)
 
 
 if __name__ == "__main__":

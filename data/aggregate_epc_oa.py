@@ -11,6 +11,10 @@ a national UPRN spatial join):
   lock-in size counterfactual (``stats/lock_in.py``).
 * ``epc_potential_kwh_m2`` — median best-practice-fabric energy intensity
   (EPC ``ENERGY_CONSUMPTION_POTENTIAL``). The lock-in "perfect insulation" basis.
+* ``epc_current_kwh_m2`` — median as-is energy intensity (EPC
+  ``ENERGY_CONSUMPTION_CURRENT``). With potential it gives the fabric-improvement
+  ratio (potential/current) the lock-in applies to metered gas; both are EPC
+  modelled, so the performance gap cancels in the ratio.
 * ``oa_median_build_year`` — median construction year (from
   ``CONSTRUCTION_AGE_BAND`` midpoints). The build-age confound in the form/size
   regression.
@@ -55,15 +59,18 @@ def main() -> None:
         columns=[
             "POSTCODE",
             "TOTAL_FLOOR_AREA",
+            "ENERGY_CONSUMPTION_CURRENT",
             "ENERGY_CONSUMPTION_POTENTIAL",
             "CONSTRUCTION_AGE_BAND",
         ],
     )
     epc["POSTCODE"] = epc["POSTCODE"].astype(str).str.strip().str.upper()
     floor = pd.to_numeric(epc["TOTAL_FLOOR_AREA"], errors="coerce")
+    cur = pd.to_numeric(epc["ENERGY_CONSUMPTION_CURRENT"], errors="coerce")
     pot = pd.to_numeric(epc["ENERGY_CONSUMPTION_POTENTIAL"], errors="coerce")
     epc = epc.assign(
         floor=floor.where(floor.between(FLOOR_MIN_M2, FLOOR_MAX_M2)),
+        cur=cur.where(cur.between(INTENSITY_MIN, INTENSITY_MAX)),
         pot=pot.where(pot.between(INTENSITY_MIN, INTENSITY_MAX)),
         year=epc["CONSTRUCTION_AGE_BAND"].map(_band_to_year),
     )
@@ -90,6 +97,13 @@ def main() -> None:
         .reset_index()
         .rename(columns={"pot": "epc_potential_kwh_m2"})
     )
+    cur_oa = (
+        merged[merged["cur"].notna()]
+        .groupby("OA21CD")["cur"]
+        .median()
+        .reset_index()
+        .rename(columns={"cur": "epc_current_kwh_m2"})
+    )
     year_oa = (
         merged[merged["year"].notna()]
         .groupby("OA21CD")["year"]
@@ -98,14 +112,17 @@ def main() -> None:
         .rename(columns={"year": "oa_median_build_year"})
     )
 
-    oa = floor_oa.merge(pot_oa, on="OA21CD", how="outer").merge(
-        year_oa, on="OA21CD", how="outer"
+    oa = (
+        floor_oa.merge(pot_oa, on="OA21CD", how="outer")
+        .merge(cur_oa, on="OA21CD", how="outer")
+        .merge(year_oa, on="OA21CD", how="outer")
     )
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     oa.to_parquet(OUTPUT_PATH, index=False)
 
     print(f"  wrote {len(oa):,} OAs → {OUTPUT_PATH}")
     print(f"    floor median     {oa['oa_median_floor_area_m2'].median():.0f} m²")
+    print(f"    current median   {oa['epc_current_kwh_m2'].median():.0f} kWh/m²/yr")
     print(f"    potential median {oa['epc_potential_kwh_m2'].median():.0f} kWh/m²/yr")
     print(f"    build year median {oa['oa_median_build_year'].median():.0f}")
 

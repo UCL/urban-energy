@@ -27,6 +27,8 @@ dependencies = [
     "odfpy>=1.4.1",
     "matplotlib>=3.10.9",
     "cityseer>=4.25.0b24",
+    "xarray>=2025.6.1",
+    "netcdf4>=1.7.3",
 ]
 
 [project.optional-dependencies]
