@@ -11,7 +11,8 @@ per OA we read three numbers:
 2. **like-for-like drivable** — amenities within the *same* fixed distance for every
    OA (pure density/connectivity, no catchment scaling);
 3. **catchment-scaled drivable** — each OA interpolated at its own car-trip catchment
-   (NTS mileage ÷ trips) — the ~2.9×/kWh rate.
+   (NTS mileage ÷ trips); the access-per-kWh rate from this is ~2.9× by dominant-type
+   median, ~6.3× on the compositional estimator (see ``access_profile``).
 
 Jobs and residents ride along on the same traversal: each workplace or OA point carries
 a weight, so their reach is the network **sum** within distance (cityseer

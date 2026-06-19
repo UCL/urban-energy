@@ -64,7 +64,7 @@ $URBAN_ENERGY_DATA_DIR/
 │   ├── postcode_energy_consumption.parquet   ← DESNZ metered (postcode level — primary)
 │   ├── postcode_oa_lookup.parquet            ← Postcode → OA21CD spatial lookup
 │   ├── oa_energy_consumption.parquet         ← Postcode energy aggregated to OA (meter-weighted)
-│   ├── oa_epc.parquet                        ← EPC floor area + best-fabric intensity + build year → OA
+│   ├── oa_epc.parquet                        ← EPC floor area + current & potential (best-fabric) intensity + build year → OA
 │   ├── oa_access.parquet                     ← straight-line access counts per OA (cached, ~6 s)
 │   ├── lsoa_imd2025.parquet                  ← IoD25 income (deprivation control)
 │   ├── lsoa_vehicles.parquet                 ← DVLA vehicle licensing (bev_share)
@@ -91,7 +91,7 @@ rebuild recipe are in [REPRODUCTION.md](REPRODUCTION.md). The load-bearing (KEEP
 |--------|--------|--------|------|
 | Census 2021 (10 topic tables) | `download_census.py` | `census_oa_joined.gpkg` | Population, dwelling type (TS044), commute, cars, deprivation |
 | DESNZ postcode energy | `download_energy_postcode.py` → `aggregate_energy_oa.py` | `oa_energy_consumption.parquet` | **Primary DV (Form)**: metered gas + electricity → OA |
-| EPC domestic | `process_epc.py` → `aggregate_epc_oa.py` | `epc_domestic_spatial.parquet`, `oa_epc.parquet` | Build year + dwelling floor area + best-fabric (POTENTIAL) intensity |
+| EPC domestic | `process_epc.py` → `aggregate_epc_oa.py` | `epc_domestic_spatial.parquet`, `oa_epc.parquet` | Build year + dwelling floor area + current & potential (best-fabric) intensity (`epc_current_kwh_m2`, used by lock-in as the potential/current gas-scaling ratio) |
 | OS Open Greenspace | (manual) | `opgrsp_gpkg_gb/` | Greenspace access (straight-line) |
 | OS Open UPRN | (manual) | `osopenuprn_*/` | EPC geocoding |
 | OS Code-Point Open | (manual) | `codepo_gpkg_gb/` | Postcode→OA lookup |
@@ -139,9 +139,10 @@ Two layers — acquire, then analyse (no heavy processing pipeline):
 `road_link`, ~3.6 M nodes, ~6 min), then — because cityseer's accessibility skips non-live nodes
 as origins — sets every OA's nearest node live and computes the **full amenity-vs-distance curve**
 in one pass: counts at each ladder rung from **1,600 m to 25,600 m**. From that one curve per OA,
-three numbers are read (`access_profile.py`): the **walkable doorstep** (1,600 m), the
-**like-for-like** reach (matched distance, **4.5–9.5×**), and the **drivable rate** (each OA
-interpolated at its own NTS catchment ÷ travel energy, **~2.9×**/kWh). Caches to
+the access numbers are read (`access_profile.py`): the **on-foot** gap (1,600 m — a flat reaches
+~**24×** the amenities of a detached area, jobs ~52×, people ~12×), the count at each OA's own NTS
+**catchment**, and the **25 km drive** (~**10–14×**). The access-per-kWh **rate** divides catchment
+amenities by car-travel energy: a flat returns **~6.3× access per kWh**. Caches to
 `statistics/oa_network_access.parquet` (~15 min total).
 
 [`stats/oa_access.py`](stats/oa_access.py) is retained for the **straight-line** KD-tree counts
@@ -149,8 +150,9 @@ within 1,600 m (a fast cross-check; `access_profile` now uses the network walkab
 Cached to `statistics/oa_access.parquet` in ~6 s.
 
 > The earlier *straight-line-only* simplification (cityseer removed) was reverted: scoping access
-> to the real network is the rigorous measure. Like-for-like a flat reaches **4.5–9.5×** more at
-> any distance; sprawl only matches the count by driving ~2.4× as far, for **~2.9×** the energy.
+> to the real network is the rigorous measure. On foot a flat reaches **~24×** the amenities of a
+> detached area; at a 25 km drive still **~10–14×**. The detached area only matches the count by
+> driving out to its own larger catchment, for which the flat returns **~6.3× access per kWh**.
 
 ### Two-axis analysis layer (`stats/`)
 
@@ -165,8 +167,8 @@ are run on demand rather than wired as pipeline stages.
 | `oa_network_access.py` | **Network access** (cityseer over OS Open Roads): network built **once**, then the full amenity-vs-distance curve (1,600 m → 25.6 km) for every OA in one pass → `oa_network_access.parquet` (~15 min) |
 | `oa_access.py` | Straight-line KD-tree counts within 1,600 m — a fast cross-check, cached |
 | `travel_energy.py` | Total car-travel energy by constrained disaggregation of measured NTS9904 mileage (the `compute_travel_energy` the loader calls) |
-| `access_profile.py` | Three access numbers: walkable doorstep (network 1,600 m), like-for-like **4.5–9.5×**, drivable rate **~2.9×**/kWh |
-| `lock_in.py` | Energy gap surviving best-fabric + full EV (1.74× → 1.47×) |
+| `access_profile.py` | Access gaps: on-foot (network 1,600 m) **~24×**, 25 km drive **~10–14×**, and the rate **~6.3× access/kWh** |
+| `lock_in.py` | Energy gap surviving best-fabric + full EV (per household 2.0× → 1.5×; per person 1.5× → 1.15×) |
 | `form_size_decomposition.py` | Heat vs dwelling/household-size, via floor-area elasticity + a total→direct regression ladder |
 
 > **⏸ Pending.** The earlier three-surface / A–G scorecard, the empirical access-penalty model,
@@ -203,8 +205,8 @@ Individual scripts also run standalone (e.g. `uv run python data/download_census
 
 ```bash
 uv run python stats/oa_network_access.py         # build network-access cache (cityseer, ~12 min)
-uv run python stats/lock_in.py                   # energy gradient 1.74× → optimised 1.47×
-uv run python stats/access_profile.py            # network ~2.9×/kWh + walkable richness ~10×
+uv run python stats/lock_in.py                   # energy gap ph 2.0× → optimised 1.5× (pp 1.5× → 1.15×)
+uv run python stats/access_profile.py            # rate ~6.3× access/kWh + on-foot gap ~24×
 uv run python stats/form_size_decomposition.py   # heat vs dwelling/household-size decomposition
 ```
 

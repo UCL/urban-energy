@@ -47,10 +47,11 @@ The rebuild targets only what the two-axis analysis consumes:
 - **National OA dataset** — assembled in the stats layer.
 - **Network access** (`stats/oa_network_access.py`): cityseer over OS Open Roads, national network
   built **once** and queried per catchment band, each OA at its own NTS car-trip catchment;
-  rate **~2.9×/kWh**, validated to ~2% of a literal per-OA computation (~12 min).
+  rate **6.3× access per kWh**, validated to ~2% of a literal per-OA computation (~12 min).
 - **Two-axis analysis** ([paper/summary.md](paper/summary.md)): NTS-anchored
-  car-travel energy, lock-in (1.74× → 1.47×), network access rate (~2.9×/kWh) + walkable
-  richness (~10×), heat-vs-size decomposition — all on the shared `stats/oa_data.py` core.
+  car-travel energy, lock-in (per household 2.0× → 1.5×; per person 1.5× → 1.15×), network access
+  rate (6.3× access per kWh) + on-foot gap (~24×), heat-vs-size decomposition — all on the shared
+  `stats/oa_data.py` core.
 - **Two-axis migration cleanup:** stripped the retired three-surface / A–G code and
   the old Atlas; unified the EPC→OA aggregation (`data/aggregate_epc_oa.py`); lean
   orchestrator (`urban_energy.pipeline`, acquire-only); `REPRODUCTION.md`.

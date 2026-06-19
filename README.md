@@ -46,8 +46,8 @@ NEPI puts this on **two measured axes** and a **rate** (the canonical statement 
 - **⚡ Energy** (kWh/household/year) — what a household *spends*: metered **heat** (DESNZ
   gas + electricity) + **car travel** (anchored to measured NTS mileage by rural-urban class).
 - **🌳 Access** — what the place *gives back*: the **everyday amenities reachable over the road
-  network within each household's own travel catchment** (cityseer over OS Open Roads), plus the
-  walkable richness within 1,600 m — and, unlike nearest distance, it can report **zero**.
+  network within each household's own travel catchment** (cityseer over OS Open Roads), plus what
+  is reachable on foot within 1,600 m — and, unlike nearest distance, it can report **zero**.
 - **📐 The rate** = access ÷ energy. *The measure of a place is not how much energy it
   consumes, but how much access that energy buys.*
 
@@ -62,26 +62,28 @@ less access per Joule.** This is the carbon/infrastructure lock-in (Seto et al. 
 
 ## Headline result (~178k OAs, England)
 
-**Energy** — a detached neighbourhood spends **1.74× a flat's household energy**:
+**Energy** — a detached neighbourhood spends about **2.0× a flat's household energy** (1.5× per person):
 
-| kWh/household/year | Flat | Detached | gap |
+| kWh/household/year | Flat | Detached | gap (flat→detached) |
 | --- | ---: | ---: | ---: |
-| Heat (metered) | 10,194 | 15,020 | 1.5× |
-| Car travel (NTS-anchored) | 3,240 | 9,272 | 2.9× |
-| **Total energy** | **13,674** | **23,832** | **1.74×** |
+| Heat (metered) | 10,194 | 15,020 | 1.4× |
+| Car travel (NTS-anchored) | 3,240 | 9,272 | 3.2× |
+| **Total energy** | **13,674** | **23,832** | **2.0×** |
 
-**Access** — measured over the road network (cityseer), read three ways. **Like-for-like**, at any
-matched distance a flat reaches **4.5–9.5× more** everyday amenities (density). A detached home
-matches that count **only by driving ~2.4× as far** — for **~2.9× the energy**, so **~2.9× the
-access per kWh**. And on foot the gap is starkest: a flat reaches **6.8 of 7** everyday
-destinations within a walk, a detached home **4.6** — **60% of detached neighbourhoods can't reach
-a single GP on foot.** *Same amenities, ~3× the energy — and a far poorer doorstep.*
+The Flat/Detached columns are observed medians; the gap is the compositional flat-to-detached
+estimate, so it is not the column quotient ([paper/summary.md](paper/summary.md)).
 
-**Lock-in** — perfect optimisation (best-practice insulation + full electrification) closes
-only ~54% of the energy gap: a residual **1.47×** survives (bigger homes + longer trips), and
-the access deficit is **100% tech-immune**. Built form fixes demand for generations.
+**Access** — measured over the road network (cityseer). On foot a flat reaches about **24× the
+amenities, 52× the jobs and 12× the people** of a detached neighbourhood; even at a 25 km drive the
+flat is still **10–14× ahead**. At each area's own car catchment the raw counts nearly converge: a
+detached area gets there only by driving much further, so per kilowatt-hour a flat returns about
+**6.3× the access** a detached home does.
 
-(Numbers and confidence tags: [paper/summary.md](paper/summary.md); reproduce with
+**Lock-in** — best-practice insulation + full electrification closes only about half the energy
+gap: per household **2.0× → 1.5×** (per person 1.5× → 1.15×), the residual being bigger homes and
+longer trips, while the access deficit is **100% unchanged**. Built form fixes demand for generations.
+
+(Full numbers and method: [paper/summary.md](paper/summary.md); reproduce with
 `stats/lock_in.py` + `stats/access_profile.py`.)
 
 ---
@@ -91,8 +93,8 @@ the access deficit is **100% tech-immune**. Built form fixes demand for generati
 ### Current focus
 
 1. **The argument** — the canonical two-axis statement in
-   [paper/summary.md](paper/summary.md): hypothesis, claims ladder, and every headline
-   number with its confidence tag. This is the single source of truth.
+   [paper/summary.md](paper/summary.md): the hypothesis, the method, and every headline
+   number. This is the single source of truth.
 2. **The data + analysis pipeline** — acquisition orchestrator + the two-axis analysis layer
    (`oa_data` + `oa_access` → `travel_energy`, `access_profile`, `lock_in`, `form_size`),
    reproducible from open data with no heavy processing step.
@@ -133,9 +135,9 @@ echo "URBAN_ENERGY_DATA_DIR=$(pwd)/temp" > .env
 
 # Two-axis analysis — energy gradient, lock-in, access profile, form/size
 uv run python stats/oa_network_access.py        # build network-access cache (cityseer, ~12 min)
-uv run python stats/lock_in.py                  # energy 1.74× → optimised 1.47×
-uv run python stats/access_profile.py           # network ~2.9×/kWh + walkable richness ~10×
-uv run python stats/form_size_decomposition.py  # heat vs dwelling/household size
+uv run python stats/lock_in.py                  # energy gap 2.0× → optimised 1.5× (per household)
+uv run python stats/access_profile.py           # access per kWh 6.3×, on-foot gap ~24×
+uv run python stats/form_size_decomposition.py  # heat vs dwelling/household size (compositional)
 ```
 
 Full reproduction recipe (raw downloads → analysis) is in
@@ -151,8 +153,8 @@ Full status, open work, and scope decisions (KEEP / DEFER / CUT) live in
 
 **Done:** the national OA dataset (~178k OAs); the two-axis frame ([paper/summary.md](paper/summary.md));
 NTS-anchored car-travel energy, the lock-in quantification, the **network access** measure (cityseer
-over OS Open Roads, full per-OA curve; like-for-like 4.5–9.5×, drivable rate ~2.9×/kWh, 60% of
-detached with no GP on foot), and the heat-vs-size decomposition (`stats/`); storage centralised behind
+over OS Open Roads, full per-OA curve; on-foot gap ~24×, drivable rate 6.3× access per kWh), and the
+heat-vs-size decomposition (`stats/`), all on a compositional flat-vs-detached estimator; storage centralised behind
 `URBAN_ENERGY_DATA_DIR`; and an executable rebuild
 orchestrator (`urban_energy.pipeline`). The old three-surface code and A–G Atlas were removed
 from the tree in the migration (in git history, pending reevaluation).

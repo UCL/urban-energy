@@ -1,21 +1,21 @@
 """
-Access profile — three numbers from the network access curve (``oa_network_access``).
+Access profile — network access by dwelling type (from ``oa_network_access``).
 
-All three are network distance over OS Open Roads, on the same ruler (so the walkable
-set is a true subset of the drivable):
+Sections [1]-[3] report dominant-type medians on the network ruler (so the walkable set
+is a true subset of the drivable); section [4] reports the headline **compositional**
+flat-vs-detached ratios used in ``paper/summary.md``:
 
   [1] WALKABLE CATCHMENT — amenities within a 1,600 m walk: per-service counts + the
-      share with ZERO. The richness of the doorstep, reached without travel energy.
+      share with ZERO. The doorstep, reached without travel energy.
   [2] LIKE-FOR-LIKE DRIVABLE — amenities within the SAME fixed distance for every OA,
-      flat vs detached at each ladder rung: pure density/connectivity, no catchment
-      scaling. Shows the flat's lead at short range narrowing as distance grows.
+      by type at each ladder rung: pure density/connectivity, no catchment scaling.
   [3] DRIVABLE RATE — each OA at its OWN car-trip catchment (NTS mileage ÷ trips) ÷ its
-      car-travel energy: the access-per-kWh rate (~2.9×). Same amenities as [1]/[2] at a
-      larger radius — paid for in travel energy.
+      car-travel energy: the access-per-kWh rate (dominant-type median ~2.9×).
+  [4] COMPOSITIONAL — Poisson flat-vs-detached contrasts (the headline): on foot a flat
+      reaches ~24× the amenities, and returns ~6.3× the access per kWh, of a detached.
 
-Jobs are reported alongside the amenities in all three sections (a weighted SUM of
-reachable jobs rather than a unit count), so the same flat→detached comparison can be
-read for employment access.
+Jobs are reported alongside the amenities (the total reachable jobs, summed over
+workplaces), so the same flat-vs-detached comparison can be read for employment access.
 
 Run:
     uv run python stats/oa_network_access.py   # build the cache first
