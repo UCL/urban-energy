@@ -1,17 +1,17 @@
 """
 Figures for paper/summary.md — the two-axis story in three charts, on the D basis.
 
-Every chart shows the **compositional (method-D)** contrast — a pure all-flat versus
-a pure all-detached area, predicted at mean confounds — to match the ratios in
-``paper/summary.md`` (no dominant-type medians, so the figures cannot drift from the
-text):
+Every chart shows **compositional (method-D)** predictions for the four pure dwelling
+types (all-flat, all-terraced, all-semi, all-detached) at mean confounds, to match the
+ratios in ``paper/summary.md`` (no dominant-type medians, so the figures cannot drift
+from the text):
 
-1. ``energy_gradient.png`` — stacked heat + car-travel energy, pure-flat vs
-   pure-detached (the Flat→Detached total-energy gradient, ~2.0× per household).
+1. ``energy_gradient.png`` — stacked heat + car-travel energy by dwelling type (the
+   Flat→Detached total-energy gradient, ~2.0× per household).
 2. ``access_per_kwh.png`` — network amenities reachable per kWh within each OA's own
-   car-trip catchment (the drivable rate, ~6.3×).
-3. ``access_curve.png`` — predicted amenities reachable vs network distance, pure-flat
-   vs pure-detached (the gap is ~24× on foot, narrowing to ~10× at a 25 km drive).
+   car-trip catchment, by dwelling type (the drivable rate, ~6.3× flat vs detached).
+3. ``access_curve.png`` — predicted amenities reachable vs network distance by dwelling
+   type (the gap is ~24× flat vs detached on foot, narrowing to ~10× at a 25 km drive).
 
 Energy axes use the log compositional model (``_comp_ols``); access uses the Poisson
 count model (``_comp_poisson``). Both predict a pure-type level as
@@ -49,12 +49,9 @@ from urban_energy.paths import DATA_DIR, PROJECT_DIR  # noqa: E402
 _NET_CACHE = DATA_DIR / "statistics" / "oa_network_access.parquet"
 
 _OUT = PROJECT_DIR / "stats" / "figures" / "argument"
-_TYPES = ["Flat", "Detached"]
-_HEAT_C = "#c1543b"  # warm — energy to heat the home
-_TRAVEL_C = "#3b6ea5"  # cool — energy to travel
-_ACCESS_C = "#3d8a5f"  # green — access return
-_FLAT_C = "#3d8a5f"
-_DET_C = "#c1543b"
+_HEAT_C = "#c1543b"  # warm: energy to heat the home
+_TRAVEL_C = "#3b6ea5"  # cool: energy to travel
+_ACCESS_C = "#3d8a5f"  # green: access return
 
 
 def _num(s: pd.Series) -> pd.Series:
@@ -72,6 +69,8 @@ def _pure_preds(model: Any, frame: pd.DataFrame, confounds: list[str]) -> dict:
     )
     return {
         "Flat": float(np.exp(model.params["s_flat"] + base)),
+        "Terraced": float(np.exp(model.params["s_terraced"] + base)),
+        "Semi": float(np.exp(model.params["s_semi"] + base)),
         "Detached": float(np.exp(model.params["s_detached"] + base)),
     }
 
@@ -93,33 +92,28 @@ def energy_gradient(cf: pd.DataFrame, confounds: list[str], out: Path) -> None:
     tot = _pure_preds(
         _comp_ols(cf, "_tot", _SHARE_FRACS + confounds, "total_hh"), cf, confounds
     )
-    # Bar height is the total-model prediction (so the gradient matches the text);
-    # split into heat/travel by the two component models' proportions.
-    totals = [tot[t] for t in _TYPES]
-    heat_seg = [tot[t] * heat[t] / (heat[t] + trav[t]) for t in _TYPES]
-    trav_seg = [totals[i] - heat_seg[i] for i in range(len(_TYPES))]
-    grad = totals[1] / totals[0]
+    # Bar height is the total-model prediction; split into heat/travel by the two
+    # component models' proportions.
+    types = ["Flat", "Terraced", "Semi", "Detached"]
+    totals = [tot[t] for t in types]
+    heat_seg = [tot[t] * heat[t] / (heat[t] + trav[t]) for t in types]
+    trav_seg = [totals[i] - heat_seg[i] for i in range(len(types))]
+    grad = totals[-1] / totals[0]
 
     fig, ax = plt.subplots(figsize=(7, 4.5))
-    x = np.arange(len(_TYPES))
-    ax.bar(x, heat_seg, 0.5, label="Heat (metered)", color=_HEAT_C)
+    x = np.arange(len(types))
+    ax.bar(x, heat_seg, 0.62, label="Heat (metered)", color=_HEAT_C)
     ax.bar(
-        x, trav_seg, 0.5, bottom=heat_seg, label="Car travel (NTS-anchored)",
+        x, trav_seg, 0.62, bottom=heat_seg, label="Car travel (NTS-anchored)",
         color=_TRAVEL_C,
     )
-    for i, tot in enumerate(totals):
-        ax.text(i, tot + 300, f"{tot:,.0f}", ha="center", va="bottom",
+    for i, t in enumerate(totals):
+        ax.text(i, t + 300, f"{t:,.0f}", ha="center", va="bottom",
                 fontweight="bold", fontsize=10)
-    ax.annotate(
-        f"{grad:.1f}× the energy",
-        xy=(1, totals[1]), xytext=(0.5, totals[1] + 1500), ha="center",
-        fontsize=11, fontweight="bold", color="#444",
-        arrowprops=dict(arrowstyle="->", color="#888", lw=1.2),
-    )
-    ax.set_xticks(x, ["Pure flat area", "Pure detached area"])
+    ax.set_xticks(x, types)
     ax.set_ylabel("Energy spent (kWh / household / year)")
     ax.set_title(
-        f"Energy axis — a detached home spends {grad:.1f}× a flat's energy",
+        f"Energy axis: a detached home spends {grad:.1f}× a flat's energy",
         fontsize=12, fontweight="bold",
     )
     ax.legend(frameon=False, loc="upper left")
@@ -128,7 +122,7 @@ def energy_gradient(cf: pd.DataFrame, confounds: list[str], out: Path) -> None:
     fig.tight_layout()
     fig.savefig(out, dpi=150)
     plt.close(fig)
-    print(f"  wrote {out}  ({totals[0]:,.0f} → {totals[1]:,.0f}, {grad:.2f}×)")
+    print(f"  wrote {out}  ({totals[0]:,.0f} → {totals[-1]:,.0f}, {grad:.2f}×)")
 
 
 def access_per_kwh(cf: pd.DataFrame, income: list[str], out: Path) -> None:
@@ -139,24 +133,19 @@ def access_per_kwh(cf: pd.DataFrame, income: list[str], out: Path) -> None:
     rate = _pure_preds(
         _comp_poisson(cf, "_y", _SHARE_FRACS + income, "total_hh"), cf, income
     )
-    vals = [rate[t] for t in _TYPES]
-    ratio = vals[0] / vals[1] if vals[1] else float("nan")
+    types = ["Flat", "Terraced", "Semi", "Detached"]
+    vals = [rate[t] for t in types]
+    ratio = vals[0] / vals[-1] if vals[-1] else float("nan")
 
     fig, ax = plt.subplots(figsize=(7, 4.5))
-    x = np.arange(len(_TYPES))
-    ax.bar(x, vals, 0.5, color=_ACCESS_C)
+    x = np.arange(len(types))
+    ax.bar(x, vals, 0.62, color=_ACCESS_C)
     for i, r in enumerate(vals):
         ax.text(i, r + 0.02, f"{r:.2f}", ha="center", va="bottom", fontsize=10)
-    ax.annotate(
-        f"{ratio:.1f}× the access per kWh",
-        xy=(0, vals[0]), xytext=(0.5, vals[0] + 0.1), ha="center",
-        fontsize=11, fontweight="bold", color="#444",
-        arrowprops=dict(arrowstyle="->", color="#888", lw=1.2),
-    )
-    ax.set_xticks(x, ["Pure flat area", "Pure detached area"])
+    ax.set_xticks(x, types)
     ax.set_ylabel("Network amenities reachable per kWh")
     ax.set_title(
-        f"Access axis — a flat reaches {ratio:.1f}× the amenities per kWh",
+        f"Access per kWh: a flat returns {ratio:.1f}× a detached home",
         fontsize=12, fontweight="bold",
     )
     ax.spines[["top", "right"]].set_visible(False)
@@ -172,33 +161,34 @@ def access_curve(
 ) -> None:
     """Predicted amenities vs network distance, pure-flat vs detached (Poisson D)."""
     cf = cf.copy()
-    flat_y, det_y = [], []
+    types = ["Flat", "Terraced", "Semi", "Detached"]
+    series = {t: [] for t in types}
     for dd in dists:
         cf["_y"] = _num(cf[f"net_total_{dd}"])
         p = _pure_preds(
             _comp_poisson(cf, "_y", _SHARE_FRACS + income, "total_hh"), cf, income
         )
-        flat_y.append(p["Flat"])
-        det_y.append(p["Detached"])
+        for t in types:
+            series[t].append(p[t])
     km = np.array(dists) / 1000
-    flat_y, det_y = np.array(flat_y), np.array(det_y)
-    foot = flat_y[0] / det_y[0]
-    far = flat_y[-1] / det_y[-1]
+    curves = {t: np.array(v) for t, v in series.items()}
+    foot = curves["Flat"][0] / curves["Detached"][0]
+    far = curves["Flat"][-1] / curves["Detached"][-1]
+    colours = {
+        "Flat": "#3d8a5f",
+        "Terraced": "#7aa66b",
+        "Semi": "#c9a13b",
+        "Detached": "#c1543b",
+    }
 
     fig, ax = plt.subplots(figsize=(7, 4.5))
-    ax.plot(km, flat_y, color=_FLAT_C, lw=2.2, label="Pure flat area")
-    ax.plot(km, det_y, color=_DET_C, lw=2.2, label="Pure detached area")
+    for t in types:
+        ax.plot(km, curves[t], color=colours[t], lw=2.2, label=t)
     ax.set_yscale("log")
-    ax.annotate(
-        f"≈{foot:.0f}× on foot",
-        xy=(km[0], flat_y[0]), xytext=(km[0] + 3, flat_y[0] * 0.4),
-        fontsize=10, fontweight="bold", color="#444",
-        arrowprops=dict(arrowstyle="->", color="#888", lw=1.0),
-    )
     ax.set_xlabel("Network distance reachable (km)")
     ax.set_ylabel("Everyday amenities reachable (predicted)")
     ax.set_title(
-        f"Access — a flat reaches ≈{foot:.0f}× more on foot, ≈{far:.0f}× at 25 km",
+        f"Access: a flat reaches ≈{foot:.0f}× more on foot, ≈{far:.0f}× at 25 km",
         fontsize=12, fontweight="bold",
     )
     ax.legend(frameon=False, loc="lower right")
