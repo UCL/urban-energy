@@ -8,16 +8,24 @@ Every "×" in this document is a flat-versus-detached gap, computed the same way
 
 - The unit is the Census 2021 Output Area, the smallest area the census publishes, about 300 residents (~125 households). England has roughly 178,000 of them. Wales is left out for now: the energy, EPC, census and OS inputs all cover it, but the deprivation control used here (England's Index of Multiple Deprivation) has no directly comparable Welsh equivalent, so it would need a harmonised Welsh source.
 - The whole dwelling mix is used rather than a single label. The census gives each area its full mix, for example 60% flats, 25% terraced, 10% semi-detached, 5% detached. Rather than labelling each area by its most common type, every area's full mix enters one regression (a compositional model), which reads off the energy or access of a pure all-flat and a pure all-detached area. The gap between those two is the reported figure. Using every proportion is sharper than a one-type label.
-- The model holds income, tenure and building age constant and weights by the number of households, so the gap reflects the difference the form makes, not differences in wealth, tenure or the age of the stock. Access is the exception (see that section): there compactness is the mechanism, so it is not held constant.
-- Both per household and per person are reported. Detached households are about a sixth larger, so a gap per person is smaller than the same gap per household. Per household is what is consumed and emitted; per person is per resident.
+- The model holds deprivation (the overall Index of Multiple Deprivation and its income domain), tenure, building age and local climate constant, and weights by the number of households, so the gap reflects the difference the form makes, not differences in deprivation, tenure, the age of the stock or how cold the place is. Access is the exception (see that section): there compactness is the mechanism, so it is not held constant.
+- Energy is reported per dwelling, the unit at which it is metered, billed and emitted. To separate the form from the household that lives in it, family size and floor area enter the model as controls with freely estimated effects, not as denominators. Per-person normalisation is avoided deliberately: heating is a property of the building, so energy rises with household size only sub-linearly (to a power of about 0.5, not 1 — an economy of scale; Huebner and Shipworth, 2017), and dividing by residents would silently impose a power of 1, crediting detached homes for nothing more than housing the larger families that self-select into low-density areas. Holding family size as a control, rather than dividing it away, both estimates that power and keeps the self-selection visible.
 - In every table the Flat and Detached columns are observed medians (metered energy, reachable counts), shown to ground the numbers. The ratio columns are the compositional estimate, so they need not equal the quotient of the two columns.
 - The model reads the gap at the extremes, a wholly flat area against a wholly detached one, which few real areas are. Each ratio is therefore the sharp end of the estimate: the gap is at least this large.
 
 *The regression has no intercept and is weighted by households; the flat-to-detached ratio is the exponentiated gap between the pure-flat and pure-detached coefficients. The energy axes are fitted with a log model, the access counts with a Poisson model. Standard errors are not adjusted for spatial autocorrelation between neighbouring areas; the effects are large enough on ~178,000 areas that this does not affect the conclusions.*
 
+## Counting: per dwelling, not per person
+
+Whether a low-density home looks profligate or efficient depends entirely on the unit, and the choice is not neutral. Per dwelling, a detached home uses much more energy; per person, the gap shrinks toward parity; per square metre, it can even appear to reverse. Each fixed denominator smuggles in an assumption about how energy scales — per person assumes energy is proportional to the number of residents, per square metre that it is proportional to floor area — and neither holds for heating, which is a property of the building's envelope, not of how many people stand inside it or how the floor is partitioned. The unit is therefore not a presentational choice but a modelling one, and it is made here by holding family size and floor area as controls with freely estimated effects, so the data set the scaling rather than the denominator assuming it.
+
+The literature is explicit, and the result agrees with it. Huebner and Shipworth (2017) find that home size per capita is the single strongest predictor of per-capita energy, and that household size is *negatively* associated with per-capita demand: adding a person lowers energy per person, an economy of scale. Druckman and Jackson (2008) report the same sub-linearity for the UK stock. Here the estimated elasticity of heat with respect to household size is about 0.5 — energy rises with people, but far less than proportionally — so dividing by residents forces that elasticity to 1 and credits detached homes for nothing more than the larger families that, by self-selection, tend to occupy them. Per person is therefore reported, if at all, only as a description of lived per-resident cost, never as the basis for the form comparison.
+
+This puts the finding *with* the density-energy literature, not against it. Norman, MacLean and Kennedy (2006) found low-density development uses 2.0–2.5 times the energy per capita of compact form, and that per square metre the advantage narrows to a factor of 1.0–1.5 but does *not* reverse — the narrowing is a normalisation effect (low-density dwellings simply provide more space per person), not efficient fabric. The apparent per-square-metre or per-person "parity" of detached homes is exactly that artefact. Held like-for-like — equal family size, equal floor area — detached neighbourhoods remain more heat-intensive at every comparison (about 1.27× at equal family size, about 1.17× at equal floor area). No published evidence supports the stronger claim that a detached home is *more* energy-efficient than a flat; the figures that seem to suggest it are unit artefacts. The same reasoning governs the use of metered rather than EPC energy: SAP ratings over-predict consumption, and most for the largest, least efficient dwellings (Few et al., 2023; Firth et al., 2024) — the detached stock — so an EPC-based gap would overstate the penalty through model bias.
+
 ## Energy
 
-Household energy is measured in kilowatt-hours per household (and per person) per year, in two parts: the home's metered gas and electricity, and car travel. The home part is *metered, not modelled*: DESNZ's actual gas and electricity, not the modelled SAP ratings behind a building's EPC, which over-predict consumption (the performance gap). Most of it is space and water heating; appliances, lighting and cooking are the smaller, steadier remainder.
+Household energy is measured in kilowatt-hours per dwelling per year, in two parts: the home's metered gas and electricity, and car travel. The home part is *metered, not modelled*: DESNZ's actual gas and electricity, not the modelled SAP ratings behind a building's EPC, which over-predict consumption (the performance gap) and do so most for the largest, least efficient dwellings. Most of it is space and water heating; appliances, lighting and cooking are the smaller, steadier remainder.
 
 How the energy figure is built:
 
@@ -27,19 +35,19 @@ How the energy figure is built:
 
 ## Heat
 
-A detached neighbourhood uses about 1.41 times a flat's heat per household and 1.08 times per person. The gap has three parts: detached homes are bigger, hold more people, and have a leakier shape (more exposed wall, no shared party walls). With floor area, occupancy, age, income and tenure held equal, the shape alone accounts for about 12% (1.12× per household); the rest is the larger homes and households that low density brings.
+A detached neighbourhood uses about 1.60 times a flat's heat per dwelling. The gap has three parts: detached homes are bigger, hold more people, and have a leakier shape (more exposed wall, no shared party walls). Holding family size equal, it is about 1.27×; holding floor area equal as well, the shape alone accounts for about 1.17× (roughly 17%); the rest is the larger homes and households that low density brings. The figure is per dwelling, not per resident, on purpose: heat rises with household size only to a power of about 0.5, so dividing by people would compress the gap toward a false parity (see *Counting* above).
 
-| heat, kWh ph/yr | Flat | Terraced | Semi | Detached | ratio ph | ratio pp |
-| --- | --: | --: | --: | --: | --: | --: |
-| gas + electricity | 10,194 | 12,995 | 13,876 | 15,020 | 1.41× | 1.08× |
+| heat, kWh per dwelling/yr | Flat | Terraced | Semi | Detached | flat→detached |
+| --- | --: | --: | --: | --: | --: |
+| gas + electricity | 10,194 | 12,995 | 13,876 | 15,020 | 1.60× |
 
-Flats record fewer domestic gas meters than households (coverage about 0.81, against 0.94 for detached), for two reasons the measure treats differently. An all-electric flat heats with electricity, which is summed in, so its heat is captured. A block on communal heating is metered as non-domestic, so that gas is genuinely missing and flat heat understated. Only this second, smaller share is a true gap, and it does not drive the result: with gas coverage held constant the gap is 1.38×, and on well-measured areas about 1.6×, so the 1.41× figure is conservative.
+Flats record fewer domestic gas meters than households (about 0.81 per household, against 0.94 for detached), for two reasons the measure treats differently. An all-electric flat heats with electricity, which is summed into the total energy figure, so its heat is captured. A block on communal heating is metered as non-domestic, so that gas is genuinely missing and the flat's heat understated. Only this second, smaller case is a true undercount, and it does not drive the result: holding gas coverage equal the gap is 1.42×, and on well-measured areas (coverage at least 0.9) it is 1.61×, essentially the 1.60× headline. If anything, the measurement issue slightly understates the gap.
 
 Separating shape from size:
 
 - The detached-versus-flat heat gap blends three effects of low density: bigger homes, more people per home, and a leakier shape. The quantity of interest is the part attributable to shape alone.
-- From the compositional model (the full dwelling mix, with age, income and tenure held equal), controls are added one at a time, first household size, then floor area, and the gap shrinks. The reduction is the share mediated by size and occupancy, about three-quarters of the gap. What survives once both are held fixed (about 1.12×, roughly 12% per household) is the direct effect of the form: exposed walls and no shared surfaces.
-- Local climate (heating-degree-days, from HadUK-Grid) is the one confound still to add; it would refine the direct term further.
+- From the compositional model (the full dwelling mix, with deprivation, tenure, building age and climate held equal), controls are added one at a time — first family size, then floor area — and the gap shrinks from 1.60× to 1.27× to 1.17×. Family and dwelling size together mediate about seven-tenths (71%) of the gap. What survives once both are held fixed (about 1.17×, roughly 17%) is the direct effect of the form: exposed walls and no shared surfaces. Family size enters as a freely estimated effect (an elasticity of about 0.5), not as a per-person denominator, so the household is held without forcing energy to scale one-for-one with residents.
+- Local climate (heating-degree-days, from HadUK-Grid, 1991–2020) is now held alongside the others: colder northern and rural siting is part of why detached areas use more heat, and netting it out is built into the direct term above.
 
 *Reproduce: `stats/form_size_decomposition.py` (the shape-versus-size ladder and the gas-coverage checks).*
 
@@ -59,19 +67,19 @@ Building the estimate:
 
 *Reproduce: `stats/travel_energy.py`.*
 
-| car travel, kWh ph/yr | Flat | Terraced | Semi | Detached | ratio ph | ratio pp |
-| --- | --: | --: | --: | --: | --: | --: |
-| NTS-anchored | 3,240 | 5,088 | 6,660 | 9,272 | 3.23× | 2.47× |
+| car travel, kWh per dwelling/yr | Flat | Terraced | Semi | Detached | flat→detached |
+| --- | --: | --: | --: | --: | --: |
+| NTS-anchored | 3,240 | 5,088 | 6,660 | 9,272 | 3.07× |
 
 Car travel accounts for 24–37% of all household energy. Combining the two:
 
-| total energy, kWh ph/yr | Flat | Terraced | Semi | Detached | ratio ph | ratio pp |
-| --- | --: | --: | --: | --: | --: | --: |
-| heat + car travel | 13,674 | 18,265 | 20,564 | 23,832 | **2.02×** | **1.54×** |
+| total energy, kWh per dwelling/yr | Flat | Terraced | Semi | Detached | flat→detached |
+| --- | --: | --: | --: | --: | --: |
+| heat + car travel | 13,674 | 18,265 | 20,564 | 23,832 | **2.12×** |
 
-In each table the dwelling-type columns are observed medians; the ratio is the compositional flat-to-detached estimate (ph = per household, pp = per person), so it is not the quotient of the columns.
+In each table the dwelling-type columns are observed medians; the ratio is the compositional flat-to-detached estimate per dwelling, so it is not the quotient of the columns.
 
-![Household energy by dwelling type (compositional pure-type predictions): heat plus car travel rises flat to detached, a 2.0× gap.](../stats/figures/argument/energy_gradient.png)
+![Household energy by dwelling type (compositional pure-type predictions): heat plus car travel rises flat to detached, a 2.1× gap.](../stats/figures/argument/energy_gradient.png)
 
 ## Access
 
@@ -104,12 +112,15 @@ The dwelling-type columns are observed medians; the flat:det ratio is the compos
 
 ## The rate
 
-For access the flat is ahead at every distance, and the gap narrows as distance grows. On foot a flat reaches roughly 24 times the amenities, 52 times the jobs and 12 times the people of a detached neighbourhood. At a 25 km drive, where a detached home can reach into denser places, the flat is still 10 to 14 times ahead. For energy the direction reverses: a detached home spends about 1.4 times the heat, 3.2 times the car energy, and 2.0 times the total per household. The rate combines the two: a flat returns about 6.3 times the access per kilowatt-hour it spends.
+The rate is the access a neighbourhood buys for the car energy it spends: everyday amenities reachable per kilowatt-hour of driving. A flat returns about **6.3 times** the access per kilowatt-hour of a detached neighbourhood. It is computed for each neighbourhood, then compared pure-flat against pure-detached like every other figure here:
 
-Why it differs from the on-foot gap:
+- **Numerator — amenities reached.** The count of everyday amenities reachable over the road network within the area's *own car catchment*. That catchment is the distance its residents typically drive on a trip: their NTS annual car-driver distance per person divided by about 370 car trips per person per year, then capped between a short walk (1.6 km) and a long drive (25.6 km). A detached area, driving further, has a larger catchment, so its count is read further out.
+- **Denominator — car energy spent.** The area's car-travel energy in kilowatt-hours per household per year — the same NTS-anchored travel axis as the energy section (miles × the local fleet's energy per mile).
+- **The rate is numerator over denominator**, amenities per kilowatt-hour, for each area. The reported 6.3× is the compositional estimate — the predicted rate of a pure all-flat area over a pure all-detached one (Poisson, income held) — not the quotient of medians.
 
-- Each area's own catchment is the distance its residents typically drive: its NTS mileage divided by about 370 car trips per person per year, a trip distance capped between a short walk (1.6 km) and 25.6 km. Access per kilowatt-hour is the amenities reachable within that catchment divided by the area's car-travel energy, compared pure-flat against pure-detached as for every other ratio, giving 6.3×. It is the everyday reach each kilowatt-hour of driving buys.
-- The on-foot gap (about 24×) holds distance fixed: at the same reach the flat has far more around it. A detached home reaches its own larger catchment only by spending energy to compensate, raising its count until the two nearly converge (about 1.2× apart). It spends substantially more fuel to do so, so per kilowatt-hour the flat is still 6.3× ahead.
+Why the rate is 6.3× when the raw counts at the catchment are near parity (about 1.2×): a detached area reaches a *similar* number of amenities at its own catchment, but only by driving far enough to spend roughly three times the car energy doing so. Same reach, far more fuel — so per kilowatt-hour the flat is about 6.3× ahead. The on-foot gap (about 24×) is the same fact held at fixed distance: at equal reach, the flat simply has far more around it.
+
+For the wider picture: on foot a flat reaches roughly 24 times the amenities, 52 times the jobs and 12 times the people of a detached neighbourhood; at a 25 km drive, where a detached home can reach into denser places, the flat is still 10 to 14 times ahead. For energy the direction reverses — a detached home spends about 1.6 times the heat, 3.1 times the car energy, and 2.1 times the total per dwelling.
 
 ![Amenities reachable per kWh of car travel by dwelling type (compositional pure-type predictions): a flat returns about 6.3× a detached home.](../stats/figures/argument/access_per_kwh.png)
 
@@ -124,12 +135,12 @@ How the optimised scenario is computed:
 - For full electrification, car energy is recomputed at the electric fleet's energy per mile with the miles unchanged: technology lowers the energy per mile, not the distance the form forces.
 - Access is unchanged by construction. No fabric or drivetrain change brings a school or shop closer, so the access axis is identical before and after.
 
-| total energy gap (compositional) | per household | per person |
+| total energy gap (per dwelling, compositional) | now | optimised |
 | --- | --: | --: |
-| now | 2.02× | 1.54× |
-| after best insulation + a full electric fleet | 1.50× | 1.15× |
+| as-lived | 2.12× | 1.51× |
+| at equal family size | 1.71× | 1.18× |
 
-The energy gap closes only part way: per household from 2.02 to 1.50 times, per person from 1.54 to 1.15 times. About half the excess survives, and a real residual remains even per resident. It splits across both halves of the form: a best-insulated detached home is still bigger, so it still loses more heat; and electrification lowers the energy per mile but not the miles, so a detached home still drives substantially further. Technology improves the efficiency of each unit but leaves the structural quantities, floor area and distance, unchanged.
+The energy gap closes only part way: as-lived, from 2.12 to 1.51 times; held at equal family size, from 1.71 to 1.18 times. About 45% of the excess survives. It splits across both halves of the form: a best-insulated detached home is still bigger, so it still loses more heat; and electrification lowers the energy per mile but not the miles, so a detached home still drives substantially further. Technology improves the efficiency of each unit but leaves the structural quantities, floor area and distance, unchanged.
 
 The access gap does not move, because neither insulation nor electrification brings a school, a job or a shop closer to a house built far from them. The inefficiency of dispersed form is not removed by technology; it is fixed in the street layout, which changes only when places are rebuilt, over generations rather than product cycles. Access therefore has to be measured and planned for directly.
 

@@ -10,7 +10,7 @@ cityseer pipeline, no 2.4 GB integrated GeoPackage:
 * **Size / fabric** — ``oa_epc.parquet`` (floor area, best-fabric intensity,
   build year).
 * **Fleet / deprivation** — ``lsoa_vehicles.parquet`` (BEV share) and
-  ``lsoa_imd2025.parquet`` (income), joined via LSOA.
+  ``lsoa_imd2025.parquet`` (overall IMD + income domain), joined via LSOA.
 * **Travel** — NTS-anchored disaggregation (``travel_energy.py``).
 * **Access** — straight-line KD-tree counts (``oa_access.py``).
 
@@ -134,8 +134,14 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
         veh["cars_total"]
     ).replace(0, np.nan)
     oa = oa.merge(veh[["LSOA21CD", "bev_share"]], on="LSOA21CD", how="left")
+    # Deprivation control: the overall Index of Multiple Deprivation (IoD25) plus
+    # the income domain. Overall IMD is the broad deprivation signal; income is
+    # retained as the sharper material-resources control. Both are confounds, so
+    # their mutual collinearity is harmless (it inflates only their own SEs, not
+    # the form coefficient of interest).
     imd = pd.read_parquet(
-        _STATS / "lsoa_imd2025.parquet", columns=["LSOA21CD", "imd_income_score"]
+        _STATS / "lsoa_imd2025.parquet",
+        columns=["LSOA21CD", "imd_overall_score", "imd_income_score"],
     )
     oa = oa.merge(imd, on="LSOA21CD", how="left")
 

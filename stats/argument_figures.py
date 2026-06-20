@@ -7,7 +7,7 @@ ratios in ``paper/summary.md`` (no dominant-type medians, so the figures cannot 
 from the text):
 
 1. ``energy_gradient.png`` — stacked heat + car-travel energy by dwelling type (the
-   Flat→Detached total-energy gradient, ~2.0× per household).
+   Flat→Detached total-energy gradient, ~2.1× per dwelling).
 2. ``access_per_kwh.png`` — network amenities reachable per kWh within each OA's own
    car-trip catchment, by dwelling type (the drivable rate, ~6.3× flat vs detached).
 3. ``access_curve.png`` — predicted amenities reachable vs network distance by dwelling
@@ -39,6 +39,8 @@ from form_size_decomposition import (  # noqa: E402
     _SHARE_FRACS,
     _comp_ols,
     _compositional_frame,
+    _deprivation_cols,
+    _hdd_cols,
     _imd_income_col,
     _tenure_cols,
 )
@@ -64,9 +66,7 @@ def _pure_preds(model: Any, frame: pd.DataFrame, confounds: list[str]) -> dict:
     Works for both the log energy model and the Poisson access model (both have a
     log link, so the level is ``exp(b_type + sum(b_conf * mean_conf))``).
     """
-    base = sum(
-        float(model.params[c]) * _num(frame[c]).mean() for c in confounds
-    )
+    base = sum(float(model.params[c]) * _num(frame[c]).mean() for c in confounds)
     return {
         "Flat": float(np.exp(model.params["s_flat"] + base)),
         "Terraced": float(np.exp(model.params["s_terraced"] + base)),
@@ -104,17 +104,29 @@ def energy_gradient(cf: pd.DataFrame, confounds: list[str], out: Path) -> None:
     x = np.arange(len(types))
     ax.bar(x, heat_seg, 0.62, label="Heat (metered)", color=_HEAT_C)
     ax.bar(
-        x, trav_seg, 0.62, bottom=heat_seg, label="Car travel (NTS-anchored)",
+        x,
+        trav_seg,
+        0.62,
+        bottom=heat_seg,
+        label="Car travel (NTS-anchored)",
         color=_TRAVEL_C,
     )
     for i, t in enumerate(totals):
-        ax.text(i, t + 300, f"{t:,.0f}", ha="center", va="bottom",
-                fontweight="bold", fontsize=10)
+        ax.text(
+            i,
+            t + 300,
+            f"{t:,.0f}",
+            ha="center",
+            va="bottom",
+            fontweight="bold",
+            fontsize=10,
+        )
     ax.set_xticks(x, types)
     ax.set_ylabel("Energy spent (kWh / household / year)")
     ax.set_title(
         f"Energy axis: a detached home spends {grad:.1f}× a flat's energy",
-        fontsize=12, fontweight="bold",
+        fontsize=12,
+        fontweight="bold",
     )
     ax.legend(frameon=False, loc="upper left")
     ax.spines[["top", "right"]].set_visible(False)
@@ -146,7 +158,8 @@ def access_per_kwh(cf: pd.DataFrame, income: list[str], out: Path) -> None:
     ax.set_ylabel("Network amenities reachable per kWh")
     ax.set_title(
         f"Access per kWh: a flat returns {ratio:.1f}× a detached home",
-        fontsize=12, fontweight="bold",
+        fontsize=12,
+        fontweight="bold",
     )
     ax.spines[["top", "right"]].set_visible(False)
     ax.margins(y=0.18)
@@ -189,7 +202,8 @@ def access_curve(
     ax.set_ylabel("Everyday amenities reachable (predicted)")
     ax.set_title(
         f"Access: a flat reaches ≈{foot:.0f}× more on foot, ≈{far:.0f}× at 25 km",
-        fontsize=12, fontweight="bold",
+        fontsize=12,
+        fontweight="bold",
     )
     ax.legend(frameon=False, loc="lower right")
     ax.spines[["top", "right"]].set_visible(False)
@@ -208,7 +222,13 @@ def main() -> None:
     cf = _compositional_frame(
         df.merge(net, left_on="OA21CD", right_index=True, how="left")
     )
-    confounds = ["median_build_year"] + _imd_income_col(cf) + _tenure_cols(cf)
+    # Energy figure: the full energy-ladder confound set (deprivation + climate),
+    # so the figure's gradient matches summary.md. Access figures stay income-only
+    # (overall IMD's barriers sub-domains are collinear with access — see
+    # access_profile.compositional_access).
+    confounds = (
+        ["median_build_year"] + _deprivation_cols(cf) + _tenure_cols(cf) + _hdd_cols(cf)
+    )
     income = _imd_income_col(cf)
     dists = sorted(
         int(c.rsplit("_", 1)[1]) for c in net.columns if c.startswith("net_total_")

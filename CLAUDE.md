@@ -168,8 +168,8 @@ are run on demand rather than wired as pipeline stages.
 | `oa_access.py` | Straight-line KD-tree counts within 1,600 m — a fast cross-check, cached |
 | `travel_energy.py` | Total car-travel energy by constrained disaggregation of measured NTS9904 mileage (the `compute_travel_energy` the loader calls) |
 | `access_profile.py` | Access gaps: on-foot (network 1,600 m) **~24×**, 25 km drive **~10–14×**, and the rate **~6.3× access/kWh** |
-| `lock_in.py` | Energy gap surviving best-fabric + full EV (per household 2.0× → 1.5×; per person 1.5× → 1.15×) |
-| `form_size_decomposition.py` | Heat vs dwelling/household-size, via floor-area elasticity + a total→direct regression ladder |
+| `lock_in.py` | Energy gap surviving best-fabric + full EV (per dwelling 2.12× → 1.51×; at equal family size 1.71× → 1.18×) |
+| `form_size_decomposition.py` | Heat vs dwelling/family-size: per-dwelling DV with family size + floor area as FREE controls (γ≈0.5, never per-person); 1.60× → 1.27× (family-size-held) → 1.17× (size-held direct) |
 
 > **⏸ Pending.** The earlier three-surface / A–G scorecard, the empirical access-penalty model,
 > and the Atlas (XGBoost planning models + static site) were removed from the tree in the
@@ -205,9 +205,9 @@ Individual scripts also run standalone (e.g. `uv run python data/download_census
 
 ```bash
 uv run python stats/oa_network_access.py         # build network-access cache (cityseer, ~12 min)
-uv run python stats/lock_in.py                   # energy gap ph 2.0× → optimised 1.5× (pp 1.5× → 1.15×)
+uv run python stats/lock_in.py                   # energy gap per dwelling 2.12× → 1.51× (equal family size 1.71× → 1.18×)
 uv run python stats/access_profile.py            # rate ~6.3× access/kWh + on-foot gap ~24×
-uv run python stats/form_size_decomposition.py   # heat vs dwelling/household-size decomposition
+uv run python stats/form_size_decomposition.py   # heat 1.60× → 1.17× size-held (family size a free control, γ≈0.5)
 ```
 
 The analysis assembles the frame in-process from the acquired artefacts. The straight-line

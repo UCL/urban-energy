@@ -62,16 +62,18 @@ less access per Joule.** This is the carbon/infrastructure lock-in (Seto et al. 
 
 ## Headline result (~178k OAs, England)
 
-**Energy** — a detached neighbourhood spends about **2.0× a flat's household energy** (1.5× per person):
+**Energy** — a detached neighbourhood spends about **2.1× a flat's energy per dwelling**:
 
-| kWh/household/year | Flat | Detached | gap (flat→detached) |
+| kWh/dwelling/year | Flat | Detached | gap (flat→detached) |
 | --- | ---: | ---: | ---: |
-| Heat (metered) | 10,194 | 15,020 | 1.4× |
-| Car travel (NTS-anchored) | 3,240 | 9,272 | 3.2× |
-| **Total energy** | **13,674** | **23,832** | **2.0×** |
+| Heat (metered) | 10,194 | 15,020 | 1.6× |
+| Car travel (NTS-anchored) | 3,240 | 9,272 | 3.1× |
+| **Total energy** | **13,674** | **23,832** | **2.1×** |
 
 The Flat/Detached columns are observed medians; the gap is the compositional flat-to-detached
-estimate, so it is not the column quotient ([paper/summary.md](paper/summary.md)).
+estimate per dwelling, so it is not the column quotient. Energy is modelled per dwelling with
+family size and floor area held as free controls — not divided per person, which would impose a
+household-size elasticity of 1 when heat's is about 0.5 ([paper/summary.md](paper/summary.md)).
 
 **Access** — measured over the road network (cityseer). On foot a flat reaches about **24× the
 amenities, 52× the jobs and 12× the people** of a detached neighbourhood; even at a 25 km drive the
@@ -80,8 +82,8 @@ detached area gets there only by driving much further, so per kilowatt-hour a fl
 **6.3× the access** a detached home does.
 
 **Lock-in** — best-practice insulation + full electrification closes only about half the energy
-gap: per household **2.0× → 1.5×** (per person 1.5× → 1.15×), the residual being bigger homes and
-longer trips, while the access deficit is **100% unchanged**. Built form fixes demand for generations.
+gap: per dwelling **2.12× → 1.51×** (at equal family size 1.71× → 1.18×), the residual being bigger
+homes and longer trips, while the access deficit is **100% unchanged**. Built form fixes demand for generations.
 
 (Full numbers and method: [paper/summary.md](paper/summary.md); reproduce with
 `stats/lock_in.py` + `stats/access_profile.py`.)
@@ -135,9 +137,9 @@ echo "URBAN_ENERGY_DATA_DIR=$(pwd)/temp" > .env
 
 # Two-axis analysis — energy gradient, lock-in, access profile, form/size
 uv run python stats/oa_network_access.py        # build network-access cache (cityseer, ~12 min)
-uv run python stats/lock_in.py                  # energy gap 2.0× → optimised 1.5× (per household)
+uv run python stats/lock_in.py                  # energy gap 2.12× → optimised 1.51× (per dwelling)
 uv run python stats/access_profile.py           # access per kWh 6.3×, on-foot gap ~24×
-uv run python stats/form_size_decomposition.py  # heat vs dwelling/household size (compositional)
+uv run python stats/form_size_decomposition.py  # heat 1.60× → 1.17× size-held (family size a free control, γ≈0.5)
 ```
 
 Full reproduction recipe (raw downloads → analysis) is in

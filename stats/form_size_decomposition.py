@@ -8,16 +8,21 @@ form *causes* both. So the raw per-household gap is the **total effect** of form
 **direct effect** (fabric/exposure only). Neither is "the" answer — the pair
 brackets the truth, and the difference between them is the size-mediation channel.
 
-This module makes that explicit, because no single denominator can:
+This module makes that explicit, because no fixed denominator is a valid
+inferential unit — each silently nails an elasticity the data reject:
 
-* **Per household** forces energy ∝ households (occupancy elasticity = 1).
-* **Per person** forces energy ∝ people.
+* **Per person** forces energy ∝ people (occupancy elasticity = 1). But heating
+  is largely a property of the *building*, not its occupants, so the true
+  household-size elasticity of energy is well below 1 (economies of scale —
+  Huebner & Shipworth 2017; Druckman & Jackson 2008). Per-person therefore
+  over-credits the larger households that self-select into detached homes,
+  manufacturing apparent parity. It is kept here only as a *descriptive* lens.
 * **Per m²** forces energy ∝ floor area — false via surface-to-volume geometry
   (the elasticity is < 1), so per-m² mechanically flatters large dwellings.
 
-Each ratio is a one-covariate regression with the slope nailed to 1. The honest
-tool is a regression that conditions on the drivers and reads off the partial
-form effect. This script reports:
+The honest tool is a per-dwelling regression that enters family size and floor
+area as FREE regressors (their elasticities estimated, not assumed) and reads off
+the partial form effect at equal family size and equal size. This script reports:
 
 1. A **bivariate floor-area elasticity** of building energy — the empirical
    kill-shot for per-m² (elasticity < 1 ⇒ kWh/m² declines with dwelling size).
@@ -27,8 +32,9 @@ form effect. This script reports:
    size control, with cell counts to expose the limited Flat/Detached common
    support.
 4. The **total → direct regression ladder** on one fixed common-support sample:
-   form → + occupancy → + dwelling size, reporting the modelled Detached:Flat
-   per-household ratio at each step and the share of the gap mediated by size.
+   form → + family size → + dwelling size, reporting the modelled Detached:Flat
+   per-household ratio at each step and the share of the gap mediated by size,
+   plus the estimated household-size elasticity (the per-person validity check).
 5. The **compositional (no-intercept) ladder** (option D) — the same mediation,
    but read from every dwelling-type share at once (fractions summing to 1, with
    an "other" residual), household-weighted, with no dominant-type label and no
@@ -57,6 +63,25 @@ def _imd_income_col(df: pd.DataFrame) -> list[str]:
     """Return the IMD income-score column name as a one-element list (or empty)."""
     hits = [c for c in df.columns if "imd_income" in c.lower() and "score" in c.lower()]
     return hits[:1]
+
+
+def _imd_overall_col(df: pd.DataFrame) -> list[str]:
+    """Return the overall IMD-score column name as a one-element list (or empty)."""
+    hits = [
+        c for c in df.columns if "imd_overall" in c.lower() and "score" in c.lower()
+    ]
+    return hits[:1]
+
+
+def _deprivation_cols(df: pd.DataFrame) -> list[str]:
+    """Return the deprivation controls present: overall IMD plus the income domain.
+
+    The overall Index of Multiple Deprivation (IoD25) is the broad deprivation
+    confound; the income domain is retained as the sharper material-resources
+    control. Both are nuisance covariates, so their collinearity is harmless — it
+    inflates only their own standard errors, never the form coefficient.
+    """
+    return _imd_overall_col(df) + _imd_income_col(df)
 
 
 def _tenure_cols(df: pd.DataFrame) -> list[str]:
@@ -175,8 +200,11 @@ def descriptive_panel(lsoa: pd.DataFrame) -> None:
             ratio = d / f if (f and d) else float("nan")
             print(f"  {col.split('_')[-1]}={ratio:.2f}×", end="")
         print(
-            "\n  (per-hh/per-person rise toward detached; per-m² reverses — "
-            "the size artefact, not efficiency.)"
+            "\n  (DESCRIPTIVE ONLY. per-hh rises toward detached; per-person"
+            " compresses\n  toward parity because detached house more people"
+            " (γ<1, not efficiency);\n  per-m² reverses via the floor-area"
+            " artefact. The inferential gap is the\n  family-size-controlled"
+            " ladder below, not any of these ratios.)"
         )
 
 
@@ -224,14 +252,20 @@ def regression_ladder(lsoa: pd.DataFrame) -> None:
     """
     Total → direct mediation ladder on one fixed common-support sample.
 
-    M0 (total)  : form + confounds (build year, income, tenure)
-    M1          : + occupancy (avg_hh_size)
+    M0 (total)  : form + confounds (build year, deprivation, tenure, climate)
+    M1          : + family size (log household size — a FREE elasticity)
     M2 (direct) : + dwelling size (log floor area)
 
-    The modelled Detached:Flat per-household ratio is reported at each step; its
-    attenuation from M0 to M2 is the share of the form gap mediated by size and
-    occupancy. Confounds (build era, income, tenure) are held throughout;
-    size/occupancy are mediators, in only for the direct effect.
+    Household size enters as ``log_hh_size`` with a free coefficient, NOT as a
+    per-person denominator: per-person division silently nails the occupancy
+    elasticity to 1, whereas heating is largely a property of the building, so the
+    true elasticity is well below 1 (economies of scale — Huebner & Shipworth
+    2017; Druckman & Jackson 2008). The estimated elasticity is printed at M1; if
+    it is far from 1, that is the quantitative reason per-person is not a valid
+    inferential unit. The modelled Detached:Flat per-household ratio is reported at
+    each step; M1 is the family-size-controlled form gap, M2 the size-held direct
+    (fabric/exposure) gap. Confounds are held throughout; family/dwelling size are
+    mediators, in only for the direct effect.
     """
     print("\n" + "=" * 70)
     print("4. TOTAL → DIRECT REGRESSION LADDER (fixed common-support sample)")
@@ -241,10 +275,13 @@ def regression_ladder(lsoa: pd.DataFrame) -> None:
     df["log_floor_area"] = np.log(
         pd.to_numeric(df["oa_median_floor_area_m2"], errors="coerce").clip(lower=1)
     )
-    confounds = (
-        ["median_build_year"] + _imd_income_col(df) + _tenure_cols(df) + _hdd_cols(df)
+    df["log_hh_size"] = np.log(
+        pd.to_numeric(df["avg_hh_size"], errors="coerce").clip(lower=1)
     )
-    occupancy = ["avg_hh_size"]
+    confounds = (
+        ["median_build_year"] + _deprivation_cols(df) + _tenure_cols(df) + _hdd_cols(df)
+    )
+    occupancy = ["log_hh_size"]
     size = ["log_floor_area"]
 
     # One fixed sample: complete cases on EVERY variable the ladder will touch,
@@ -253,13 +290,13 @@ def regression_ladder(lsoa: pd.DataFrame) -> None:
     sample = df.dropna(subset=all_vars).copy()
     print(
         f"\n  Common sample: N = {len(sample):,} OAs "
-        f"(complete cases on form, {', '.join(confounds)}, occupancy, floor area)"
+        f"(complete cases on form, {', '.join(confounds)}, family size, floor area)"
     )
     print(f"  Confounds held throughout: {confounds}")
 
     steps = [
         ("M0 total  (form + confounds)", _FORM + confounds),
-        ("M1        (+ occupancy)", _FORM + confounds + occupancy),
+        ("M1        (+ family size)", _FORM + confounds + occupancy),
         ("M2 direct (+ dwelling size)", _FORM + confounds + occupancy + size),
     ]
     print(
@@ -268,6 +305,7 @@ def regression_ladder(lsoa: pd.DataFrame) -> None:
     )
     print("  " + "-" * 74)
     ratios: list[float] = []
+    hh_elasticity = float("nan")
     for label, xcols in steps:
         m = _run_ols(sample, _DV, xcols, label)
         if m is None:
@@ -277,6 +315,8 @@ def regression_ladder(lsoa: pd.DataFrame) -> None:
         bflat = float(m.params.get("pct_flat", np.nan))
         ratio = _detached_flat_ratio(m)
         ratios.append(ratio)
+        if "log_hh_size" in m.params and np.isnan(hh_elasticity):
+            hh_elasticity = float(m.params["log_hh_size"])
         floor_e = (
             float(m.params["log_floor_area"])
             if "log_floor_area" in m.params
@@ -288,23 +328,32 @@ def regression_ladder(lsoa: pd.DataFrame) -> None:
             f"{ratio:>8.2f}× {floor_str}"
         )
 
-    if len(ratios) >= 2 and ratios[0] > 1:
+    if not np.isnan(hh_elasticity):
+        print(
+            f"\n  Household-size elasticity of heat: γ = {hh_elasticity:.2f} "
+            f"(per-person division would impose γ = 1)."
+        )
+        print(
+            "  γ < 1 ⇒ heat is sub-linear in occupants (economies of scale), so\n"
+            "  per-person flatters large households — the form gap is read off the\n"
+            "  family-size-controlled M1, not a per-person ratio."
+        )
+
+    if len(ratios) >= 3 and ratios[0] > 1:
         total_gap = ratios[0] - 1.0
         direct_gap = ratios[-1] - 1.0
         mediated = (total_gap - direct_gap) / total_gap if total_gap else float("nan")
         print(
-            f"\n  Total form gap (Det:Flat): {ratios[0]:.2f}×  →  "
-            f"direct (size-held): {ratios[-1]:.2f}×"
+            f"\n  Total form gap: {ratios[0]:.2f}×  →  family-size-held "
+            f"{ratios[1]:.2f}×  →  size-held direct {ratios[-1]:.2f}×"
         )
         print(
-            f"  Size + occupancy mediate {mediated:.0%} of the gap; "
+            f"  Family size + dwelling size mediate {mediated:.0%} of the gap; "
             f"the residual {direct_gap:+.0%} is direct fabric/exposure."
         )
 
     if _hdd_cols(df):
-        print(
-            "\n  Direct term is net of build era, income, tenure and climate (HDD)."
-        )
+        print("\n  Direct term is net of build era, income, tenure and climate (HDD).")
     else:
         print(
             "\n  Caveat: climate (heating-degree-days) is not yet in the dataset\n"
@@ -419,10 +468,13 @@ def compositional_ladder(lsoa: pd.DataFrame) -> None:
             + pd.to_numeric(df["transport_kwh_per_hh_total_est"], errors="coerce")
         ).clip(lower=1)
     )
-    confounds = (
-        ["median_build_year"] + _imd_income_col(df) + _tenure_cols(df) + _hdd_cols(df)
+    df["log_hh_size"] = np.log(
+        pd.to_numeric(df["avg_hh_size"], errors="coerce").clip(lower=1)
     )
-    occupancy = ["avg_hh_size"]
+    confounds = (
+        ["median_build_year"] + _deprivation_cols(df) + _tenure_cols(df) + _hdd_cols(df)
+    )
+    occupancy = ["log_hh_size"]
     size = ["log_floor_area"]
 
     keep = [_DV, *_SHARE_FRACS, *confounds, *occupancy, *size, "total_hh"]
@@ -432,12 +484,13 @@ def compositional_ladder(lsoa: pd.DataFrame) -> None:
 
     steps = [
         ("D0 total  (shares + confounds)", _SHARE_FRACS + confounds),
-        ("D1        (+ occupancy)", _SHARE_FRACS + confounds + occupancy),
+        ("D1        (+ family size)", _SHARE_FRACS + confounds + occupancy),
         ("D2 direct (+ dwelling size)", _SHARE_FRACS + confounds + occupancy + size),
     ]
     print(f"\n  {'Model':<32s} {'Det:Flat':>9s} {'b_flat':>9s} {'b_det':>9s}")
     print("  " + "-" * 62)
     ratios: list[float] = []
+    hh_elasticity = float("nan")
     m0 = None
     for label, xcols in steps:
         m = _comp_ols(sample, _DV, xcols, "total_hh")
@@ -447,19 +500,27 @@ def compositional_ladder(lsoa: pd.DataFrame) -> None:
         bflat, bdet = float(m.params["s_flat"]), float(m.params["s_detached"])
         ratio = float(np.exp(bdet - bflat))
         ratios.append(ratio)
+        if "log_hh_size" in m.params and np.isnan(hh_elasticity):
+            hh_elasticity = float(m.params["log_hh_size"])
         if m0 is None:
             m0 = m
         print(f"  {label:<32s} {ratio:>8.2f}× {bflat:>9.3f} {bdet:>9.3f}")
 
-    if len(ratios) >= 2 and ratios[0] > 1:
+    if not np.isnan(hh_elasticity):
+        print(
+            f"\n  Household-size elasticity of heat: γ = {hh_elasticity:.2f} "
+            f"(per-person would impose γ = 1; economies of scale ⇒ γ < 1)."
+        )
+
+    if len(ratios) >= 3 and ratios[0] > 1:
         total_gap, direct_gap = ratios[0] - 1.0, ratios[-1] - 1.0
         mediated = (total_gap - direct_gap) / total_gap if total_gap else float("nan")
         print(
-            f"\n  Total form gap (Det:Flat): {ratios[0]:.2f}×  →  "
-            f"direct (size-held): {ratios[-1]:.2f}×"
+            f"\n  Total form gap: {ratios[0]:.2f}×  →  family-size-held "
+            f"{ratios[1]:.2f}×  →  size-held direct {ratios[-1]:.2f}×"
         )
         print(
-            f"  Size + occupancy mediate {mediated:.0%}; "
+            f"  Family + dwelling size mediate {mediated:.0%}; "
             f"residual {direct_gap:+.0%} is direct fabric/exposure."
         )
 

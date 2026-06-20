@@ -109,9 +109,12 @@ def compositional_access(d: pd.DataFrame) -> None:
     counts a linear model would push negative. Household-weighted and
     **income-controlled but not density-controlled** — density is the mechanism by
     which compact form delivers access, so netting it out would erase the very
-    effect under study. Each ratio is the predicted access of a pure all-flat area
-    over a pure all-detached one (invariant to income; levels shown at mean
-    income).
+    effect under study. Deprivation is held via the **income domain only**, not the
+    overall IMD used on the energy axes: the overall index's geographic-barriers and
+    living-environment sub-domains are themselves access measures, so controlling for
+    them would absorb part of the effect under study. Each ratio is the predicted
+    access of a pure all-flat area over a pure all-detached one (invariant to income;
+    levels shown at mean income).
 
     Parameters
     ----------
