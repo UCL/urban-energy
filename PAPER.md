@@ -163,38 +163,44 @@ The travel estimate has one free parameter, the commute-distance elasticity (0.3
 ## 5. Discussion
 
 ### 5.1 Relation to prior work
-- Consistency synthesis (lit review §6): building energy reproduces NEED/EHS/Wyatt/Buyuklieva; metered-vs-modelled and unit-dependence reproduce Rode/Norman/Summerfield/Few/Firth; travel same direction as Echenique (extremes vs marginal); access extends Ewing/Elldér; the rate is novel.
 
-### 5.2 What is locked in, and what technology can and cannot offset
-- Uniform technology scales energy down but leaves the structural quantities (floor area, distance) intact; access is fixed in the street layout — changes only on rebuild timescales.
+The building-energy result reproduces the English literature: NEED and the English Housing Survey put detached gas at about twice a flat's, as do dwelling-level regressions (Wyatt, 2013; Buyuklieva et al., 2023). The metered 1.60× is smaller than the up-to-sixfold contrast of simulation studies (Rode et al., 2014) by exactly the performance gap — SAP over-predicts most for large detached dwellings (Summerfield et al., 2019; Few et al., 2023; Firth et al., 2024) — which is why metered energy is used. Dependence on the functional unit reproduces Norman et al. (2006), and the sub-unit household-size elasticity reproduces Huebner and Shipworth (2017). The travel gradient is the same direction as the urban-form literature but larger than its central estimates: Echenique et al. (2012) find a modest marginal effect (about 10% fewer vehicle-miles per density doubling), whereas this is a cross-sectional contrast between the extremes of the distribution, read against the observed rural-urban mileage gradient. The access axis operationalises the reframing of the density–travel relationship as one of accessibility (Ewing et al., 2018; Elldér et al., 2022); the access-per-energy rate has no direct antecedent.
 
-### 5.3 The functional unit and why it matters
-- Per-dwelling vs per-capita/per-m²; the γ ≈ 0.5 finding; why per-person is a presentation lens, not an inferential unit.
+### 5.2 What technology can and cannot offset
+
+Uniform technology scales energy down without changing the structural quantities. Insulation lowers heat loss per square metre but not floor area or surface; electrification lowers energy per mile but not the miles. The detached-to-flat ratio is therefore near-invariant to uniform improvement: about 45% of the energy excess survives best fabric and full electrification (§4.4). The access deficit is fixed in the street layout, untouched by either, and changes only when places are rebuilt. Access is the binding, technology-immune component, and must be planned for directly.
+
+### 5.3 The functional unit
+
+Whether a detached neighbourhood is more energy-intensive depends on the unit (§3.6). Per dwelling and per capita it spends more; per square metre the gap nearly closes; per person it narrows because detached homes hold more people. Since the household-size elasticity of energy is about 0.5, per-person normalisation imposes a false elasticity of one and is reported descriptively only. The headline is per dwelling — the unit at which energy is metered and billed — with household size held as a covariate.
 
 ### 5.4 Policy implications
-- Access-based neighbourhood assessment; planning for proximity; retrofit + EV necessary but insufficient.
+
+A neighbourhood rating that counts only consumption rewards low-density form for its low per-capita heat while ignoring its travel and access penalties. A two-axis measure — energy spent against access gained — values proximity, which retrofit and electrification cannot supply. Decarbonising buildings and vehicles is necessary but not sufficient; access must be a planned outcome, scored alongside energy.
 
 ### 5.5 Limitations
-- Self-selection / endogeneity (place-level estimand; mover-panel as the definitive future test); ecological inference / MAUP; heat axis confound-sensitivity (lean on total + access); EPC fabric-ratio assumption in the lock-in; England-only; amenity-location endogeneity on access.
+
+Five limitations qualify the result. First, residential self-selection: the estimand is place-level, not a household treatment effect, and the heat axis is confound-sensitive (§4.5); the definitive test would difference out fixed preferences using movers in panel data. Second, ecological inference: the analysis is at Output Area level and does not resolve within-area heterogeneity. Third, the lock-in scenario assumes the EPC potential-to-current ratio captures achievable fabric improvement. Fourth, the access counts treat amenity location as exogenous, though amenities partly follow demand. Fifth, the analysis is England-only, pending a harmonised Welsh deprivation measure.
 
 ## 6. Dissemination
 
-> The measured findings (§4) stand on their own; these are the intended delivery vehicles — planned outputs, not yet built (see [`paper/summary.md`](paper/summary.md) and ROADMAP). Frame as forthcoming, not as results of this paper.
+The measure is intended for delivery in three forms. None is yet built; they are planned outputs, not results of this paper.
 
 ### 6.1 The NEPI scorecard
-- An EPC-style rating, but for **neighbourhoods rather than buildings**: the two-axis result (energy spent vs access gained, and the rate) condensed into a single banded score per Output Area, legible like an A–G label.
-- Purpose: make the access-per-energy measure usable by planners, residents and policy — a common currency for "how much everyday life this place reaches for the energy it costs."
+
+An Energy Performance Certificate-style rating, but for neighbourhoods rather than buildings: the two axes and the rate condensed into a single banded score per Output Area, legible like an A–G label, to make the measure usable by planners, residents and policy.
 
 ### 6.2 The online Atlas
-- An interactive web map of every English Output Area's NEPI rating: explore the two axes and the rate spatially, compare neighbourhoods, and inspect the components behind a score.
-- Purpose: dissemination and scrutiny — turn the national dataset into something explorable rather than a table.
 
-### 6.3 Predictive models and scenarios (gradient boosting)
-- Gradient-boosted (XGBoost) models predicting a neighbourhood's NEPI from its form, fabric and fleet inputs, so combinations of those inputs can be simulated and re-scored.
-- Carries pre-defined scenarios — full fleet electrification; buildings brought to best-practice thermal efficiency — i.e. the lock-in analysis (§4.4) generalised to user-chosen interventions, showing how far any given combination moves a neighbourhood's score (and how much of the access deficit it leaves untouched).
+An interactive web map of every English Output Area's score, allowing the two axes and the rate to be explored spatially, neighbourhoods compared, and the components behind a score inspected.
+
+### 6.3 Predictive models and scenarios
+
+Gradient-boosted (XGBoost) models predicting a neighbourhood's score from its form, fabric and fleet, so combinations can be simulated and re-scored. Pre-defined scenarios — full electrification, best-practice fabric — generalise the lock-in analysis (§4.4) to any intervention, showing how far it moves a score and how much of the access deficit it leaves.
 
 ## 7. Conclusion
-- Two measured axes and a rate; a detached neighbourhood spends more and reaches less; technology cannot move the access deficit; judge neighbourhoods by the access each unit of energy buys.
+
+A detached neighbourhood spends about twice a flat's energy per dwelling and reaches a fraction of its everyday destinations; a flat returns about six times the access per kilowatt-hour. Best-practice fabric and full electrification leave roughly half the energy gap and all of the access gap intact, because technology changes the efficiency of floor area and distance but not their quantity. Judged by access gained per unit of energy spent, compact form is the more efficient, and the difference is structural — fixed until places are rebuilt.
 
 ## References
 - From [`paper/references.bib`](paper/references.bib).
