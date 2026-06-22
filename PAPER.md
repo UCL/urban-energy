@@ -51,11 +51,11 @@
 
 ### 3.1 Unit of analysis
 
-The unit of analysis is the 2021 Census Output Area (OA), the smallest geography at which the Census of England and Wales is released, comprising approximately 125 households and 300 residents. The analysis covers the Output Areas of England (approximately 178,000). Wales is excluded: although the energy, Census, Energy Performance Certificate and Ordnance Survey inputs all extend to it, the deprivation measure used as a control — the English Index of Multiple Deprivation — has no directly comparable Welsh equivalent, and harmonising the two is left to future work. The Output Area is preferred to the Lower-layer Super Output Area (LSOA; approximately 1,500 residents) used by much of the small-area energy literature because the finer grain reduces within-unit heterogeneity in dwelling type, which is the exposure of interest; the consequences of ecological aggregation at this scale are addressed in §5.5.
+The unit is the 2021 Census Output Area (OA): the smallest published Census geography, about 125 households and 300 residents. The analysis covers England's ~178,000 Output Areas. Wales is excluded because the English Index of Multiple Deprivation, used as a control, has no comparable Welsh equivalent. The Output Area is finer than the Lower-layer Super Output Area (~1,500 residents) used by most small-area energy work, reducing within-unit heterogeneity in dwelling type, the exposure. Ecological aggregation is addressed in §5.5.
 
 ### 3.2 Data sources
 
-All inputs are open data, processed to the Output Area on the British National Grid (EPSG:27700). Table 1 lists each source, the artefact it yields, and its role.
+All inputs are open data, processed to the Output Area on the British National Grid (EPSG:27700). Table 1 lists the sources.
 
 | Domain | Source | Role in the analysis |
 | --- | --- | --- |
@@ -74,28 +74,35 @@ All inputs are open data, processed to the Output Area on the British National G
 
 ### 3.3 The energy axis
 
-Household energy is measured per dwelling per year as *delivered* energy — the energy arriving at the home and the vehicle, in kilowatt-hours, with no conversion to primary energy or carbon — in two components.
+Energy is delivered energy in kilowatt-hours per dwelling per year (not primary energy or carbon), in two components: home and travel.
 
-The home component is metered, not modelled. The Department for Energy Security and Net Zero publishes domestic gas and electricity consumption at postcode level, each as a meter count and a mean per meter. Each fuel is aggregated to the Output Area by a meter-weighted mean, the two are summed as delivered energy, and the total is divided by the count of Census households. Gas consumption is weather-corrected; both series cover domestic meters only. The use of metered rather than SAP-modelled energy is deliberate (§2.3): Energy Performance Certificate ratings systematically over-predict consumption, and most for the largest, least efficient dwellings, so an EPC-based dependent variable would inflate the dwelling-type gradient with model error rather than measure it (Few et al., 2023; Summerfield et al., 2019; Firth et al., 2024).
+The home component is metered (DESNZ sub-national statistics), not modelled. Postcode-level gas and electricity, each a meter count and a mean per meter, are aggregated to the Output Area by a meter-weighted mean, summed, and divided by Census households. Gas is weather-corrected; both cover domestic meters only. Metered energy is used because SAP/EPC ratings over-predict consumption, most for large detached dwellings, and would inflate the dwelling-type gradient with model error (§2.3; Few et al., 2023; Summerfield et al., 2019; Firth et al., 2024).
 
-The travel component is the car-travel energy associated with a neighbourhood's location, not merely its commute, which accounts for only about one-sixth of car mileage. Total local car travel is not recorded in open data and is therefore estimated by constrained disaggregation of a measured total. The National Travel Survey (NTS9904) reports car-driver miles per person by 2021 rural-urban classification of residence, rising from approximately 2,500 miles per person in dense urban areas to approximately 5,200 in rural ones. Each class total is distributed across its constituent Output Areas in proportion to two local signals — car ownership and commute distance — subject to the constraint that each class's population-weighted mean reproduces the survey figure, so that the measured class marginals are preserved exactly and only the within-class distribution is estimated. Estimated miles are converted to energy at the local fleet's energy per mile, blending an internal-combustion figure of approximately 0.93 kWh per mile and an electric figure of approximately 0.32 by the area's electric-vehicle share (DVLA). Sensitivity to the single free parameter, the elasticity of the estimate to commute distance, is reported in §4.5.
+The travel component is total car-travel energy of a location's residents, not the commute alone (about one-sixth of car mileage). It is estimated by constrained disaggregation. The National Travel Survey (NTS9904) gives car-driver miles per person by 2021 rural-urban class, from about 2,500 (urban) to 5,200 (rural). Each class total is distributed across its Output Areas by car ownership and commute distance, constrained so each class's population-weighted mean reproduces the survey figure; only the within-class distribution is estimated. Miles are converted at the local fleet's energy per mile — 0.93 (internal combustion) and 0.32 (electric) kWh per mile, blended by electric-vehicle share (DVLA). Sensitivity to the one free parameter, the commute-distance elasticity, is reported in §4.5.
 
 ### 3.4 The access axis
-- cityseer network access over OS Open Roads (built once); amenities / jobs / people reachable at a short walk (1,600 m), each area's own car catchment, and a long drive (25,600 m).
+
+Access is the count of opportunities reachable from an Output Area over the road network. The England network (OS Open Roads, ~3.6 million junctions) is built once into a routable graph (cityseer), and counts are accumulated outward from each Output Area's nearest node. Three quantities are measured: amenities (seven destination types — general practitioners, pharmacies and hospitals from the NHS; schools from the Get Information about Schools register; food outlets and supermarkets from the Food Standards Agency; greenspace from Ordnance Survey); jobs (workplace jobs, each workplace weighted by its job count, Census WP101EW); and people (resident population). Each is read at 1,600 m, the Output Area's own car catchment (§3.5), and 25,600 m. On-foot reach is a subset of the catchment, which is a subset of the drive. Access depends on location, not occupants, and is therefore invariant to the household denominator and, by construction, to residential self-selection (§3.8).
 
 ### 3.5 The rate
-- Access per kWh: amenities reachable within the area's own car catchment ÷ its car-travel energy; catchment = NTS distance ÷ ~370 trips, capped [1.6, 25.6] km. (Spell out exactly as in summary.md.)
+
+The rate is amenities reachable per kilowatt-hour of car-travel energy, formed per Output Area. The numerator is the amenity count within the Output Area's own car catchment: its NTS car-driver distance per person divided by 370 car trips per person per year, bounded to [1,600 m, 25,600 m]. The denominator is car-travel energy (§3.3), in kilowatt-hours per dwelling per year. The reported value is the compositional flat-to-detached estimate (§3.6).
 
 ### 3.6 The compositional model
-- No-intercept, household-weighted ecological regression on dwelling-type share fractions (each coefficient a pure-type mean); ratio = exp(b_detached − b_flat).
-- Energy axes: log-OLS, **per dwelling**, family size (log) and floor area (log) as **free** controls (the functional-unit resolution); confounds held: build year, overall IMD + income, tenure, climate (HDD).
-- Access axis: Poisson log-link (counts, zero-inflated); income-controlled, NOT density-controlled (density is the mechanism); NOT overall-IMD (its barriers domains are access measures).
+
+All flat-to-detached contrasts come from one compositional, no-intercept regression on each Output Area's dwelling-type shares (flat, terraced, semi-detached, detached, residual) as fractions summing to one. Without an intercept each coefficient is the modelled outcome of a neighbourhood composed entirely of one type, and the ratio is exp(b_detached − b_flat). Regressions are household-weighted. The estimate is read at the pure-composition vertices, which few areas approach, so each ratio is a lower bound on the gap.
+
+Energy enters in logarithms, per dwelling. Household size and floor area are covariates with freely estimated coefficients, not denominators: per-person or per-square-metre normalisation imposes an elasticity of one, but the estimated household-size elasticity of heat is 0.5, so those units are reported descriptively only (§2.4). Four confounds are held throughout: building age, deprivation (overall IMD and its income domain), tenure (social- and private-rented shares), and climate (heating-degree-days). Adding household size, then floor area, yields the total, family-size-held, and size-held gaps.
+
+Access counts are non-negative and frequently zero, so they are fitted with a Poisson log-link, not a linear model. The access regression holds the income domain but not density — the mechanism under study — and not the overall IMD, whose barriers and living-environment sub-domains are themselves access measures.
 
 ### 3.7 The lock-in scenario
-- Optimised energy = best-practice fabric (metered gas × EPC potential/current ratio) + full electrification (EV fleet intensity, miles unchanged); access unchanged by construction.
+
+The energy axis is recomputed under best-practice fabric and full electrification, and the gap re-estimated. Fabric: metered gas is scaled by the EPC fabric-improvement ratio (modelled potential over current intensity, median 0.5); metered electricity is unchanged. Both ratio terms are EPC-modelled, so the performance gap cancels, and anchoring to the metered bill holds the scale of §3.3. Electrification: car energy is recomputed at the electric fleet's energy per mile, mileage fixed. Access is unchanged by construction.
 
 ### 3.8 Robustness and the estimand
-- Oster (2019) coefficient-stability bound on a continuous detached-share gradient; NS-SeC control; access location-intrinsic ⇒ immune. State the place-level estimand explicitly.
+
+The estimand is place-level — the energy and access profile of a neighbourhood type, conditional on the observed confounds — not a household treatment effect, because households self-select into dwelling types. Three checks bound selection on unobservables. First, access depends on location, so it is immune by construction. Second, occupational class (higher managerial and professional share, Census TS062) is added to the confounds; movement in the gap measures selection on this observable. Third, an Oster (2019) bound on a continuous detached-share gradient gives δ*, the strength of unobserved selection, relative to the observed confounds, required to nullify the gap. As §4.5 reports, total energy is robust and heat is not, so the argument rests on total energy and access.
 
 ## 4. Results
 
