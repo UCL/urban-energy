@@ -13,39 +13,39 @@
 
 ## Abstract
 
-- Premise: judge a neighbourhood not by the energy it consumes but by the everyday access that energy buys (Jacobs / trophic framing — function per unit energy).
-- Data: ~178,000 Census 2021 Output Areas, England. Metered household energy (DESNZ) + NTS-anchored car-travel energy; network access (cityseer over OS Open Roads).
-- Method: compositional ecological regression; energy modelled **per dwelling** with family size and floor area as free controls; **metered, not SAP-modelled**.
-- Headline: a detached neighbourhood spends ~2.1× a flat's energy per dwelling, yet a flat reaches ~24× the amenities on foot and returns ~6.3× the access per kWh; under best fabric + full electrification the energy gap closes only part-way while the access deficit is unchanged.
-- Contribution: two *measured* axes plus an explicit rate; the access-per-energy rate at national OA scale is novel.
+A neighbourhood is conventionally judged by the energy it consumes, not by what that energy buys. This paper judges English neighbourhoods on two measured axes — energy spent and everyday access gained — and the rate between them, across approximately 178,000 Census 2021 Output Areas. Household energy combines metered gas and electricity with National Travel Survey-anchored car-travel energy; access is the count of amenities, jobs and people reachable over the road network. Energy is modelled per dwelling, with household size and floor area as freely estimated controls, and is metered rather than SAP-modelled, avoiding the performance gap. A detached neighbourhood spends about 2.1× a flat's energy per dwelling, yet a flat reaches about 24× the amenities on foot and returns about 6.3× the access per kilowatt-hour. Best-practice fabric and full electrification leave roughly half the energy gap and all of the access gap intact: the access deficit of dispersed form is structural and technology-immune.
 
 ## 1. Introduction
 
-- The problem: energy policy and neighbourhood assessment judge places by energy *consumed*, ignoring what the energy is *for* (the access/function it delivers).
-- The reframing (Jacobs; ecological/trophic analogy): a compact, complex settlement extracts more function from each unit of energy, as a rainforest does; a dispersed one lets energy run through (the desert). State the rate as the object of interest.
-- Why now: net-zero retrofit + electrification debates assume technology closes the gap; the lock-in question (what survives optimisation) is unresolved.
-- Gaps in prior work (forward-reference §2): energy *or* access measured, rarely together; inconsistent functional units; modelled (SAP/EPC) rather than metered energy; coarse spatial units.
-- Contribution and roadmap: two measured axes (energy spent, access gained) + a rate; metered energy; network access; OA scale; compositional method; robustness; a *place-level* estimand.
+Energy policy and neighbourhood assessment judge places by the energy they consume. This ignores what energy is for: the everyday life a household can reach — work, shops, schools, services — for the energy it spends. A place that consumes little but reaches little is not efficient in any useful sense.
+
+This paper judges a neighbourhood by access gained per unit of energy spent. The premise is ecological: a system extracts more function from each unit of energy when it is compact and complex, cycling energy through many close exchanges rather than letting it dissipate (Jacobs, 1961). Compact form does the former, dispersed form the latter. The object of study is therefore the rate between two measured quantities — energy spent and access gained — not energy alone.
+
+The question is pressing because decarbonisation policy assumes technology closes the gap: insulation and electric vehicles are expected to make every form efficient. Whether that holds is unresolved. If the energy cost of dispersed form is structural — fixed in floor area and distance — technology lowers it uniformly without closing the gap between forms, and the access cost is untouched entirely.
+
+Prior work measures energy or access, rarely together; uses inconsistent functional units; relies on modelled rather than metered energy; and works at coarse spatial units (§2). This paper measures both axes for England's approximately 178,000 Output Areas — metered household and car-travel energy against network-based access, with the rate between them — modelling energy per dwelling with household size and floor area as free controls, which resolves the functional-unit ambiguity. The contribution is two measured axes and an explicit rate at national fine-grained scale; the access-per-energy rate has no precedent. The estimand is place-level, and its exposure to residential self-selection is bounded directly.
 
 ## 2. Background
 
-> Reuse/adapt from [`literature_review.md`](paper/literature_review.md) §2 and §6.
-
 ### 2.1 Building energy and urban form
-- Surface-to-volume / shared-wall mechanism; compact forms lose less heat (Rode et al. 2014, simulated; the shared-wall ratio).
-- Empirical English regularity: detached ≈ 2× flat gas (NEED / EHS; Wyatt 2013; Buyuklieva et al. 2023).
+
+Compact dwelling forms lose less heat: shared walls and a lower surface-to-volume ratio cut the exposed envelope. Simulation puts the heat-demand contrast between detached and compact forms as high as sixfold (Rode et al., 2014). Empirically, English metered data place detached gas consumption at about twice a flat's (NEED; the English Housing Survey), and dwelling-level regressions confirm dwelling type and floor area as the dominant physical drivers (Wyatt, 2013; Buyuklieva et al., 2023).
 
 ### 2.2 Transport energy, density and accessibility
-- Density–travel link (Newman & Kenworthy 1989); the "modest" marginal effect (Echenique et al. 2012); reframing as regional **accessibility** not density (Ewing et al. 2018); local access reduces driving (Elldér et al. 2022).
 
-### 2.3 The EPC performance gap — why metered, not modelled
-- SAP/EPC over-predicts, worst for large detached (Few et al. 2023; Summerfield et al. 2019; Firth et al. 2024; Crawley et al. 2019). Motivates the metered DV.
+Density associates with lower car use (Newman and Kenworthy, 1989), but the marginal effect on travel is modest: Echenique et al. (2012) estimate about a 10% reduction in vehicle-miles per density doubling in England. The relationship is better read as one of accessibility than of density as such (Ewing et al., 2018), and local amenity access reduces driving directly (Elldér et al., 2022).
+
+### 2.3 The EPC performance gap
+
+Energy Performance Certificate ratings are SAP-modelled estimates, not measurements, and systematically over-predict consumption — most for the largest, least efficient dwellings (Crawley et al., 2019; Summerfield et al., 2019; Few et al., 2023; Firth et al., 2024). Using modelled energy as a dependent variable would inflate the dwelling-type gradient with model error, so this study uses metered energy throughout.
 
 ### 2.4 The functional-unit problem
-- Per-capita vs per-m² changes the conclusion (Norman et al. 2006); household-size elasticity of energy < 1 (Huebner & Shipworth 2017; Druckman & Jackson 2008) ⇒ per-person normalisation is an artefact; argues for per-dwelling with size as a free control.
 
-### 2.5 Ecological analysis, MAUP and self-selection
-- Ecological inference and the modifiable areal unit problem at OA scale; residential self-selection of car-oriented households (Cao, Mokhtarian & Handy 2009) as the threat to causal reading.
+Conclusions about density and energy depend on the functional unit: a low-density premium that is large per capita narrows or reverses per square metre (Norman et al., 2006). The cause is that energy is sub-linear in household size — larger households use less per person (Druckman and Jackson, 2008; Huebner and Shipworth, 2017) — so per-person normalisation imposes an elasticity of one that the data reject. This motivates modelling energy per dwelling with household size as a freely estimated control rather than a denominator.
+
+### 2.5 Ecological analysis and self-selection
+
+Two inferential cautions apply. Analysis at the Output Area is ecological: associations need not hold at the household level and are subject to the modifiable areal unit problem. And households are not assigned to dwelling types at random — car-oriented households self-select into low-density homes (Cao, Mokhtarian and Handy, 2009) — so cross-sectional gradients may overstate the causal effect of form. Both are addressed in §3.8 and §5.5.
 
 ## 3. Data and Methods
 
