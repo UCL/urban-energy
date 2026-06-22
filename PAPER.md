@@ -107,19 +107,58 @@ The estimand is place-level — the energy and access profile of a neighbourhood
 ## 4. Results
 
 ### 4.1 The energy axis
-- Heat 1.60× → family-size-held 1.27× → size-held direct 1.17× (γ ≈ 0.5); travel 3.07×; total 2.12× per dwelling. Descriptive medians + the form/size ladder. (summary.md Heat / Car travel.)
+
+A detached neighbourhood spends 2.12× a flat's energy per dwelling; the gradient is steepest in travel (Table 2).
+
+| kWh per dwelling/yr | Flat | Terraced | Semi | Detached | flat→detached |
+| --- | --: | --: | --: | --: | --: |
+| Heat (metered gas + electricity) | 10,194 | 12,995 | 13,876 | 15,020 | 1.60× |
+| Car travel (NTS-anchored) | 3,240 | 5,088 | 6,660 | 9,272 | 3.07× |
+| Total | 13,674 | 18,265 | 20,564 | 23,832 | 2.12× |
+
+The type columns are observed medians; the ratio is the compositional flat-to-detached estimate (§3.6), not their quotient. The heat gap decomposes from 1.60× (total) to 1.27× holding household size to 1.17× also holding floor area: size and occupancy mediate about 71%, leaving a 17% direct fabric and exposure effect. The floor-area elasticity of heat is 0.54 and the household-size elasticity 0.5, both below one — so per-square-metre intensity falls with dwelling size and per-person energy falls with occupancy, and neither is used as the unit (§3.6).
 
 ### 4.2 The access axis
-- On foot ~24× amenities (52× jobs, 12× people); at own catchment near-parity (~1.2×); at 25 km ~10–14×. (summary.md Access table.)
+
+A flat neighbourhood reaches far more at every distance, the gap narrowing as distance grows (Table 3). On foot it reaches 23.9× the amenities, 52.4× the jobs and 12.5× the people of a detached one. At each area's own car catchment the raw counts nearly converge (amenities 1.2×); at a 25 km drive the flat still leads 10–14×.
+
+| Within reach (median) | Flat | Terraced | Semi | Detached | flat:det |
+| --- | --: | --: | --: | --: | --: |
+| Amenities, on foot | 209 | 119 | 67 | 22 | 23.9× |
+| Amenities, own catchment | 2,531 | 2,255 | 2,765 | 2,776 | 1.2× |
+| Amenities, 25 km | 20,812 | 9,950 | 8,796 | 4,653 | 10.4× |
+| Jobs, on foot | 6,927 | 3,790 | 2,100 | 598 | 52.4× |
+| Jobs, own catchment | 102,652 | 87,077 | 107,065 | 101,215 | 1.7× |
+| Jobs, 25 km | 807,658 | 382,638 | 337,938 | 173,447 | 14.3× |
+| People, on foot | 17,838 | 11,861 | 8,207 | 2,766 | 12.5× |
+| People, own catchment | 255,216 | 236,228 | 285,772 | 270,115 | 1.2× |
+| People, 25 km | 2,343,165 | 1,032,734 | 913,638 | 472,236 | 11.1× |
+
+Population density is 79 people per hectare in a flat neighbourhood against 14 in a detached one, a factor of 5.7.
 
 ### 4.3 The rate
-- ~6.3× access per kWh; why it exceeds the on-foot count parity at catchment (same reach, ~3× the fuel).
+
+A flat returns 6.3× the access per kilowatt-hour of car energy. The near-convergence of counts at the catchment (1.2×, Table 3) does not close the rate: a detached area reaches a comparable count only by driving far enough to spend about three times the car energy (Table 2), so per kilowatt-hour the flat leads 6.3×.
 
 ### 4.4 Lock-in
-- Per dwelling 2.12× → 1.51× (at equal family size 1.71× → 1.18×); ~45% survives; access deficit 100% unchanged — the hard, technology-immune lock-in.
 
-### 4.5 Self-selection robustness
-- Total energy robust (δ* ≈ 1, the structural travel gap); heat more confound-entangled (δ* ≈ 0.3); NS-SeC adds nothing over deprivation; access immune. ⇒ case rests on total energy + access.
+Best-practice fabric and full electrification close the energy gap only part-way (Table 4): per dwelling from 2.12× to 1.51×, and at equal family size from 1.71× to 1.18×. About 45% of the excess survives — a larger home still loses more heat, and electrification cuts energy per mile but not the miles. The access gap does not move: 24× on foot, before and after.
+
+| Total energy gap (per dwelling) | now | optimised |
+| --- | --: | --: |
+| As-lived | 2.12× | 1.51× |
+| At equal family size | 1.71× | 1.18× |
+
+### 4.5 Robustness
+
+The energy gaps could reflect who chooses detached rather than the form itself. Three checks (§3.8) bound this. Access depends on location and is immune by construction. Adding occupational class (NS-SeC) to the confounds leaves the gaps unchanged (Table 5). An Oster bound on the detached-share gradient gives δ* ≈ 1.1 for total energy — unobserved selection would have to be about as strong as all observed confounds combined to nullify it — but δ* ≈ 0.3 for heat, whose contrast is largely deprivation and tenure. The argument therefore rests on total energy and access, not on heat alone.
+
+| Detached-share gradient | raw | + confounds | + NS-SeC | Oster δ* |
+| --- | --: | --: | --: | --: |
+| Total energy | 1.87× | 1.28× | 1.28× | 1.1 |
+| Heat | 1.30× | 1.02× | 1.02× | 0.3 |
+
+The travel estimate has one free parameter, the commute-distance elasticity (0.30). Because each rural-urban class total is held fixed (§3.3), the elasticity only redistributes miles within a class, while the flat-to-detached contrast is largely between classes; the contrast is therefore insensitive to it.
 
 ## 5. Discussion
 
