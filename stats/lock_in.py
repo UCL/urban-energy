@@ -104,10 +104,12 @@ def main() -> None:
     print("\n  Flat→Detached TOTAL energy gap (per dwelling, compositional, method D):")
     print(f"    as-lived:              now {now_hh:.2f}×  →  optimised {opt_hh:.2f}×")
     print(f"    at equal family size:  now {now_fam:.2f}×  →  optimised {opt_fam:.2f}×")
-    survives = (opt_hh - 1) / (now_hh - 1) if now_hh > 1 else float("nan")
+    # Surviving share on the model-native log scale: log(optimised) / log(now).
+    # (An earlier version used the (ratio−1) excess scale, which understated it.)
+    survives = np.log(opt_hh) / np.log(now_hh) if now_hh > 1 else float("nan")
     print(
-        f"\n  {survives:.0%} of the per-dwelling excess survives best insulation "
-        "+ a full EV fleet."
+        f"\n  {survives:.0%} of the per-dwelling gap (log scale) survives best "
+        "insulation + a full EV fleet."
     )
     print("  Access deficit (on foot ~24×): UNCHANGED — tech-immune.")
 

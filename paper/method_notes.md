@@ -26,6 +26,31 @@ and `argument_figures.access_per_kwh`; fixed in summary/README/CLAUDE/PAPER and 
 figure. Lesson: a number matching the code is not a verified number — the *method*
 must reconcile across axes. (Triggered the full-pipeline logic audit, below.)
 
+## AUDIT 2026-06-22 — independent logic check of the whole pipeline
+
+Three independent agents traced every computation. Result: the rate was the only
+actual error; one scale inconsistency was found and fixed; the rest reconciles.
+
+- **Confirmed sound:** travel energy (units; the NTS class-mean constraint actually
+  holds; no double-count of household size), the compositional pure-type model and
+  its invariance, the lock-in fabric ratio and EV substitution (no modelled/metered
+  mixing), the access counts (catchment radius, jobs weighted by job-count, people
+  by population, monotonicity), and the corrected rate.
+- **Fixed — mediation/survival scale.** Mediation % and "% surviving" were on the
+  `(ratio−1)` excess scale, not the log model's native log scale. Switched both to
+  log points: heat mediation **71%→66%** (compositional; 60% regression), lock-in
+  "survives" **45%→55%**. Qualitative claims unchanged.
+- **Fixed — Oster δ\* guard.** δ\* is only interpretable when confounds *attenuate*
+  the coefficient; now reported `n/a` otherwise. The reported rows (heat 1.30→1.02,
+  total 1.87→1.28) both attenuate, so δ\* = 0.30 / 1.14 stand.
+- **Fixed — stale 6.3× docstrings** in `oa_network_access.py` and `access_profile.py`.
+- **Disclosed (not a bug) — heat DV denominator.** Energy ÷ census households with
+  gas coverage < 1 does NOT inflate the headline: well-measured areas (coverage ≥
+  0.9) give 1.61× vs the 1.60× headline. Noted in PAPER §3.3.
+- **Noted — rate coupling.** The catchment radius and the car energy are both
+  functions of mileage; this is the intended reading (access reached vs energy to
+  reach it), stated in PAPER §3.5.
+
 ---
 
 ## Decision 1 — functional unit: per dwelling, with family size as a *free control*

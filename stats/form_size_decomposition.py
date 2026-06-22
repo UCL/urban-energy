@@ -343,16 +343,19 @@ def regression_ladder(lsoa: pd.DataFrame) -> None:
         )
 
     if len(ratios) >= 3 and ratios[0] > 1:
-        total_gap = ratios[0] - 1.0
-        direct_gap = ratios[-1] - 1.0
-        mediated = (total_gap - direct_gap) / total_gap if total_gap else float("nan")
+        # Mediation on the model-native log scale: the log gap decomposes additively
+        # into mediated + direct, so the mediated fraction is (lt − ld)/lt. (An
+        # earlier version used the (ratio−1) excess scale, which is not the log
+        # model's native decomposition and overstated the mediated share.)
+        lt, ld = np.log(ratios[0]), np.log(ratios[-1])
+        mediated = (lt - ld) / lt if lt else float("nan")
         print(
             f"\n  Total form gap: {ratios[0]:.2f}×  →  family-size-held "
             f"{ratios[1]:.2f}×  →  size-held direct {ratios[-1]:.2f}×"
         )
         print(
-            f"  Family size + dwelling size mediate {mediated:.0%} of the gap; "
-            f"the residual {direct_gap:+.0%} is direct fabric/exposure."
+            f"  Family + dwelling size mediate {mediated:.0%} of the log gap; the "
+            f"residual direct effect is {ratios[-1]:.2f}× ({ratios[-1] - 1:+.0%})."
         )
 
     if _hdd_cols(df):
@@ -516,15 +519,16 @@ def compositional_ladder(lsoa: pd.DataFrame) -> None:
         )
 
     if len(ratios) >= 3 and ratios[0] > 1:
-        total_gap, direct_gap = ratios[0] - 1.0, ratios[-1] - 1.0
-        mediated = (total_gap - direct_gap) / total_gap if total_gap else float("nan")
+        # Log-scale mediation (model-native; see regression_ladder).
+        lt, ld = np.log(ratios[0]), np.log(ratios[-1])
+        mediated = (lt - ld) / lt if lt else float("nan")
         print(
             f"\n  Total form gap: {ratios[0]:.2f}×  →  family-size-held "
             f"{ratios[1]:.2f}×  →  size-held direct {ratios[-1]:.2f}×"
         )
         print(
-            f"  Family + dwelling size mediate {mediated:.0%}; "
-            f"residual {direct_gap:+.0%} is direct fabric/exposure."
+            f"  Family + dwelling size mediate {mediated:.0%} of the log gap; the "
+            f"residual direct effect is {ratios[-1]:.2f}× ({ratios[-1] - 1:+.0%})."
         )
 
     print("\n  Same estimator on each energy axis (shares + confounds):")
@@ -636,10 +640,15 @@ def selection_robustness(lsoa: pd.DataFrame) -> None:
         beta_adj = (
             b1 - (b0 - b1) * (rmax - r1) / (r1 - r0) if (r1 - r0) else float("nan")
         )
+        # δ* is only interpretable when the observed confounds ATTENUATE the
+        # coefficient (same sign, |b1| < |b0|). If they suppress it (b1 away from 0),
+        # δ* is meaningless and is reported as n/a rather than a spurious number.
+        attenuates = (b0 * b1 > 0) and (abs(b1) < abs(b0))
+        dstar_str = f"{dstar:.2f}" if attenuates else "n/a"
         nstr = f"{np.exp(float(mn.params['det_share'])):>8.2f}×" if mn else f"{'—':>9s}"
         print(
             f"  {label:<7}{np.exp(b0):>8.2f}×{np.exp(b1):>10.2f}×{nstr}"
-            f"{dstar:>10.2f}{np.exp(beta_adj):>8.2f}×"
+            f"{dstar_str:>10s}{np.exp(beta_adj):>8.2f}×"
         )
 
     print(

@@ -76,7 +76,7 @@ All inputs are open data, processed to the Output Area on the British National G
 
 Energy is delivered energy in kilowatt-hours per dwelling per year (not primary energy or carbon), in two components: home and travel.
 
-The home component is metered (DESNZ sub-national statistics), not modelled. Postcode-level gas and electricity, each a meter count and a mean per meter, are aggregated to the Output Area by a meter-weighted mean, summed, and divided by Census households. Gas is weather-corrected; both cover domestic meters only. Metered energy is used because SAP/EPC ratings over-predict consumption, most for large detached dwellings, and would inflate the dwelling-type gradient with model error (§2.3; Few et al., 2023; Summerfield et al., 2019; Firth et al., 2024).
+The home component is metered (DESNZ sub-national statistics), not modelled. Postcode-level gas and electricity, each a meter count and a mean per meter, are aggregated to the Output Area by a meter-weighted mean, summed, and divided by Census households. Gas is weather-corrected; both cover domestic meters only. The denominator is all households, so communal- or electrically-heated dwellings, commoner among flats, are not fully captured on the gas series; restricting to well-measured areas (gas-meter coverage ≥ 0.9) leaves the heat gap unchanged (1.61× against the 1.60× headline), so this does not drive the result. Metered energy is used because SAP/EPC ratings over-predict consumption, most for large detached dwellings, and would inflate the dwelling-type gradient with model error (§2.3; Few et al., 2023; Summerfield et al., 2019; Firth et al., 2024).
 
 The travel component is total car-travel energy of a location's residents, not the commute alone (about one-sixth of car mileage). It is estimated by constrained disaggregation. The National Travel Survey (NTS9904) gives car-driver miles per person by 2021 rural-urban class, from about 2,500 (urban) to 5,200 (rural). Each class total is distributed across its Output Areas by car ownership and commute distance, constrained so each class's population-weighted mean reproduces the survey figure; only the within-class distribution is estimated. Miles are converted at the local fleet's energy per mile — 0.93 (internal combustion) and 0.32 (electric) kWh per mile, blended by electric-vehicle share (DVLA). Sensitivity to the one free parameter, the commute-distance elasticity, is reported in §4.5.
 
@@ -86,7 +86,7 @@ Access is the count of opportunities reachable from an Output Area over the road
 
 ### 3.5 The rate
 
-The rate is the access a neighbourhood reaches for the energy it spends driving: amenities reachable per kilowatt-hour of car-travel energy. Per Output Area it is the amenity count within the area's own car catchment — its NTS car-driver distance per person divided by 370 trips per person per year, bounded to [1,600 m, 25,600 m] — divided by its car-travel energy (§3.3). The flat-to-detached ratio of this rate is, by construction, the product of the two reported axes: the access advantage (catchment amenities, flat:detached) times the energy saving (car-travel energy, detached:flat). It is reconstructable from Tables 2 and 3, not estimated as a separate per-area model.
+The rate is the access a neighbourhood reaches for the energy it spends driving: amenities reachable per kilowatt-hour of car-travel energy. Per Output Area it is the amenity count within the area's own car catchment — its NTS car-driver distance per person divided by 370 trips per person per year, bounded to [1,600 m, 25,600 m] — divided by its car-travel energy (§3.3). The flat-to-detached ratio of this rate is, by construction, the product of the two reported axes: the access advantage (catchment amenities, flat:detached) times the energy saving (car-travel energy, detached:flat). It is reconstructable from Tables 2 and 3, not estimated as a separate per-area model. The two terms are not independent — the catchment radius and the car-travel energy are both functions of how far residents drive — which is the intended reading: the rate prices the access a neighbourhood reaches against the energy it spends reaching it.
 
 ### 3.6 The compositional model
 
@@ -116,7 +116,7 @@ A detached neighbourhood spends 2.12× a flat's energy per dwelling; the gradien
 | Car travel (NTS-anchored) | 3,240 | 5,088 | 6,660 | 9,272 | 3.07× |
 | Total | 13,674 | 18,265 | 20,564 | 23,832 | 2.12× |
 
-The type columns are observed medians; the ratio is the compositional flat-to-detached estimate (§3.6), not their quotient. The heat gap decomposes from 1.60× (total) to 1.27× holding household size to 1.17× also holding floor area: size and occupancy mediate about 71%, leaving a 17% direct fabric and exposure effect. The floor-area elasticity of heat is 0.54 and the household-size elasticity 0.5, both below one — so per-square-metre intensity falls with dwelling size and per-person energy falls with occupancy, and neither is used as the unit (§3.6).
+The type columns are observed medians; the ratio is the compositional flat-to-detached estimate (§3.6), not their quotient. The heat gap decomposes from 1.60× (total) to 1.27× holding household size to 1.17× also holding floor area: on the log scale size and occupancy mediate about 66%, leaving a direct fabric and exposure effect of 1.17× (a 17% premium). The floor-area elasticity of heat is 0.54 and the household-size elasticity 0.5, both below one — so per-square-metre intensity falls with dwelling size and per-person energy falls with occupancy, and neither is used as the unit (§3.6).
 
 ### 4.2 The access axis
 
@@ -142,7 +142,7 @@ A flat returns about 3.6× the access per kilowatt-hour of car energy — the ac
 
 ### 4.4 Lock-in
 
-Best-practice fabric and full electrification close the energy gap only part-way (Table 4): per dwelling from 2.12× to 1.51×, and at equal family size from 1.71× to 1.18×. About 45% of the excess survives — a larger home still loses more heat, and electrification cuts energy per mile but not the miles. The access gap does not move: 24× on foot, before and after.
+Best-practice fabric and full electrification close the energy gap only part-way (Table 4): per dwelling from 2.12× to 1.51×, and at equal family size from 1.71× to 1.18×. About 55% of the gap survives (log scale) — a larger home still loses more heat, and electrification cuts energy per mile but not the miles. The access gap does not move: 24× on foot, before and after.
 
 | Total energy gap (per dwelling) | now | optimised |
 | --- | --: | --: |
@@ -168,7 +168,7 @@ The building-energy result reproduces the English literature: NEED and the Engli
 
 ### 5.2 What technology can and cannot offset
 
-Uniform technology scales energy down without changing the structural quantities. Insulation lowers heat loss per square metre but not floor area or surface; electrification lowers energy per mile but not the miles. The detached-to-flat ratio is therefore near-invariant to uniform improvement: about 45% of the energy excess survives best fabric and full electrification (§4.4). The access deficit is fixed in the street layout, untouched by either, and changes only when places are rebuilt. Access is the binding, technology-immune component, and must be planned for directly.
+Uniform technology scales energy down without changing the structural quantities. Insulation lowers heat loss per square metre but not floor area or surface; electrification lowers energy per mile but not the miles. The detached-to-flat ratio is therefore near-invariant to uniform improvement: about 55% of the energy gap survives best fabric and full electrification (§4.4). The access deficit is fixed in the street layout, untouched by either, and changes only when places are rebuilt. Access is the binding, technology-immune component, and must be planned for directly.
 
 ### 5.3 The functional unit
 

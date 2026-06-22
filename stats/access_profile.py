@@ -12,7 +12,8 @@ flat-vs-detached ratios used in ``paper/summary.md``:
   [3] DRIVABLE RATE — each OA at its OWN car-trip catchment (NTS mileage ÷ trips) ÷ its
       car-travel energy: the access-per-kWh rate (dominant-type median ~2.9×).
   [4] COMPOSITIONAL — Poisson flat-vs-detached contrasts (the headline): on foot a flat
-      reaches ~24× the amenities, and returns ~6.3× the access per kWh, of a detached.
+      reaches ~24× the amenities of a detached, and returns ~3.6× the access per kWh
+      (access advantage 1.2× × energy saving 3.1×).
 
 Jobs are reported alongside the amenities (the total reachable jobs, summed over
 workplaces), so the same flat-vs-detached comparison can be read for employment access.

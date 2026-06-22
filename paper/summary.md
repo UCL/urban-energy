@@ -46,7 +46,7 @@ Flats record fewer domestic gas meters than households (about 0.81 per household
 Separating shape from size:
 
 - The detached-versus-flat heat gap blends three effects of low density: bigger homes, more people per home, and a leakier shape. The quantity of interest is the part attributable to shape alone.
-- From the compositional model (the full dwelling mix, with deprivation, tenure, building age and climate held equal), controls are added one at a time — first family size, then floor area — and the gap shrinks from 1.60× to 1.27× to 1.17×. Family and dwelling size together mediate about seven-tenths (71%) of the gap. What survives once both are held fixed (about 1.17×, roughly 17%) is the direct effect of the form: exposed walls and no shared surfaces. Family size enters as a freely estimated effect (an elasticity of about 0.5), not as a per-person denominator, so the household is held without forcing energy to scale one-for-one with residents.
+- From the compositional model (the full dwelling mix, with deprivation, tenure, building age and climate held equal), controls are added one at a time — first family size, then floor area — and the gap shrinks from 1.60× to 1.27× to 1.17×. Family and dwelling size together mediate about two-thirds (66%) of the gap. What survives once both are held fixed (about 1.17×, roughly 17%) is the direct effect of the form: exposed walls and no shared surfaces. Family size enters as a freely estimated effect (an elasticity of about 0.5), not as a per-person denominator, so the household is held without forcing energy to scale one-for-one with residents.
 - Local climate (heating-degree-days, from HadUK-Grid, 1991–2020) is now held alongside the others: colder northern and rural siting is part of why detached areas use more heat, and netting it out is built into the direct term above.
 
 *Reproduce: `stats/form_size_decomposition.py` (the shape-versus-size ladder and the gas-coverage checks).*
@@ -142,7 +142,7 @@ How the optimised scenario is computed:
 | as-lived | 2.12× | 1.51× |
 | at equal family size | 1.71× | 1.18× |
 
-The energy gap closes only part way: as-lived, from 2.12 to 1.51 times; held at equal family size, from 1.71 to 1.18 times. About 45% of the excess survives. It splits across both halves of the form: a best-insulated detached home is still bigger, so it still loses more heat; and electrification lowers the energy per mile but not the miles, so a detached home still drives substantially further. Technology improves the efficiency of each unit but leaves the structural quantities, floor area and distance, unchanged.
+The energy gap closes only part way: as-lived, from 2.12 to 1.51 times; held at equal family size, from 1.71 to 1.18 times. About 55% of the gap survives. It splits across both halves of the form: a best-insulated detached home is still bigger, so it still loses more heat; and electrification lowers the energy per mile but not the miles, so a detached home still drives substantially further. Technology improves the efficiency of each unit but leaves the structural quantities, floor area and distance, unchanged.
 
 The access gap does not move, because neither insulation nor electrification brings a school, a job or a shop closer to a house built far from them. The inefficiency of dispersed form is not removed by technology; it is fixed in the street layout, which changes only when places are rebuilt, over generations rather than product cycles. Access therefore has to be measured and planned for directly.
 
