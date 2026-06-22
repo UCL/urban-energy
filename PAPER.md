@@ -50,14 +50,35 @@
 ## 3. Data and Methods
 
 ### 3.1 Unit of analysis
-- Census 2021 Output Area (~125 households); ~178k in England; England-only (deprivation control has no harmonised Welsh equivalent).
+
+The unit of analysis is the 2021 Census Output Area (OA), the smallest geography at which the Census of England and Wales is released, comprising approximately 125 households and 300 residents. The analysis covers the Output Areas of England (approximately 178,000). Wales is excluded: although the energy, Census, Energy Performance Certificate and Ordnance Survey inputs all extend to it, the deprivation measure used as a control — the English Index of Multiple Deprivation — has no directly comparable Welsh equivalent, and harmonising the two is left to future work. The Output Area is preferred to the Lower-layer Super Output Area (LSOA; approximately 1,500 residents) used by much of the small-area energy literature because the finer grain reduces within-unit heterogeneity in dwelling type, which is the exposure of interest; the consequences of ecological aggregation at this scale are addressed in §5.5.
 
 ### 3.2 Data sources
-- Table (reuse/update from archived §3.2): Census (TS044 type, TS054 tenure, TS045 cars, TS058 commute, TS062 NS-SeC), DESNZ metered gas+elec, EPC (floor area, build year, current/potential intensity), OS Open Roads, FSA, NaPTAN, GIAS, NHS, OS Greenspace, WP101EW jobs, IoD 2025, DVLA vehicles, NTS9904, HadUK-Grid climate.
+
+All inputs are open data, processed to the Output Area on the British National Grid (EPSG:27700). Table 1 lists each source, the artefact it yields, and its role.
+
+| Domain | Source | Role in the analysis |
+| --- | --- | --- |
+| Population and dwellings | Census 2021 (TS001, TS017, TS044) | Residents, households, dwelling-type shares (the exposure) |
+| Tenure and socio-economic class | Census 2021 (TS054, TS062) | Tenure shares (confound); NS-SeC (self-selection robustness) |
+| Car ownership and commuting | Census 2021 (TS045, TS058) | Local signals for travel-energy disaggregation |
+| Workplace jobs | Census 2021 (WP101EW) | Jobs reachable (access) |
+| Domestic energy | DESNZ sub-national gas and electricity | Metered household energy (the energy axis) |
+| Building fabric | EPC (domestic) | Floor area, build year, current and potential intensity |
+| Road network | OS Open Roads | Network routing for the access axis |
+| Amenities | FSA, NaPTAN, GIAS, NHS ODS, OS Open Greenspace | Reachable everyday destinations |
+| Deprivation | Indices of Deprivation 2025 | Overall IMD and income domain (confounds) |
+| Vehicle fleet | DVLA licensing | Electric-vehicle share (travel-energy intensity) |
+| Travel behaviour | National Travel Survey (NTS9904) | Car-miles per person by rural-urban class (travel anchor) |
+| Climate | HadUK-Grid (1991–2020) | Heating-degree-days (confound) |
 
 ### 3.3 The energy axis
-- Heat: metered gas + electricity per dwelling, postcode→OA meter-weighted; why metered not EPC (§2.3).
-- Travel: NTS9904 car-driver miles per person by 2021 rural-urban class, constrained disaggregation to OA via car ownership + commute distance; miles × fleet energy/mile (DVLA EV share).
+
+Household energy is measured per dwelling per year as *delivered* energy — the energy arriving at the home and the vehicle, in kilowatt-hours, with no conversion to primary energy or carbon — in two components.
+
+The home component is metered, not modelled. The Department for Energy Security and Net Zero publishes domestic gas and electricity consumption at postcode level, each as a meter count and a mean per meter. Each fuel is aggregated to the Output Area by a meter-weighted mean, the two are summed as delivered energy, and the total is divided by the count of Census households. Gas consumption is weather-corrected; both series cover domestic meters only. The use of metered rather than SAP-modelled energy is deliberate (§2.3): Energy Performance Certificate ratings systematically over-predict consumption, and most for the largest, least efficient dwellings, so an EPC-based dependent variable would inflate the dwelling-type gradient with model error rather than measure it (Few et al., 2023; Summerfield et al., 2019; Firth et al., 2024).
+
+The travel component is the car-travel energy associated with a neighbourhood's location, not merely its commute, which accounts for only about one-sixth of car mileage. Total local car travel is not recorded in open data and is therefore estimated by constrained disaggregation of a measured total. The National Travel Survey (NTS9904) reports car-driver miles per person by 2021 rural-urban classification of residence, rising from approximately 2,500 miles per person in dense urban areas to approximately 5,200 in rural ones. Each class total is distributed across its constituent Output Areas in proportion to two local signals — car ownership and commute distance — subject to the constraint that each class's population-weighted mean reproduces the survey figure, so that the measured class marginals are preserved exactly and only the within-class distribution is estimated. Estimated miles are converted to energy at the local fleet's energy per mile, blending an internal-combustion figure of approximately 0.93 kWh per mile and an electric figure of approximately 0.32 by the area's electric-vehicle share (DVLA). Sensitivity to the single free parameter, the elasticity of the estimate to commute distance, is reported in §4.5.
 
 ### 3.4 The access axis
 - cityseer network access over OS Open Roads (built once); amenities / jobs / people reachable at a short walk (1,600 m), each area's own car catchment, and a long drive (25,600 m).
