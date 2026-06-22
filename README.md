@@ -79,7 +79,7 @@ household-size elasticity of 1 when heat's is about 0.5 ([paper/summary.md](pape
 amenities, 52× the jobs and 12× the people** of a detached neighbourhood; even at a 25 km drive the
 flat is still **10–14× ahead**. At each area's own car catchment the raw counts nearly converge: a
 detached area gets there only by driving much further, so per kilowatt-hour a flat returns about
-**6.3× the access** a detached home does.
+**3.6× the access** a detached home does.
 
 **Lock-in** — best-practice insulation + full electrification closes only about half the energy
 gap: per dwelling **2.12× → 1.51×** (at equal family size 1.71× → 1.18×), the residual being bigger
@@ -138,7 +138,7 @@ echo "URBAN_ENERGY_DATA_DIR=$(pwd)/temp" > .env
 # Two-axis analysis — energy gradient, lock-in, access profile, form/size
 uv run python stats/oa_network_access.py        # build network-access cache (cityseer, ~12 min)
 uv run python stats/lock_in.py                  # energy gap 2.12× → optimised 1.51× (per dwelling)
-uv run python stats/access_profile.py           # access per kWh 6.3×, on-foot gap ~24×
+uv run python stats/access_profile.py           # access per kWh 3.6×, on-foot gap ~24×
 uv run python stats/form_size_decomposition.py  # heat 1.60× → 1.17× size-held (family size a free control, γ≈0.5)
 ```
 
@@ -155,7 +155,7 @@ Full status, open work, and scope decisions (KEEP / DEFER / CUT) live in
 
 **Done:** the national OA dataset (~178k OAs); the two-axis frame ([paper/summary.md](paper/summary.md));
 NTS-anchored car-travel energy, the lock-in quantification, the **network access** measure (cityseer
-over OS Open Roads, full per-OA curve; on-foot gap ~24×, drivable rate 6.3× access per kWh), and the
+over OS Open Roads, full per-OA curve; on-foot gap ~24×, drivable rate 3.6× access per kWh), and the
 heat-vs-size decomposition (`stats/`), all on a compositional flat-vs-detached estimator; storage centralised behind
 `URBAN_ENERGY_DATA_DIR`; and an executable rebuild
 orchestrator (`urban_energy.pipeline`). The old three-surface code and A–G Atlas were removed

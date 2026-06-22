@@ -8,8 +8,8 @@ from the text):
 
 1. ``energy_gradient.png`` — stacked heat + car-travel energy by dwelling type (the
    Flat→Detached total-energy gradient, ~2.1× per dwelling).
-2. ``access_per_kwh.png`` — network amenities reachable per kWh within each OA's own
-   car-trip catchment, by dwelling type (the drivable rate, ~6.3× flat vs detached).
+2. ``access_per_kwh.png`` — amenities reachable per kWh: catchment access ÷ car-travel
+   energy (the rate, ~3.6× flat vs detached = 1.2× access × 3.1× energy saving).
 3. ``access_curve.png`` — predicted amenities reachable vs network distance by dwelling
    type (the gap is ~24× flat vs detached on foot, narrowing to ~10× at a 25 km drive).
 
@@ -137,16 +137,28 @@ def energy_gradient(cf: pd.DataFrame, confounds: list[str], out: Path) -> None:
     print(f"  wrote {out}  ({totals[0]:,.0f} → {totals[-1]:,.0f}, {grad:.2f}×)")
 
 
-def access_per_kwh(cf: pd.DataFrame, income: list[str], out: Path) -> None:
-    """Network amenities reachable per kWh, pure-flat vs pure-detached (Poisson D)."""
+def access_per_kwh(
+    cf: pd.DataFrame, income: list[str], confounds: list[str], out: Path
+) -> None:
+    """Amenities reachable per kWh, pure-flat vs pure-detached.
+
+    The rate is access ÷ energy, so each type's level is its predicted catchment
+    amenities (income-controlled Poisson) divided by its predicted car-travel energy
+    (full-confound log-OLS). The flat-to-detached ratio is therefore the product of
+    the access advantage and the energy saving — reconstructable from the two axes,
+    not a per-OA ratio modelled directly (which double-counted to a spurious 6.3×).
+    """
     cf = cf.copy()
-    travel = _num(cf["transport_kwh_per_hh_total_est"]).replace(0, np.nan)
-    cf["_y"] = _num(cf["net_amen"]) / travel
-    rate = _pure_preds(
-        _comp_poisson(cf, "_y", _SHARE_FRACS + income, "total_hh"), cf, income
+    cf["_amen"] = _num(cf["net_amen"])
+    amen = _pure_preds(
+        _comp_poisson(cf, "_amen", _SHARE_FRACS + income, "total_hh"), cf, income
+    )
+    cf["_le"] = np.log(_num(cf["transport_kwh_per_hh_total_est"]).clip(lower=1))
+    energy = _pure_preds(
+        _comp_ols(cf, "_le", _SHARE_FRACS + confounds, "total_hh"), cf, confounds
     )
     types = ["Flat", "Terraced", "Semi", "Detached"]
-    vals = [rate[t] for t in types]
+    vals = [amen[t] / energy[t] for t in types]
     ratio = vals[0] / vals[-1] if vals[-1] else float("nan")
 
     fig, ax = plt.subplots(figsize=(7, 4.5))
@@ -234,7 +246,7 @@ def main() -> None:
         int(c.rsplit("_", 1)[1]) for c in net.columns if c.startswith("net_total_")
     )
     energy_gradient(cf, confounds, _OUT / "energy_gradient.png")
-    access_per_kwh(cf, income, _OUT / "access_per_kwh.png")
+    access_per_kwh(cf, income, confounds, _OUT / "access_per_kwh.png")
     access_curve(cf, income, dists, _OUT / "access_curve.png")
 
 

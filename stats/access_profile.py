@@ -27,7 +27,14 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
-from form_size_decomposition import _SHARE_FRACS, _compositional_frame
+from form_size_decomposition import (
+    _SHARE_FRACS,
+    _comp_ols,
+    _compositional_frame,
+    _deprivation_cols,
+    _hdd_cols,
+    _tenure_cols,
+)
 from oa_access import DEST
 from oa_data import load_and_aggregate
 from statsmodels.genmod.generalized_linear_model import GLMResultsWrapper
@@ -123,7 +130,6 @@ def compositional_access(d: pd.DataFrame) -> None:
         access columns, households, income, travel energy).
     """
     cf = _compositional_frame(d)
-    cf["rate"] = _num(cf["net_amen"]) / _num(cf["transport"]).replace(0, np.nan)
     income = [
         c for c in cf.columns if "imd_income" in c.lower() and "score" in c.lower()
     ][:1]
@@ -133,11 +139,11 @@ def compositional_access(d: pd.DataFrame) -> None:
         ("amenities, catchment", "net_amen"),
         ("jobs, catchment", "net_jobs_catch"),
         ("people, catchment", "net_pop_catch"),
-        ("access per kWh (rate)", "rate"),
     ]
     print("\n  [4] COMPOSITIONAL (option D) — pure all-flat vs all-detached area")
     print("      Poisson log-link · household-weighted · income-ctrl · NOT density")
     print(f"  {'measure':<26s}{'Flat':>14s}{'Det':>14s}{'Flat:Det':>10s}")
+    access_ratio = float("nan")
     for label, col in measures:
         cf["_y"] = _num(cf[col])
         m = _comp_poisson(cf, "_y", _SHARE_FRACS + income, "total_hh")
@@ -147,7 +153,31 @@ def compositional_access(d: pd.DataFrame) -> None:
         pf = float(np.exp(m.params["s_flat"] + base))
         pdet = float(np.exp(m.params["s_detached"] + base))
         ratio = pf / pdet if pdet else float("nan")
+        if col == "net_amen":
+            access_ratio = ratio  # catchment-amenity advantage, flat:det
         print(f"  {label:<26s}{pf:>14,.1f}{pdet:>14,.1f}{ratio:>9.1f}x")
+
+    # The access-per-kWh RATE is a ratio of two divisions (access ÷ energy): for a
+    # flat area over a detached one it equals the access advantage (flat:det
+    # catchment amenities) times the energy saving (det:flat car-travel energy).
+    # This is a derived product of the two reported axes, reconstructable from the
+    # tables — NOT a per-OA ratio modelled directly (which double-counts: an earlier
+    # version did that and reported a spurious 6.3×).
+    conf = (
+        ["median_build_year"] + _deprivation_cols(cf) + _tenure_cols(cf) + _hdd_cols(cf)
+    )
+    cf["_le"] = np.log(_num(cf["transport"]).clip(lower=1))
+    me = _comp_ols(cf, "_le", _SHARE_FRACS + conf, "total_hh")
+    energy_ratio = (
+        float(np.exp(me.params["s_detached"] - me.params["s_flat"]))
+        if me is not None
+        else float("nan")
+    )
+    rate = access_ratio * energy_ratio
+    print(
+        f"\n  access-per-kWh RATE = access advantage × energy saving "
+        f"= {access_ratio:.2f} × {energy_ratio:.2f} = {rate:.2f}×"
+    )
 
 
 def main() -> None:

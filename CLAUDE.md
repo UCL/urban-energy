@@ -142,7 +142,7 @@ in one pass: counts at each ladder rung from **1,600 m to 25,600 m**. From that 
 the access numbers are read (`access_profile.py`): the **on-foot** gap (1,600 m — a flat reaches
 ~**24×** the amenities of a detached area, jobs ~52×, people ~12×), the count at each OA's own NTS
 **catchment**, and the **25 km drive** (~**10–14×**). The access-per-kWh **rate** divides catchment
-amenities by car-travel energy: a flat returns **~6.3× access per kWh**. Caches to
+amenities by car-travel energy: a flat returns **~3.6× access per kWh**. Caches to
 `statistics/oa_network_access.parquet` (~15 min total).
 
 [`stats/oa_access.py`](stats/oa_access.py) is retained for the **straight-line** KD-tree counts
@@ -152,7 +152,7 @@ Cached to `statistics/oa_access.parquet` in ~6 s.
 > The earlier *straight-line-only* simplification (cityseer removed) was reverted: scoping access
 > to the real network is the rigorous measure. On foot a flat reaches **~24×** the amenities of a
 > detached area; at a 25 km drive still **~10–14×**. The detached area only matches the count by
-> driving out to its own larger catchment, for which the flat returns **~6.3× access per kWh**.
+> driving out to its own larger catchment, for which the flat returns **~3.6× access per kWh**.
 
 ### Two-axis analysis layer (`stats/`)
 
@@ -167,7 +167,7 @@ are run on demand rather than wired as pipeline stages.
 | `oa_network_access.py` | **Network access** (cityseer over OS Open Roads): network built **once**, then the full amenity-vs-distance curve (1,600 m → 25.6 km) for every OA in one pass → `oa_network_access.parquet` (~15 min) |
 | `oa_access.py` | Straight-line KD-tree counts within 1,600 m — a fast cross-check, cached |
 | `travel_energy.py` | Total car-travel energy by constrained disaggregation of measured NTS9904 mileage (the `compute_travel_energy` the loader calls) |
-| `access_profile.py` | Access gaps: on-foot (network 1,600 m) **~24×**, 25 km drive **~10–14×**, and the rate **~6.3× access/kWh** |
+| `access_profile.py` | Access gaps: on-foot (network 1,600 m) **~24×**, 25 km drive **~10–14×**, and the rate **~3.6× access/kWh** |
 | `lock_in.py` | Energy gap surviving best-fabric + full EV (per dwelling 2.12× → 1.51×; at equal family size 1.71× → 1.18×) |
 | `form_size_decomposition.py` | Heat vs dwelling/family-size: per-dwelling DV with family size + floor area as FREE controls (γ≈0.5, never per-person); 1.60× → 1.27× (family-size-held) → 1.17× (size-held direct) |
 
@@ -206,7 +206,7 @@ Individual scripts also run standalone (e.g. `uv run python data/download_census
 ```bash
 uv run python stats/oa_network_access.py         # build network-access cache (cityseer, ~12 min)
 uv run python stats/lock_in.py                   # energy gap per dwelling 2.12× → 1.51× (equal family size 1.71× → 1.18×)
-uv run python stats/access_profile.py            # rate ~6.3× access/kWh + on-foot gap ~24×
+uv run python stats/access_profile.py            # rate ~3.6× access/kWh + on-foot gap ~24×
 uv run python stats/form_size_decomposition.py   # heat 1.60× → 1.17× size-held (family size a free control, γ≈0.5)
 ```
 

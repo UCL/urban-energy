@@ -13,7 +13,7 @@
 
 ## Abstract
 
-A neighbourhood is conventionally judged by the energy it consumes, not by what that energy buys. This paper judges English neighbourhoods on two measured axes — energy spent and everyday access gained — and the rate between them, across 178,353 Census 2021 Output Areas. Household energy combines metered gas and electricity with National Travel Survey-anchored car-travel energy; access is the count of amenities, jobs and people reachable over the road network. Energy is modelled per dwelling, with household size and floor area as freely estimated controls, and is metered rather than SAP-modelled, avoiding the performance gap. A detached neighbourhood spends about 2.1× a flat's energy per dwelling, yet a flat reaches about 24× the amenities on foot and returns about 6.3× the access per kilowatt-hour. Best-practice fabric and full electrification leave roughly half the energy gap and all of the access gap intact: the access deficit of dispersed form is structural and technology-immune.
+A neighbourhood is conventionally judged by the energy it consumes, not by what that energy buys. This paper judges English neighbourhoods on two measured axes — energy spent and everyday access gained — and the rate between them, across 178,353 Census 2021 Output Areas. Household energy combines metered gas and electricity with National Travel Survey-anchored car-travel energy; access is the count of amenities, jobs and people reachable over the road network. Energy is modelled per dwelling, with household size and floor area as freely estimated controls, and is metered rather than SAP-modelled, avoiding the performance gap. A detached neighbourhood spends about 2.1× a flat's energy per dwelling, yet a flat reaches about 24× the amenities on foot and returns about 3.6× the access per kilowatt-hour. Best-practice fabric and full electrification leave roughly half the energy gap and all of the access gap intact: the access deficit of dispersed form is structural and technology-immune.
 
 ## 1. Introduction
 
@@ -86,7 +86,7 @@ Access is the count of opportunities reachable from an Output Area over the road
 
 ### 3.5 The rate
 
-The rate is amenities reachable per kilowatt-hour of car-travel energy, formed per Output Area. The numerator is the amenity count within the Output Area's own car catchment: its NTS car-driver distance per person divided by 370 car trips per person per year, bounded to [1,600 m, 25,600 m]. The denominator is car-travel energy (§3.3), in kilowatt-hours per dwelling per year. The reported value is the compositional flat-to-detached estimate (§3.6).
+The rate is the access a neighbourhood reaches for the energy it spends driving: amenities reachable per kilowatt-hour of car-travel energy. Per Output Area it is the amenity count within the area's own car catchment — its NTS car-driver distance per person divided by 370 trips per person per year, bounded to [1,600 m, 25,600 m] — divided by its car-travel energy (§3.3). The flat-to-detached ratio of this rate is, by construction, the product of the two reported axes: the access advantage (catchment amenities, flat:detached) times the energy saving (car-travel energy, detached:flat). It is reconstructable from Tables 2 and 3, not estimated as a separate per-area model.
 
 ### 3.6 The compositional model
 
@@ -138,7 +138,7 @@ Population density is 79 people per hectare in a flat neighbourhood against 14 i
 
 ### 4.3 The rate
 
-A flat returns 6.3× the access per kilowatt-hour of car energy. The near-convergence of counts at the catchment (1.2×, Table 3) does not close the rate: a detached area reaches a comparable count only by driving far enough to spend about three times the car energy (Table 2), so per kilowatt-hour the flat leads 6.3×.
+A flat returns about 3.6× the access per kilowatt-hour of car energy — the access advantage times the energy saving. A flat and a detached home reach a comparable count at their own catchments (1.2×, Table 3), but the detached spends about three times the car energy to do so (3.07×, Table 2), so per kilowatt-hour the flat leads 1.2 × 3.07 ≈ 3.6×.
 
 ### 4.4 Lock-in
 
@@ -200,7 +200,7 @@ Gradient-boosted (XGBoost) models predicting a neighbourhood's score from its fo
 
 ## 7. Conclusion
 
-A detached neighbourhood spends about twice a flat's energy per dwelling and reaches a fraction of its everyday destinations; a flat returns about six times the access per kilowatt-hour. Best-practice fabric and full electrification leave roughly half the energy gap and all of the access gap intact, because technology changes the efficiency of floor area and distance but not their quantity. Judged by access gained per unit of energy spent, compact form is the more efficient, and the difference is structural — fixed until places are rebuilt.
+A detached neighbourhood spends about twice a flat's energy per dwelling and reaches a fraction of its everyday destinations; a flat returns between three and four times the access per kilowatt-hour. Best-practice fabric and full electrification leave roughly half the energy gap and all of the access gap intact, because technology changes the efficiency of floor area and distance but not their quantity. Judged by access gained per unit of energy spent, compact form is the more efficient, and the difference is structural — fixed until places are rebuilt.
 
 ## References
 - From [`paper/references.bib`](paper/references.bib).

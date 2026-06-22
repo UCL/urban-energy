@@ -11,6 +11,23 @@ scripts named under each decision.
 
 ---
 
+## CORRECTION 2026-06-22 — the rate was 6.3×, is now 3.6×
+
+The headline access-per-kWh rate was wrong. The old `access_profile.py` modelled
+the **per-OA ratio** `net_amen / transport` directly (Poisson, income-only) and
+reported **6.3×**. That double-counts and does not reconcile with the two axes: it
+implied a ~5× energy gap, not the reported 3.07× travel gap, and used income-only
+controls while the energy axis uses the full set. The rate is a ratio of two
+divisions, so the flat:detached value is the **product of the two reported axes** —
+access advantage (catchment amenities, flat:det **1.17×**, income-controlled
+Poisson) × energy saving (car-travel energy, det:flat **3.07×**, full-confound
+log-OLS) = **3.60×**. Now computed that way in `access_profile.compositional_access`
+and `argument_figures.access_per_kwh`; fixed in summary/README/CLAUDE/PAPER and the
+figure. Lesson: a number matching the code is not a verified number — the *method*
+must reconcile across axes. (Triggered the full-pipeline logic audit, below.)
+
+---
+
 ## Decision 1 — functional unit: per dwelling, with family size as a *free control*
 
 **What we do.** Energy is modelled per dwelling. Household size and floor area
@@ -113,7 +130,7 @@ part of the raw form gap; it is now netted out of the direct term.
   study. Documented in `access_profile.compositional_access` and
   `argument_figures.py`. Energy axes use overall IMD + income; access uses income.
 - **Argument figures** — regenerated on the per-dwelling basis: energy_gradient
-  **2.12×**, access_per_kwh **6.3×**, access_curve **24× → 10×**. `argument_figures.py`
+  **2.12×**, access_per_kwh **3.6×** (corrected from 6.3×, see above), access_curve **24× → 10×**. `argument_figures.py`
   energy confounds now match the ladder (`_deprivation_cols` + `_hdd_cols`); access
   figures stay income-only.
 - **Self-selection** — handled three ways (`form_size_decomposition.py` §6 +

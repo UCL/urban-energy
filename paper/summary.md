@@ -112,17 +112,19 @@ The dwelling-type columns are observed medians; the flat:det ratio is the compos
 
 ## The rate
 
-The rate is the access a neighbourhood buys for the car energy it spends: everyday amenities reachable per kilowatt-hour of driving. A flat returns about **6.3 times** the access per kilowatt-hour of a detached neighbourhood. It is computed for each neighbourhood, then compared pure-flat against pure-detached like every other figure here:
+The rate is the access a neighbourhood buys for the car energy it spends: everyday amenities reachable per kilowatt-hour of driving. A flat returns about **3.6 times** the access per kilowatt-hour of a detached neighbourhood.
 
-- **Numerator — amenities reached.** The count of everyday amenities reachable over the road network within the area's *own car catchment*. That catchment is the distance its residents typically drive on a trip: their NTS annual car-driver distance per person divided by about 370 car trips per person per year, then capped between a short walk (1.6 km) and a long drive (25.6 km). A detached area, driving further, has a larger catchment, so its count is read further out.
-- **Denominator — car energy spent.** The area's car-travel energy in kilowatt-hours per household per year — the same NTS-anchored travel axis as the energy section (miles × the local fleet's energy per mile).
-- **The rate is numerator over denominator**, amenities per kilowatt-hour, for each area. The reported 6.3× is the compositional estimate — the predicted rate of a pure all-flat area over a pure all-detached one (Poisson, income held) — not the quotient of medians.
+For each area the rate is a division — amenities reachable within its *own car catchment* (its NTS car-driver distance per person ÷ about 370 trips per person per year, capped between 1.6 km and 25.6 km), divided by its car-travel energy. The flat-to-detached comparison of that division works out to the **product of the two axes already reported**:
 
-Why the rate is 6.3× when the raw counts at the catchment are near parity (about 1.2×): a detached area reaches a *similar* number of amenities at its own catchment, but only by driving far enough to spend roughly three times the car energy doing so. Same reach, far more fuel — so per kilowatt-hour the flat is about 6.3× ahead. The on-foot gap (about 24×) is the same fact held at fixed distance: at equal reach, the flat simply has far more around it.
+- **Access advantage** — at their own catchments a flat and a detached area reach a *similar* number of amenities: flat-to-detached **1.2×**.
+- **Energy saving** — the detached area gets there only by spending about **3.1×** the car energy (the travel figure from the energy section).
+- Dividing one area's rate by the other's flips the energy term over, so the two multiply: **1.2 × 3.1 ≈ 3.6×**. Same reach, a third of the fuel.
+
+This is reconstructable straight from the access and energy tables — it is not a separate model. (An earlier version modelled the per-area ratio directly and reported a spurious 6.3×; that double-counted and did not reconcile with the two axes.)
 
 For the wider picture: on foot a flat reaches roughly 24 times the amenities, 52 times the jobs and 12 times the people of a detached neighbourhood; at a 25 km drive, where a detached home can reach into denser places, the flat is still 10 to 14 times ahead. For energy the direction reverses — a detached home spends about 1.6 times the heat, 3.1 times the car energy, and 2.1 times the total per dwelling.
 
-![Amenities reachable per kWh of car travel by dwelling type (compositional pure-type predictions): a flat returns about 6.3× a detached home.](../stats/figures/argument/access_per_kwh.png)
+![Amenities reachable per kWh of car travel by dwelling type: a flat returns about 3.6× a detached home (access advantage 1.2× × energy saving 3.1×).](../stats/figures/argument/access_per_kwh.png)
 
 ## Lock-in
 
