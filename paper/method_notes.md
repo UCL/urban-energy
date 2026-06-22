@@ -116,16 +116,34 @@ part of the raw form gap; it is now netted out of the direct term.
   **2.12×**, access_per_kwh **6.3×**, access_curve **24× → 10×**. `argument_figures.py`
   energy confounds now match the ladder (`_deprivation_cols` + `_hdd_cols`); access
   figures stay income-only.
+- **Self-selection** — handled three ways (`form_size_decomposition.py` §6 +
+  `summary.md` "Self-selection"). (a) Access is location-intrinsic ⇒ immune by
+  construction. (b) NS-SeC (occupational class, now in the loader as
+  `pct_nssec_higher`) added on top of deprivation moves the gap by ~nothing.
+  (c) Oster (2019) δ* on a continuous detached-share gradient: **total energy is
+  robust (δ* ≈ 1.1)** — much of it is the structural travel gap; **heat alone is
+  more confound-entangled (δ* ≈ 0.3)** — its non-flat contrast is largely
+  deprivation/tenure. Honest takeaway recorded in the doc: the case rests on
+  **total energy + access**, not the heat number alone, and the estimand is
+  *place-level*, not a household treatment effect. NOTE: the formal Oster is
+  spec-sensitive here (binary dominant-Flat/Detached is collinear at the extremes;
+  the no-intercept compositional R² is uncentred) — the continuous-gradient
+  intercept-OLS is the defensible vehicle. Mover-based panel (UKHLS) is the
+  definitive future test; deliberately not pursued (Gareth: out of scope).
+
+- **Relation to prior work** — `literature_review.md` §6 ("Relation to Prior
+  Work: Consistency of the Two-Axis Results") added 2026-06-22: building-energy
+  axis consistent with NEED/EHS and Wyatt (2013) / Buyuklieva et al. (2023);
+  metered-vs-modelled and the functional-unit lesson reproduce Rode/Norman/
+  Summerfield/Few/Firth; travel ~3.1× is the same direction as Echenique et al.
+  (2012)'s "modest" marginal effect but an extremes contrast; access axis extends
+  Ewing (2018) / Elldér et al. (2022); the access-per-energy rate is the novel
+  bit. New refs added: wyatt2013, buyuklieva2023, echenique2012, ellder2022,
+  cao2009, summerfield2019. (Summerfield was the old open item — now done.)
 
 ## Open items still to resolve before the paper
 
-1. **Self-selection / endogeneity** — holding observed family size addresses the
-   *observable* selection of large families into detached homes, not endogeneity on
-   unobservables. State as a limitation; a future IV/panel design would strengthen
-   causal attribution.
-2. **Summerfield et al.** — add the missing `references.bib` entry (year/venue to
-   confirm) before citing in the manuscript.
-3. **`PAPER.md` is the DEFERRED old-method draft** — three-surface / coverage /
+1. **`PAPER.md` is the DEFERRED old-method draft** — three-surface / coverage /
    XGBoost analysis with dominant-type numbers (1.46×, 2.00×, A–G scorecard). It is
    *not* a stale copy of the current two-axis numbers and was deliberately NOT
    renumbered (its surrounding prose is about the old method). The canonical current

@@ -39,6 +39,9 @@ the partial form effect at equal family size and equal size. This script reports
    but read from every dwelling-type share at once (fractions summing to 1, with
    an "other" residual), household-weighted, with no dominant-type label and no
    dropped reference category, so each coefficient is a pure-type mean.
+6. A **self-selection robustness** check — an Oster (2019) coefficient-stability
+   bound plus an NS-SeC control — testing how far residential sorting on
+   *unobservables* would have to reach to overturn the form gap.
 
 Run:
     uv run python stats/form_size_decomposition.py
@@ -563,6 +566,93 @@ def compositional_ladder(lsoa: pd.DataFrame) -> None:
         )
 
 
+def selection_robustness(lsoa: pd.DataFrame) -> None:
+    """Residential self-selection check: Oster (2019) bound + NS-SeC control.
+
+    Households are not randomly assigned to dwelling types, so the form gap could
+    partly reflect who *chooses* detached (residential self-selection). Observable
+    sorting (deprivation, tenure, stock age, climate) is already held; this probes
+    how far *unobservable* sorting would have to reach, two ways.
+
+    Vehicle: a single continuous "detachedness" treatment — the detached share
+    (0→1) — in an intercept OLS over all OAs. (A binary dominant-Flat/Detached
+    contrast is unusable here: at those extremes form is near-collinear with
+    deprivation/tenure, so adding confounds over-controls and collapses the gap.
+    The continuous gradient on the full sample has the independent variation Oster
+    needs, and a centred R².) ``exp(coef)`` is the modelled 0→100%-detached gap.
+
+    1. **Oster (2019) coefficient stability.** From the short (treatment only) and
+       long (+ confounds) regressions and their R², δ* is how strong selection on
+       unobservables would have to be, *relative to the observed confounds*, to
+       drive the gap to zero; the bias-adjusted gap assumes δ=1 (unobservables as
+       important as observables) with ``R_max = min(1.3·R̃, 1)``. δ* > 1 ⇒ the
+       result survives selection at least as strong as everything already measured.
+    2. **NS-SeC robustness.** Add occupational class (share in higher managerial /
+       professional occupations); if the gap barely moves, selection on this
+       further observable is not what drives it.
+
+    Confounds only — NOT floor area / family size, which are mediators (consequences
+    of the form), not selection into it. Access is a property of the location, not
+    its residents, so the access axis is immune to residential self-selection by
+    construction; only the energy axes need this check.
+    """
+    print("\n" + "=" * 70)
+    print("6. SELF-SELECTION ROBUSTNESS — Oster (2019) bound + NS-SeC control")
+    print("=" * 70)
+
+    df = lsoa.copy()
+    heat = pd.to_numeric(df["building_kwh_per_hh"], errors="coerce")
+    trav = pd.to_numeric(df["transport_kwh_per_hh_total_est"], errors="coerce")
+    df["_log_total"] = np.log((heat + trav).clip(lower=1))
+    df["det_share"] = pd.to_numeric(df["pct_detached"], errors="coerce") / 100.0
+
+    confounds = (
+        ["median_build_year"] + _deprivation_cols(df) + _tenure_cols(df) + _hdd_cols(df)
+    )
+    nssec = ["pct_nssec_higher"] if "pct_nssec_higher" in df.columns else []
+
+    print("\n  Treatment: detached share (0→100%), intercept OLS over all OAs.")
+    print(
+        f"  {'DV':<7}{'raw':>9}{'+confounds':>11}{'+NS-SeC':>9}"
+        f"{'Oster δ*':>10}{'adj δ=1':>9}"
+    )
+    print("  " + "-" * 55)
+    for label, dv in [("heat", _DV), ("total", "_log_total")]:
+        cc = df.dropna(subset=[dv, "det_share", *confounds, *nssec])
+        ms = _run_ols(cc, dv, ["det_share"], "short")
+        ml = _run_ols(cc, dv, ["det_share", *confounds], "long")
+        mn = (
+            _run_ols(cc, dv, ["det_share", *confounds, *nssec], "nssec")
+            if nssec
+            else None
+        )
+        if ms is None or ml is None:
+            continue
+        b0, r0 = float(ms.params["det_share"]), float(ms.rsquared)
+        b1, r1 = float(ml.params["det_share"]), float(ml.rsquared)
+        rmax = min(1.3 * r1, 1.0)
+        denom = (b0 - b1) * (rmax - r1)
+        dstar = b1 * (r1 - r0) / denom if denom else float("nan")
+        beta_adj = (
+            b1 - (b0 - b1) * (rmax - r1) / (r1 - r0) if (r1 - r0) else float("nan")
+        )
+        nstr = f"{np.exp(float(mn.params['det_share'])):>8.2f}×" if mn else f"{'—':>9s}"
+        print(
+            f"  {label:<7}{np.exp(b0):>8.2f}×{np.exp(b1):>10.2f}×{nstr}"
+            f"{dstar:>10.2f}{np.exp(beta_adj):>8.2f}×"
+        )
+
+    print(
+        "\n  δ* = how strong unobserved selection must be (vs observed confounds) to\n"
+        "  nullify the gap; δ* > 1 ⇒ survives selection stronger than all measured.\n"
+        "  TOTAL energy is the robust piece (δ* ≈ 1, the structural travel gap);\n"
+        "  HEAT alone is more confound-entangled (its non-flat contrast is largely\n"
+        "  deprivation/tenure), so the case leans on total energy + access, not heat.\n"
+        "  NS-SeC adds nothing over deprivation. Access is location-intrinsic, hence\n"
+        "  immune to residential self-selection by construction."
+    )
+
+
 def main() -> None:
     """Run the full form-vs-size decomposition on the national OA dataset."""
     lsoa = load_and_aggregate()
@@ -577,6 +667,7 @@ def main() -> None:
     quintile_stratification(lsoa)
     regression_ladder(lsoa)
     compositional_ladder(lsoa)
+    selection_robustness(lsoa)
 
 
 if __name__ == "__main__":

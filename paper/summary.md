@@ -146,6 +146,18 @@ The access gap does not move, because neither insulation nor electrification bri
 
 *Reproduce: `stats/lock_in.py`.*
 
+## Self-selection
+
+Households are not assigned to dwelling types at random; people who choose detached homes may differ in unmeasured ways (a taste for space and driving) that also raise energy use. This residential self-selection is the main threat to reading the energy gaps causally. Three things bound how far it can reach, and the estimand is framed to match.
+
+- **Access is a property of the location, not its residents.** A detached neighbourhood has about 24× fewer amenities on foot whoever lives there and however they came to live there, so the access axis — the hard, technology-immune result — is immune to self-selection by construction.
+- **The observed selection channels are already held.** The comparison conditions on deprivation (overall IMD and its income domain), tenure, building age and climate; adding occupational class (Census NS-SeC) on top moves the gap by essentially nothing, so selection on these observables is not what drives it.
+- **A coefficient-stability bound (Oster, 2019)** asks how strong selection on *unobservables* would have to be, relative to those observed confounds, to explain the gap away. The total-energy gap is the robust part (δ* ≈ 1: unobserved sorting would have to be about as strong as everything already measured combined), because much of it is the structural travel gap — a function of where destinations sit, not who occupies the house. The heat sub-component is more entangled with deprivation and tenure, so the case rests on total energy and access rather than on the heat figure alone.
+
+The estimand throughout is therefore a *place-level* one — the energy and access profile of a neighbourhood type, conditional on observed confounds — not a household treatment effect. The definitive test of the latter would difference out fixed household preferences using homes observed before and after a move (panel microdata such as Understanding Society); that is left to future work.
+
+*Reproduce: `stats/form_size_decomposition.py` (section 6 — the Oster bound and NS-SeC control).*
+
 ## The NEPI scorecard, Atlas and models
 
 The measure will be provided as three things: a NEPI scorecard, an EPC-style rating for neighbourhoods rather than buildings; an Atlas to explore the ratings; and XGBoost models that predict a neighbourhood's NEPI from its form, fabric and fleet, so different combinations of those inputs can be simulated. The models also carry a set of pre-defined scenarios, such as full electrification of the vehicle fleet or buildings brought to best-practice thermal efficiency, applied to a neighbourhood's inputs and re-scored so its NEPI under each can be read off.

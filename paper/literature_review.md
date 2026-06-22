@@ -362,16 +362,32 @@ Accounts for:
 
 ---
 
-## 6. Theoretical Considerations
+## 6. Relation to Prior Work: Consistency of the Two-Axis Results
 
-### 6.1 Lock-in Mechanisms
+The two-axis analysis can be set against an established English and international literature. On the building-energy axis its results are closely consistent with prior empirical work; on the transport axis they align in direction with the more equivocal urban-form-and-travel literature; and the access axis, together with the access-per-energy rate, constitutes the principal novel contribution.
+
+**Building energy by dwelling type.** The finding that detached neighbourhoods consume substantially more household energy than flatted ones reproduces a robust empirical regularity. National metered data (NEED) and the English Housing Survey place detached gas consumption at roughly twice that of flats (approximately 18,500 against 8,700 kWh per year), and dwelling-level statistical investigations reach the same conclusion: Wyatt (2013), regressing EPC-derived consumption on physical and socio-economic drivers across England, identifies dwelling type and floor area as dominant physical determinants, while Buyuklieva et al. (2023), analysing some fourteen million certificates, document the same social and spatial gradient at fine resolution. The present study's metered Flat-to-Detached heat ratio of approximately 1.6 sits within this range; where it is lower than the raw national gas ratio, the difference is expected, the figure here being a confound-adjusted, output-area-aggregated, gas-plus-electricity quantity rather than a national dwelling-level gas mean.
+
+**Modelled versus metered, and the functional-unit problem.** Two methodological themes from the literature are directly reproduced. First, simulation studies of building form report far larger contrasts than metered data: Rode et al. (2014) find up to a six-fold difference in heat-energy demand between detached and compact forms, but this is modelled demand, and the gap between it and the metered 1.6 of this study is precisely the performance-gap effect documented by Summerfield et al. (2019), Few et al. (2023) and Firth et al. (2024), whose over-prediction is largest for exactly the large, detached dwellings under comparison. The decision to use metered rather than SAP-modelled energy follows directly from that literature. Second, the dependence of the conclusion on the functional unit reproduces Norman et al. (2006): a low-density premium that is large per dwelling and per capita narrows sharply per square metre. The present analysis confronts this explicitly, modelling energy per dwelling with household size and floor area as freely estimated controls rather than as denominators, and finds, consistent with Huebner and Shipworth (2017), that the household-size elasticity of heat is well below unity, so that per-capita normalisation is an artefact rather than a finding.
+
+**Transport energy.** The transport axis aligns in direction with the urban-form-and-travel literature but exceeds its central estimates in magnitude, for identifiable reasons. Echenique et al. (2012), modelling growth scenarios for three regions of south-east England, conclude that the effect of urban form on travel is modest — a doubling of density associated with roughly a ten-per-cent reduction in vehicle-miles. The Flat-to-Detached car-energy ratio of approximately 3.1 reported here is much larger, but it is a different estimand: a cross-sectional contrast between the extremes of the dwelling-type distribution, which span several density doublings, measured against the observed National Travel Survey rural-urban mileage gradient rather than a modelled density elasticity, and expressed per household. The modest marginal effect and the large extremes contrast are not in conflict. This same body of work also supplies the central caution: because the cross-sectional gradient may partly reflect the residential self-selection of car-oriented households (Cao, Mokhtarian and Handy, 2009), and because Ewing et al. (2018) recast the density-travel relationship as one of regional accessibility, the transport result is the axis most exposed to selection — which the robustness analysis (the Oster bound and the place-level estimand) addresses directly.
+
+**Access, and the rate.** The accessibility axis is both supported by and extends the literature. Ewing et al. (2018) argue that low car-use in compact areas is explained by regional accessibility rather than density as such, and Elldér et al. (2022) demonstrate that local amenity access encourages residents to remain local and travel less; the present finding of a roughly twenty-four-fold on-foot accessibility advantage for flatted neighbourhoods operationalises that mechanism at national scale over the road network. The access-per-energy rate, however, has no direct antecedent: while the trade-off between proximity and travel is widely discussed, the explicit quantification of everyday access reachable per kilowatt-hour of energy spent, computed for the full national stock of output areas, is the distinctive contribution of this work, consistent with — though not previously expressed by — the accessibility-centred turn in the transport literature.
+
+**Methodological positioning.** The methods used elsewhere span thermal simulation of archetypes (Rode et al., 2014), lifecycle assessment (Norman et al., 2006), dwelling- and LSOA-level statistical regression on NEED or EPC data (Wyatt, 2013; Buyuklieva et al., 2023), national stock modelling (the Cambridge Housing Model behind Summerfield et al., 2019), and land-use-transport scenario modelling (Echenique et al., 2012). The present design differs in combining metered energy, National-Travel-Survey-anchored car energy, and network-based accessibility within a single compositional ecological regression at output-area resolution, and in pairing the two axes with an explicit rate. It is this integration — rather than any single axis — that the literature has not previously assembled.
+
+---
+
+## 7. Theoretical Considerations
+
+### 7.1 Lock-in Mechanisms
 
 - **Infrastructure path-dependency**: Dispersed utilities constrain densification
 - **Governance lock-in**: Planning regulations perpetuate existing forms
 - **Social lock-in**: Cultural preferences for suburban living
 - **Economic lock-in**: Property values and development economics
 
-### 6.2 Cautions
+### 7.2 Cautions
 
 - **Correlation vs causation**: Analysis shows association; causal claims require assumptions
 - **Rebound effects**: Per-capita savings may not translate to absolute reductions
@@ -380,7 +396,7 @@ Accounts for:
 
 ---
 
-## 7. Policy Context
+## 8. Policy Context
 
 **UK Net Zero Strategy (2023)** - Technology-focused; under-develops spatial aspects
 **NPPF (2023)** - Design policies could be strengthened by form-energy evidence
@@ -389,7 +405,7 @@ Accounts for:
 
 ---
 
-## 8. Priority Reading List
+## 9. Priority Reading List
 
 ### Essential (Read First)
 

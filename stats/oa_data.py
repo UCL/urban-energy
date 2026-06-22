@@ -55,6 +55,26 @@ _TS054_OWNED = "ts054_Tenure of household: Owned"
 _TS054_SOCIAL = "ts054_Tenure of household: Social rented"
 _TS054_PRIVATE = "ts054_Tenure of household: Private rented"
 
+# NS-SeC (TS062) — socio-economic class, used only as a self-selection robustness
+# control (does the form gap move when occupational class is added on top of
+# deprivation?). The two "higher" categories form the numerator; all eight are the
+# denominator (mutually exclusive, exhaustive over residents aged 16+).
+_TS062 = "ts062_National Statistics Socio-economic Classification (NS-SEC): "
+_TS062_HIGHER = [
+    _TS062 + "L1, L2 and L3 Higher managerial, administrative and professional "
+    "occupations",
+    _TS062 + "L4, L5 and L6 Lower managerial, administrative and professional "
+    "occupations",
+]
+_TS062_ALL = _TS062_HIGHER + [
+    _TS062 + "L7 Intermediate occupations",
+    _TS062 + "L10 and L11 Lower supervisory and technical occupations",
+    _TS062 + "L12 Semi-routine occupations",
+    _TS062 + "L13 Routine occupations",
+    _TS062 + "L14.1 and L14.2 Never worked and long-term unemployed",
+    _TS062 + "L15 Full-time students",
+]
+
 _CENSUS_COLS = [
     "OA21CD",
     "LSOA21CD",
@@ -74,6 +94,7 @@ _CENSUS_COLS = [
     _TS054_OWNED,
     _TS054_SOCIAL,
     _TS054_PRIVATE,
+    *_TS062_ALL,  # NS-SeC — self-selection robustness control
     *TS058_BAND_MIDPOINTS_KM,  # commute distance → travel disaggregation
 ]
 _ENERGY_COLS = [
@@ -194,6 +215,14 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
     oa["pct_owned"] = _num(oa[_TS054_OWNED]) / tdenom * 100
     oa["pct_social_rented"] = _num(oa[_TS054_SOCIAL]) / tdenom * 100
     oa["pct_private_rented"] = _num(oa[_TS054_PRIVATE]) / tdenom * 100
+
+    # --- NS-SeC share (TS062) — socio-economic-class robustness control ---
+    nssec_base = sum((_num(oa[c]) for c in _TS062_ALL), start=pd.Series(0, oa.index))
+    oa["pct_nssec_higher"] = (
+        sum((_num(oa[c]) for c in _TS062_HIGHER), start=pd.Series(0, oa.index))
+        / nssec_base.replace(0, np.nan)
+        * 100
+    )
 
     # --- Travel: NTS-anchored car-travel energy (constrained disaggregation) ---
     oa = compute_travel_energy(oa)
