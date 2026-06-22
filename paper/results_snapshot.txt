@@ -1,0 +1,224 @@
+# Results snapshot — generated 2026-06-22 20:08 from commit 285bc94
+# Every number below is printed straight from the named script (no hand-editing).
+# Regenerate: re-run each stats/ script. Headline numbers also live in paper/summary.md.
+
+############################################################
+# stats/form_size_decomposition.py
+############################################################
+Assembling OA data …
+  178,353 OAs
+    heat   median   13,248 kWh/hh
+    travel median    6,297 kWh/hh
+    dominant type: Flat 32,743  Terraced 43,946  Semi 58,318  Detached 43,346
+
+Loaded 178,353 OAs
+
+======================================================================
+1. FLOOR-AREA ELASTICITY OF BUILDING ENERGY (the per-m² kill-shot)
+======================================================================
+
+  d log(kWh/hh) / d log(m²) = 0.536  (N = 178,328)
+  → energy scales as floor_area^0.54
+  → kWh/m² scales as floor_area^-0.46 (DECLINES with size): per-m² mechanically favours larger dwellings.
+
+======================================================================
+2. DESCRIPTIVE PANEL — presentation units, not competing truths
+======================================================================
+
+  Dominant type    per household      per person          per m²
+  --------------------------------------------------------------
+  Flat                    10,194           4,861           165.9
+  Terraced                12,995           5,334           167.1
+  Semi                    13,876           5,779           171.4
+  Detached                15,020           6,377           152.6
+
+  Flat→Detached gradient:   hh=1.47×  person=1.31×  m2=0.92×
+  (DESCRIPTIVE ONLY. per-hh rises toward detached; per-person compresses
+  toward parity because detached house more people (γ<1, not efficiency);
+  per-m² reverses via the floor-area artefact. The inferential gap is the
+  family-size-controlled ladder below, not any of these ratios.)
+
+======================================================================
+3. FLOOR-AREA-QUINTILE STRATIFICATION — non-parametric size control
+======================================================================
+
+  Quintile   floor m²   Flat n   Flat kWh    Det n    Det kWh  Det:Flat
+  ------------------------------------------------------------------
+  Q1               60    22368      9,624     1267     11,960     1.24×
+  Q2               73     7263     11,128     2705     13,022     1.17×
+  Q3               82     1791     12,573     4356     13,979     1.11×
+  Q4               90      857     14,232     9752     14,870     1.04×
+  Q5              116      458     18,039    25252     16,366     0.91×
+
+  Within-quintile Det:Flat ratios isolate form from size. Thin cells in
+  the tails (few large flats / small detached) = limited common support:
+  in the real stock, low-density form and large dwellings co-occur by design.
+
+======================================================================
+4. TOTAL → DIRECT REGRESSION LADDER (fixed common-support sample)
+======================================================================
+
+  Common sample: N = 178,328 OAs (complete cases on form, median_build_year, imd_overall_score, imd_income_score, pct_social_rented, pct_private_rented, hdd, family size, floor area)
+  Confounds held throughout: ['median_build_year', 'imd_overall_score', 'imd_income_score', 'pct_social_rented', 'pct_private_rented', 'hdd']
+
+  Model                               R²    β_det   β_flat  Det:Flat  floor e
+  --------------------------------------------------------------------------
+  M0 total  (form + confounds)     0.246  -0.0004  -0.0049     1.58×        —
+  M1        (+ family size)        0.275  -0.0007  -0.0033     1.30×        —
+  M2 direct (+ dwelling size)      0.281  -0.0016  -0.0034     1.20×    0.207
+
+  Household-size elasticity of heat: γ = 0.47 (per-person division would impose γ = 1).
+  γ < 1 ⇒ heat is sub-linear in occupants (economies of scale), so
+  per-person flatters large households — the form gap is read off the
+  family-size-controlled M1, not a per-person ratio.
+
+  Total form gap: 1.58×  →  family-size-held 1.30×  →  size-held direct 1.20×
+  Family + dwelling size mediate 60% of the log gap; the residual direct effect is 1.20× (+20%).
+
+  Direct term is net of build era, income, tenure and climate (HDD).
+
+======================================================================
+5. COMPOSITIONAL NO-INTERCEPT LADDER — option D (all shares, hh-weighted)
+======================================================================
+
+  Common sample: N = 178,328 OAs (household-weighted, HC1 SEs)
+  Confounds held throughout: ['median_build_year', 'imd_overall_score', 'imd_income_score', 'pct_social_rented', 'pct_private_rented', 'hdd']
+
+  Model                             Det:Flat    b_flat     b_det
+  --------------------------------------------------------------
+  D0 total  (shares + confounds)       1.60×    12.067    12.535
+  D1        (+ family size)            1.27×    11.052    11.292
+  D2 direct (+ dwelling size)          1.17×     9.648     9.809
+
+  Household-size elasticity of heat: γ = 0.54 (per-person would impose γ = 1; economies of scale ⇒ γ < 1).
+
+  Total form gap: 1.60×  →  family-size-held 1.27×  →  size-held direct 1.17×
+  Family + dwelling size mediate 66% of the log gap; the residual direct effect is 1.17× (+17%).
+
+  Same estimator on each energy axis (shares + confounds):
+    heat    Det:Flat 1.60×
+    travel  Det:Flat 3.07×
+    total   Det:Flat 2.12×
+
+  D0 predicted heat at mean confounds (kWh/hh):  Flat 8,421   Detached 13,446
+  vs descriptive medians (same sample):          Flat 10,194   Detached 15,022
+
+======================================================================
+6. SELF-SELECTION ROBUSTNESS — Oster (2019) bound + NS-SeC control
+======================================================================
+
+  Treatment: detached share (0→100%), intercept OLS over all OAs.
+  DV           raw +confounds  +NS-SeC  Oster δ*  adj δ=1
+  -------------------------------------------------------
+  heat       1.30×      1.02×    1.02×      0.30    0.94×
+  total      1.87×      1.28×    1.28×      1.14    1.03×
+
+  δ* = how strong unobserved selection must be (vs observed confounds) to
+  nullify the gap; δ* > 1 ⇒ survives selection stronger than all measured.
+  TOTAL energy is the robust piece (δ* ≈ 1, the structural travel gap);
+  HEAT alone is more confound-entangled (its non-flat contrast is largely
+  deprivation/tenure), so the case leans on total energy + access, not heat.
+  NS-SeC adds nothing over deprivation. Access is location-intrinsic, hence
+  immune to residential self-selection by construction.
+
+############################################################
+# stats/lock_in.py
+############################################################
+Assembling OA data …
+  178,353 OAs
+    heat   median   13,248 kWh/hh
+    travel median    6,297 kWh/hh
+    dominant type: Flat 32,743  Terraced 43,946  Semi 58,318  Detached 43,346
+
+  Fabric-improvement factor (EPC potential/current, median): 0.50
+
+  Flat→Detached TOTAL energy gap (per dwelling, compositional, method D):
+    as-lived:              now 2.12×  →  optimised 1.51×
+    at equal family size:  now 1.71×  →  optimised 1.18×
+
+  55% of the per-dwelling gap (log scale) survives best insulation + a full EV fleet.
+  Access deficit (on foot ~24×): UNCHANGED — tech-immune.
+
+############################################################
+# stats/access_profile.py
+############################################################
+Assembling OA data …
+  178,353 OAs
+    heat   median   13,248 kWh/hh
+    travel median    6,297 kWh/hh
+    dominant type: Flat 32,743  Terraced 43,946  Semi 58,318  Detached 43,346
+
+  [1] WALKABLE — network count within 1,600 m, by type (the doorstep)
+  service        Flat     Det   %Det=0
+  GP                5       0      60%
+  Pharmacy          5       1      49%
+  Hospital         10       0      52%
+  School           14       2      27%
+  Food             93       6      17%
+  Grocery          48       3      25%
+  Greenspace       25       7      11%
+  walkable basket (of 7 on foot, mean):  Flat 6.8   Terraced 6.6   Semi 6.2   Detached 4.6
+  jobs within 1,600 m (median):  Flat 6,927  Terraced 3,790  Semi 2,100  Detached 598   (Flat:Det 11.6x)
+
+  [1b] STRUCTURAL INTENSITY — by type (compactness → complexity)
+                        Flat  Terraced      Semi  Detached  Flat:Det
+  closeness             0.81      0.69      0.51      0.28     2.9x
+  node density           660       543       406       204     3.2x
+  pop /ha               78.7      68.3      46.4      13.7     5.7x
+
+  [2] LIKE-FOR-LIKE — amenities within the SAME network distance, by type
+  dist (m)        Flat  Terraced      Semi  Detached  Flat:Det
+  1600             209       119        67        22     9.5x
+  3200             699       415       264        96     7.3x
+  4800            1344       781       564       202     6.7x
+  6400            2159      1208       923       343     6.3x
+  8000            3142      1644      1307       527     6.0x
+  9600            4395      2090      1752       768     5.7x
+  11200           5352      2532      2184      1027     5.2x
+  12800           6438      3072      2625      1333     4.8x
+  14400           7769      3552      3229      1642     4.7x
+  16000           9463      4143      3825      1988     4.8x
+  17600          10898      4896      4416      2358     4.6x
+  19200          12965      5895      5080      2766     4.7x
+  20800          14872      6844      5909      3237     4.6x
+  22400          16791      7829      6934      3715     4.5x
+  24000          18806      8664      7952      4208     4.5x
+  25600          20812      9950      8796      4653     4.5x
+
+  [2b] LIKE-FOR-LIKE JOBS — jobs reachable within the SAME network distance
+  dist (m)          Flat    Terraced        Semi    Detached  Flat:Det
+  1600             6,927       3,790       2,100         598    11.6x
+  3200            26,790      15,142       9,693       2,954     9.1x
+  4800            54,242      29,920      21,613       6,702     8.1x
+  6400            87,970      47,826      35,508      11,748     7.5x
+  8000           125,369      65,596      50,889      18,279     6.9x
+  9600           172,991      83,220      68,034      26,887     6.4x
+  11200          218,080     102,264      86,363      36,090     6.0x
+  12800          266,617     118,531     105,058      46,886     5.7x
+  14400          316,699     138,768     122,518      57,148     5.5x
+  16000          370,561     160,966     142,878      70,214     5.3x
+  17600          433,691     193,938     166,234      83,682     5.2x
+  19200          506,754     221,216     195,163      98,410     5.1x
+  20800          575,198     261,608     224,766     116,257     4.9x
+  22400          649,920     302,850     255,334     133,518     4.9x
+  24000          728,337     346,288     292,582     153,328     4.8x
+  25600          807,658     382,638     337,938     173,447     4.7x
+
+  [3] DRIVABLE RATE — amenities per kWh, at each OA's own catchment
+                      Flat  Terraced      Semi  Detached  Flat:Det
+  trip dist (km)       7.5       9.9      13.1      18.3     0.4x
+  amenities         2531.4    2254.6    2765.2    2776.0     0.9x
+  travel kWh        3239.7    5087.9    6659.8    9271.7     0.3x
+  access / kWh         0.8       0.5       0.4       0.3     2.9x
+  jobs (catchment)   102,652    87,077   107,065   101,215     1.0x
+  jobs / kWh            33        18        17        11     3.1x
+
+  [4] COMPOSITIONAL (option D) — pure all-flat vs all-detached area
+      Poisson log-link · household-weighted · income-ctrl · NOT density
+  measure                             Flat           Det  Flat:Det
+  amenities, walk 1,600 m            401.8          16.8     23.9x
+  amenities, catchment             3,335.4       2,844.5      1.2x
+  jobs, catchment                163,183.5      97,701.6      1.7x
+  people, catchment              333,381.8     285,835.9      1.2x
+
+  access-per-kWh RATE = access advantage × energy saving = 1.17 × 3.07 = 3.60×
