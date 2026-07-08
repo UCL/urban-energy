@@ -29,16 +29,21 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from access_profile import _comp_poisson
 from form_size_decomposition import (
     _SHARE_FRACS,
     _comp_ols,
     _compositional_frame,
     _deprivation_cols,
     _hdd_cols,
+    _imd_income_col,
     _tenure_cols,
 )
+from inference import CLUSTER_COL, NAN_CI, cluster_bootstrap, fmt_ci, log_contrast_ci
 from oa_data import load_and_aggregate
 from travel_energy import KWH_PER_MILE_EV, fleet_intensity_kwh_per_mile
+
+from urban_energy.paths import DATA_DIR
 
 
 def _num(series: pd.Series) -> pd.Series:
@@ -58,6 +63,18 @@ def _d_ratio(cf: pd.DataFrame, y_col: str, confounds: list[str]) -> float:
     if m is None:
         return float("nan")
     return float(np.exp(m.params["s_detached"] - m.params["s_flat"]))
+
+
+def _d_ratio_ci(
+    cf: pd.DataFrame, y_col: str, confounds: list[str]
+) -> tuple[float, float, float, float]:
+    """Compositional Detached:Flat ratio with a LAD-clustered 95% CI."""
+    m = _comp_ols(
+        cf, y_col, _SHARE_FRACS + confounds, "total_hh", cluster_col=CLUSTER_COL
+    )
+    if m is None:
+        return NAN_CI
+    return log_contrast_ci(m, "s_detached", "s_flat")
 
 
 def main() -> None:
@@ -92,26 +109,68 @@ def main() -> None:
     for col in ["total_now", "total_opt"]:
         cf[f"_log_{col}"] = np.log(_num(cf[col]).clip(lower=1))
 
-    now_hh = _d_ratio(cf, "_log_total_now", conf)
-    opt_hh = _d_ratio(cf, "_log_total_opt", conf)
-    now_fam = _d_ratio(cf, "_log_total_now", conf_fam)
-    opt_fam = _d_ratio(cf, "_log_total_opt", conf_fam)
+    now_hh = _d_ratio_ci(cf, "_log_total_now", conf)
+    opt_hh = _d_ratio_ci(cf, "_log_total_opt", conf)
+    now_fam = _d_ratio_ci(cf, "_log_total_now", conf_fam)
+    opt_fam = _d_ratio_ci(cf, "_log_total_opt", conf_fam)
 
     print(
         f"\n  Fabric-improvement factor (EPC potential/current, median): "
         f"{factor.median():.2f}"
     )
     print("\n  Flat→Detached TOTAL energy gap (per dwelling, compositional, method D):")
-    print(f"    as-lived:              now {now_hh:.2f}×  →  optimised {opt_hh:.2f}×")
-    print(f"    at equal family size:  now {now_fam:.2f}×  →  optimised {opt_fam:.2f}×")
+    print("  (ratios with LAD-clustered 95% CIs)")
+    print(f"    as-lived:            now {fmt_ci(now_hh)} → opt {fmt_ci(opt_hh)}")
+    print(f"    equal family size:   now {fmt_ci(now_fam)} → opt {fmt_ci(opt_fam)}")
+
     # Surviving share on the model-native log scale: log(optimised) / log(now).
     # (An earlier version used the (ratio−1) excess scale, which understated it.)
-    survives = np.log(opt_hh) / np.log(now_hh) if now_hh > 1 else float("nan")
+    # Its CI combines two model fits, so it comes from a LAD-cluster bootstrap.
+    survives = np.log(opt_hh[0]) / np.log(now_hh[0]) if now_hh[0] > 1 else float("nan")
+
+    def _survives_stat(frame: pd.DataFrame) -> float:
+        a = _comp_ols(frame, "_log_total_now", _SHARE_FRACS + conf, "total_hh")
+        b = _comp_ols(frame, "_log_total_opt", _SHARE_FRACS + conf, "total_hh")
+        if a is None or b is None:
+            return float("nan")
+        rn = np.exp(a.params["s_detached"] - a.params["s_flat"])
+        ro = np.exp(b.params["s_detached"] - b.params["s_flat"])
+        return float(np.log(ro) / np.log(rn)) if rn > 1 else float("nan")
+
+    surv = cluster_bootstrap(cf, _survives_stat)
     print(
         f"\n  {survives:.0%} of the per-dwelling gap (log scale) survives best "
-        "insulation + a full EV fleet."
+        f"insulation + a full EV fleet [95% CI {surv[1]:.0%}, {surv[2]:.0%}]."
     )
-    print("  Access deficit (on foot ~24×): UNCHANGED — tech-immune.")
+
+    # Access deficit is unchanged by construction (no technology moves destinations
+    # closer). Report its measured on-foot value from the network cache rather than a
+    # hardcoded figure, so the text cannot drift from the computation.
+    net_path = DATA_DIR / "statistics" / "oa_network_access.parquet"
+    if net_path.exists():
+        net = pd.read_parquet(net_path, columns=["net_total_1600"])
+        cfa = cf.merge(
+            net, left_on="OA21CD", right_index=True, how="left", validate="m:1"
+        )
+        income = _imd_income_col(cfa)
+        ma = _comp_poisson(
+            cfa,
+            "net_total_1600",
+            _SHARE_FRACS + income,
+            "total_hh",
+            cluster_col=CLUSTER_COL,
+        )
+        if ma is not None:
+            aci = log_contrast_ci(ma, "s_flat", "s_detached")
+            print(
+                f"  Access deficit on foot {fmt_ci(aci)}: UNCHANGED — no technology "
+                "moves destinations closer."
+            )
+    else:
+        print(
+            "  Access deficit on foot: UNCHANGED by construction (network cache "
+            "absent; see access_profile for the value)."
+        )
 
 
 if __name__ == "__main__":

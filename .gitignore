@@ -71,6 +71,8 @@ dmypy.json
 *.json
 !package.json
 !*.config.json
+# data-source manifest (tracked; verified by src/urban_energy/fetch.py)
+!data/manifest.json
 *.kml
 *.kmz
 *.gml

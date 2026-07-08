@@ -36,9 +36,17 @@ from form_size_decomposition import (
     _hdd_cols,
     _tenure_cols,
 )
+from inference import (
+    CLUSTER_COL,
+    NAN_CI,
+    cluster_bootstrap_multi,
+    fmt_ci,
+    log_contrast_ci,
+)
 from oa_access import DEST
 from oa_data import load_and_aggregate
 from statsmodels.genmod.generalized_linear_model import GLMResultsWrapper
+from travel_energy import KWH_PER_MILE_EV, fleet_intensity_kwh_per_mile
 
 from urban_energy.paths import DATA_DIR
 
@@ -70,15 +78,26 @@ def _ratio(m: dict[str, float]) -> float:
 
 
 def _comp_poisson(
-    df: pd.DataFrame, y_col: str, x_cols: list[str], weight_col: str
+    df: pd.DataFrame,
+    y_col: str,
+    x_cols: list[str],
+    weight_col: str,
+    cluster_col: str | None = None,
 ) -> GLMResultsWrapper | None:
-    """No-intercept Poisson (log-link) GLM, frequency-weighted, on complete cases.
+    """No-intercept Poisson (log-link) GLM, household-weighted, on complete cases.
 
     The right estimator for non-negative access counts: the log link makes
     predictions strictly positive (a linear model predicts negative amenity
     counts for sparse detached areas), and with shares summing to 1 the
     Detached:Flat contrast ``exp(b_detached - b_flat)`` is invariant to the
     (uncentred) confounds.
+
+    Households enter as ``var_weights`` (analytic weights), NOT ``freq_weights``:
+    frequency weights would treat each OA as replicated by its household count,
+    inflating the effective sample to tens of millions and collapsing every
+    standard error. Analytic weights keep the effective sample at ~178k OAs, so
+    the reported CIs are honest. When ``cluster_col`` is supplied the primary fit
+    carries cluster-robust SEs, with the HC1 fit kept on ``._hc1``.
 
     Parameters
     ----------
@@ -89,7 +108,9 @@ def _comp_poisson(
     x_cols : list of str
         Type-share fractions plus confounds. No constant (shares carry the level).
     weight_col : str
-        Household-count column used as frequency weights.
+        Household-count column used as analytic weights.
+    cluster_col : str or None, default None
+        Column grouping OAs for cluster-robust SEs (typically ``LAD22CD``).
 
     Returns
     -------
@@ -97,16 +118,30 @@ def _comp_poisson(
         Fitted GLM results, or ``None`` if too few valid cases.
     """
     cols = [y_col, *x_cols, weight_col]
-    sub = df[cols].apply(pd.to_numeric, errors="coerce").dropna()
+    sub = df[cols].apply(pd.to_numeric, errors="coerce")
+    if cluster_col and cluster_col in df.columns:
+        sub[cluster_col] = df[cluster_col]
+    sub = sub.dropna()
     sub = sub[(sub[y_col] >= 0) & (sub[weight_col] > 0)]
     if len(sub) < len(x_cols) + 10:
         return None
-    return sm.GLM(
+    model = sm.GLM(
         sub[y_col],
         sub[x_cols],
         family=sm.families.Poisson(),
-        freq_weights=sub[weight_col],
-    ).fit()
+        var_weights=sub[weight_col],
+    )
+    if cluster_col and cluster_col in sub.columns:
+        try:
+            clustered = model.fit(
+                cov_type="cluster", cov_kwds={"groups": sub[cluster_col]}
+            )
+            clustered._hc1 = model.fit(cov_type="HC1")
+            clustered._n_clusters = int(sub[cluster_col].nunique())
+            return clustered
+        except Exception:
+            pass
+    return model.fit(cov_type="HC1")
 
 
 def compositional_access(d: pd.DataFrame) -> None:
@@ -142,21 +177,50 @@ def compositional_access(d: pd.DataFrame) -> None:
         ("people, catchment", "net_pop_catch"),
     ]
     print("\n  [4] COMPOSITIONAL (option D) — pure all-flat vs all-detached area")
-    print("      Poisson log-link · household-weighted · income-ctrl · NOT density")
-    print(f"  {'measure':<26s}{'Flat':>14s}{'Det':>14s}{'Flat:Det':>10s}")
+    print(
+        "      Poisson log-link · hh-weighted (var_weights) · income-only · NOT density"
+    )
+    print("      Flat:Det CIs: 95% LAD-clustered (delta method, share contrast).")
+    print(f"  {'measure':<26s}{'Flat':>14s}{'Det':>14s}{'Flat:Det [95% CI]':>26s}")
     access_ratio = float("nan")
+    access_ratio_ci: tuple[float, float, float, float] = NAN_CI
     for label, col in measures:
         cf["_y"] = _num(cf[col])
-        m = _comp_poisson(cf, "_y", _SHARE_FRACS + income, "total_hh")
+        m = _comp_poisson(
+            cf, "_y", _SHARE_FRACS + income, "total_hh", cluster_col=CLUSTER_COL
+        )
         if m is None:
             continue
         base = sum(float(m.params[c]) * _num(cf[c]).mean() for c in income)
         pf = float(np.exp(m.params["s_flat"] + base))
         pdet = float(np.exp(m.params["s_detached"] + base))
-        ratio = pf / pdet if pdet else float("nan")
+        ci = log_contrast_ci(m, "s_flat", "s_detached")  # flat:det
         if col == "net_amen":
-            access_ratio = ratio  # catchment-amenity advantage, flat:det
-        print(f"  {label:<26s}{pf:>14,.1f}{pdet:>14,.1f}{ratio:>9.1f}x")
+            access_ratio = ci[0]  # catchment-amenity advantage, flat:det
+            access_ratio_ci = ci
+        print(f"  {label:<26s}{pf:>14,.1f}{pdet:>14,.1f}{fmt_ci(ci):>26s}")
+
+    # Common-support companions for the on-foot amenity gap. The Poisson row above
+    # is a pure-type prediction read at a 100%-of-type vertex (where several detached
+    # service medians are 0); these two grounded comparisons sit beside it.
+    walk = _num(cf["net_total_1600"])
+    med_flat = float(walk[cf["dominant_type"] == "Flat"].median())
+    med_det = float(walk[cf["dominant_type"] == "Detached"].median())
+    dom_ratio = med_flat / med_det if med_det else float("nan")
+    hi_flat = walk[_num(cf["s_flat"]) >= 0.5]
+    hi_det = walk[_num(cf["s_detached"]) >= 0.5]
+    sup_ratio = (
+        float(hi_flat.median()) / float(hi_det.median())
+        if len(hi_det) and hi_det.median()
+        else float("nan")
+    )
+    print(
+        "\n  on-foot amenity gap companions (vs the pure-type Poisson above):"
+        f"\n    dominant-type medians   Flat {med_flat:,.0f} / Det {med_det:,.0f} "
+        f"= {dom_ratio:.1f}×"
+        f"\n    support-restricted (≥50% share) medians = {sup_ratio:.1f}×  "
+        f"(n≥50%-flat {len(hi_flat):,}, n≥50%-det {len(hi_det):,})"
+    )
 
     # The access-per-kWh RATE is a ratio of two divisions (access ÷ energy): for a
     # flat area over a detached one it equals the access advantage (flat:det
@@ -168,16 +232,105 @@ def compositional_access(d: pd.DataFrame) -> None:
         ["median_build_year"] + _deprivation_cols(cf) + _tenure_cols(cf) + _hdd_cols(cf)
     )
     cf["_le"] = np.log(_num(cf["transport"]).clip(lower=1))
-    me = _comp_ols(cf, "_le", _SHARE_FRACS + conf, "total_hh")
-    energy_ratio = (
-        float(np.exp(me.params["s_detached"] - me.params["s_flat"]))
-        if me is not None
-        else float("nan")
+
+    # Energy saving (det:flat car-travel energy), two conditioning sets so the
+    # asymmetry with the income-only access side is explicit:
+    #   full  — the headline energy axis (build age, IMD overall+income, tenure, HDD)
+    #   inc   — income only, matched to the access side (like-for-like conditioning)
+    me_full = _comp_ols(
+        cf, "_le", _SHARE_FRACS + conf, "total_hh", cluster_col=CLUSTER_COL
     )
-    rate = access_ratio * energy_ratio
+    me_inc = _comp_ols(
+        cf, "_le", _SHARE_FRACS + income, "total_hh", cluster_col=CLUSTER_COL
+    )
+    er_full = (
+        log_contrast_ci(me_full, "s_detached", "s_flat")
+        if me_full is not None
+        else NAN_CI
+    )
+    er_inc = (
+        log_contrast_ci(me_inc, "s_detached", "s_flat")
+        if me_inc is not None
+        else NAN_CI
+    )
+
+    # Circularity-robust denominator (ROADMAP "rate circularity"): heat + travel at
+    # the EV fleet intensity, so the denominator no longer scales with ICE driving
+    # distance (the term that also drives the access catchment). Access rated
+    # against this optimised combined energy is a lower, harder rate.
+    fleet = fleet_intensity_kwh_per_mile(cf)
+    cf["_le_alt"] = np.log(
+        (
+            _num(cf["building_kwh_per_hh"])
+            + _num(cf["transport"]) * (KWH_PER_MILE_EV / fleet)
+        ).clip(lower=1)
+    )
+    me_alt = _comp_ols(
+        cf, "_le_alt", _SHARE_FRACS + conf, "total_hh", cluster_col=CLUSTER_COL
+    )
+    er_alt = (
+        log_contrast_ci(me_alt, "s_detached", "s_flat")
+        if me_alt is not None
+        else NAN_CI
+    )
+
+    # All three rate variants multiply the income-only access advantage by an
+    # energy saving; each variant only changes the energy conditioning, so one
+    # cluster-bootstrap pass (shared access Poisson, three cheap WLS) gives all
+    # three intervals.
+    def _rates_stat(frame: pd.DataFrame) -> dict[str, float]:
+        a = _comp_poisson(frame, "net_amen", _SHARE_FRACS + income, "total_hh")
+        fl = fleet_intensity_kwh_per_mile(frame)
+        frame = frame.assign(
+            _le=np.log(
+                pd.to_numeric(frame["transport"], errors="coerce").clip(lower=1)
+            ),
+            _le_alt=np.log(
+                (
+                    _num(frame["building_kwh_per_hh"])
+                    + _num(frame["transport"]) * (KWH_PER_MILE_EV / fl)
+                ).clip(lower=1)
+            ),
+        )
+        e_full = _comp_ols(frame, "_le", _SHARE_FRACS + conf, "total_hh")
+        e_inc = _comp_ols(frame, "_le", _SHARE_FRACS + income, "total_hh")
+        e_alt = _comp_ols(frame, "_le_alt", _SHARE_FRACS + conf, "total_hh")
+        nan = float("nan")
+        if a is None or e_full is None or e_inc is None or e_alt is None:
+            return {"headline": nan, "harmonised": nan, "circularity": nan}
+        ar = float(np.exp(a.params["s_flat"] - a.params["s_detached"]))
+        er_f = float(np.exp(e_full.params["s_detached"] - e_full.params["s_flat"]))
+        er_i = float(np.exp(e_inc.params["s_detached"] - e_inc.params["s_flat"]))
+        er_a = float(np.exp(e_alt.params["s_detached"] - e_alt.params["s_flat"]))
+        return {
+            "headline": ar * er_f,
+            "harmonised": ar * er_i,
+            "circularity": ar * er_a,
+        }
+
+    rc = cluster_bootstrap_multi(cf, _rates_stat, reps=200)
     print(
-        f"\n  access-per-kWh RATE = access advantage × energy saving "
-        f"= {access_ratio:.2f} × {energy_ratio:.2f} = {rate:.2f}×"
+        f"\n  access-per-kWh RATE (headline) = access advantage × energy saving"
+        f"\n    = {access_ratio:.2f} × {er_full[0]:.2f} = {rc['headline'][0]:.2f}×  "
+        f"[95% CI {rc['headline'][1]:.2f}, {rc['headline'][2]:.2f}, cluster bootstrap]"
+    )
+    print(
+        f"      access advantage {fmt_ci(access_ratio_ci)} · "
+        f"energy saving (full conf) {fmt_ci(er_full)}"
+    )
+    print(
+        f"  harmonised rate (both income-only, like-for-like conditioning) "
+        f"= {access_ratio:.2f} × {er_inc[0]:.2f} = {rc['harmonised'][0]:.2f}×  "
+        f"[95% CI {rc['harmonised'][1]:.2f}, {rc['harmonised'][2]:.2f}]"
+    )
+    print(
+        f"  circularity-robust rate (access ÷ [heat + electrified travel]) "
+        f"= {access_ratio:.2f} × {er_alt[0]:.2f} = {rc['circularity'][0]:.2f}×  "
+        f"[95% CI {rc['circularity'][1]:.2f}, {rc['circularity'][2]:.2f}]"
+    )
+    print(
+        "  non-parametric companion: dominant-type median access/kWh ≈ 2.9× "
+        "(section [3] above)."
     )
 
 
@@ -191,7 +344,7 @@ def main() -> None:
         )
         return
     net = pd.read_parquet(NET_CACHE)
-    d = df.merge(net, left_on="OA21CD", right_index=True, how="left")
+    d = df.merge(net, left_on="OA21CD", right_index=True, how="left", validate="m:1")
     d["transport"] = _num(d["transport_kwh_per_hh_total_est"])
     ladder = sorted(
         int(c.rsplit("_", 1)[1]) for c in net.columns if c.startswith("net_total_")

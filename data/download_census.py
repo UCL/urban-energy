@@ -15,14 +15,19 @@ from io import BytesIO
 import geopandas as gpd
 import pandas as pd
 import requests
-from tqdm import tqdm
 
 # Configuration
+from urban_energy.fetch import download_bytes
 from urban_energy.paths import CACHE_DIR as _CACHE_ROOT
 from urban_energy.paths import DATA_DIR
+from urban_energy.text import england_code_mask
 
 OUTPUT_DIR = DATA_DIR / "statistics"
 CACHE_DIR = _CACHE_ROOT / "census"
+
+# ONS geoportal serves an async response to browser-like User-Agents; a curl-like
+# UA gets the direct redirect to the file instead.
+_CURL_HEADERS = {"User-Agent": "curl/8.0"}
 
 # Input paths (manual downloads - filename varies by download)
 OA_BOUNDARIES_PATTERN = "Output_Areas_2021_EW_BFE_V9_*.gpkg"
@@ -55,24 +60,6 @@ NOMISWEB_TS_URL = (
 )
 
 
-def download_file(url: str, desc: str, timeout: int = 300) -> bytes:
-    """Download a file with progress bar, following redirects."""
-    # Use curl-like User-Agent to get direct redirect instead of async response
-    headers = {"User-Agent": "curl/8.0"}
-    response = requests.get(url, stream=True, timeout=timeout, headers=headers)
-    response.raise_for_status()
-
-    total_size = int(response.headers.get("content-length", 0))
-    content = BytesIO()
-
-    with tqdm(total=total_size, unit="B", unit_scale=True, desc=desc) as pbar:
-        for chunk in response.iter_content(chunk_size=8192):
-            content.write(chunk)
-            pbar.update(len(chunk))
-
-    return content.getvalue()
-
-
 def download_oa_boundaries() -> gpd.GeoDataFrame:
     """Load OA boundaries from file (requires manual download)."""
     matches = list(DATA_DIR.glob(OA_BOUNDARIES_PATTERN))
@@ -99,7 +86,7 @@ def download_oa_lookup() -> pd.DataFrame:
         return pd.read_csv(cache_path)
 
     print("Downloading OA lookup table...")
-    content = download_file(OA_LOOKUP_URL, "OA Lookup")
+    content = download_bytes(OA_LOOKUP_URL, desc="OA Lookup", headers=_CURL_HEADERS)
 
     # Save to cache
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -120,10 +107,14 @@ def download_topic_summary(ts_number: int) -> pd.DataFrame:
     print(f"Downloading TS{ts_number:03d}: {TOPIC_SUMMARIES.get(ts_number, '')}...")
 
     try:
-        content = download_file(url, f"TS{ts_number:03d}")
+        content = download_bytes(url, desc=f"TS{ts_number:03d}", headers=_CURL_HEADERS)
     except requests.exceptions.HTTPError as e:
-        print(f"  Warning: Could not download TS{ts_number:03d}: {e}")
-        return pd.DataFrame()
+        # A requested topic table that cannot be downloaded must fail the stage
+        # loudly rather than leave the join silently short a whole table.
+        raise RuntimeError(
+            f"Failed to download Census topic summary TS{ts_number:03d} "
+            f"({TOPIC_SUMMARIES.get(ts_number, '')}) from {url}: {e}"
+        ) from e
 
     # Extract OA-level CSV from zip
     with zipfile.ZipFile(BytesIO(content)) as zf:
@@ -131,8 +122,10 @@ def download_topic_summary(ts_number: int) -> pd.DataFrame:
         oa_files = [f for f in zf.namelist() if "-oa." in f.lower()]
 
         if not oa_files:
-            print(f"  Warning: No OA-level data in TS{ts_number:03d}")
-            return pd.DataFrame()
+            raise RuntimeError(
+                f"Census topic summary TS{ts_number:03d} archive contains no "
+                f"OA-level file (expected a member matching '-oa.')."
+            )
 
         oa_file = oa_files[0]
         print(f"  Extracting {oa_file}")
@@ -188,7 +181,7 @@ def main() -> None:
             oa_gdf = oa_gdf.rename(columns={oa_col[0]: "OA21CD"})
 
     # Filter to England only (OA codes starting with 'E')
-    england_mask = oa_gdf["OA21CD"].str.startswith("E")
+    england_mask = england_code_mask(oa_gdf["OA21CD"])
     n_before = len(oa_gdf)
     oa_gdf = oa_gdf[england_mask].copy()
     n_removed = n_before - len(oa_gdf)
@@ -216,7 +209,7 @@ def main() -> None:
     print("\n[3/4] Downloading Census topic summaries...")
     ts_dataframes = {}
 
-    for ts_num, ts_desc in TOPIC_SUMMARIES.items():
+    for ts_num in TOPIC_SUMMARIES:
         df = download_topic_summary(ts_num)
         if not df.empty:
             ts_dataframes[ts_num] = df
@@ -246,13 +239,20 @@ def main() -> None:
         "LAD22NM",
     ]
     available_cols = [c for c in lookup_cols if c in lookup_df.columns]
-    joined_gdf = joined_gdf.merge(lookup_df[available_cols], on="OA21CD", how="left")
+    # m:1 — the OA→higher-geography lookup must hold one row per OA, so it can
+    # never fan out the boundary rows (which are already unique per OA).
+    joined_gdf = joined_gdf.merge(
+        lookup_df[available_cols], on="OA21CD", how="left", validate="m:1"
+    )
     print(f"  Joined lookup: {len(joined_gdf):,} rows")
 
     # Join each topic summary
     for ts_num, ts_df in ts_dataframes.items():
         if "OA21CD" in ts_df.columns:
-            joined_gdf = joined_gdf.merge(ts_df, on="OA21CD", how="left")
+            # 1:1 — each topic summary is one row per OA, as is the accumulator.
+            joined_gdf = joined_gdf.merge(
+                ts_df, on="OA21CD", how="left", validate="1:1"
+            )
             print(f"  Joined TS{ts_num:03d}: {len(ts_df.columns) - 1} columns")
 
     # Save final joined dataset

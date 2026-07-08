@@ -232,7 +232,7 @@ def main() -> None:
     df = load_and_aggregate()
     net = pd.read_parquet(_NET_CACHE)
     cf = _compositional_frame(
-        df.merge(net, left_on="OA21CD", right_index=True, how="left")
+        df.merge(net, left_on="OA21CD", right_index=True, how="left", validate="m:1")
     )
     # Energy figure: the full energy-ladder confound set (deprivation + climate),
     # so the figure's gradient matches summary.md. Access figures stay income-only

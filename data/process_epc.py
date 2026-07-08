@@ -30,6 +30,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pyogrio
 
+from urban_energy.checks import assert_match_rate
 from urban_energy.paths import DATA_DIR, epc_input_dir, latest_uprn_gpkg
 
 OUTPUT_DIR = DATA_DIR / "epc"
@@ -319,15 +320,17 @@ def write_epc_to_parquet(
     total_rows = 0
     total_with_uprn = 0
 
+    # Select the wanted columns case-insensitively, normalise headers to
+    # upper-case (per-LA upper vs per-year lower), and alias the cert id so both
+    # packagings expose LMK_KEY for deduplication. Invariant across batches, so
+    # computed once (also keeps the read_csv closure from binding a loop var).
+    wanted = {c.upper() for c in EPC_COLUMNS} | set(EPC_COLUMN_ALIASES)
+
     for i in range(0, len(csv_files), batch_size):
         batch_files = csv_files[i : i + batch_size]
         batch_end = min(i + batch_size, len(csv_files))
         print(f"  Batch {i // batch_size + 1}: files {i + 1}-{batch_end}")
 
-        # Select the wanted columns case-insensitively, normalise headers to
-        # upper-case (per-LA upper vs per-year lower), and alias the cert id so
-        # both packagings expose LMK_KEY for deduplication.
-        wanted = {c.upper() for c in EPC_COLUMNS} | set(EPC_COLUMN_ALIASES)
         dfs = []
         for csv_path in batch_files:
             df = pd.read_csv(
@@ -386,7 +389,12 @@ def deduplicate_on_disk(input_path: Path, output_path: Path) -> int:
     # for the per-year packaging — see EPC_COLUMN_ALIASES).
     print("  Pass 1: finding most recent certificate per UPRN...")
     keys = pd.read_parquet(input_path, columns=["UPRN", "LODGEMENT_DATE", "LMK_KEY"])
-    keys = keys.sort_values("LODGEMENT_DATE", ascending=False, kind="stable")
+    # Sort most-recent first, then break same-date ties deterministically by the
+    # unique certificate id (LMK_KEY, descending), so keep="first" always selects
+    # the same certificate regardless of input/row order.
+    keys = keys.sort_values(
+        ["LODGEMENT_DATE", "LMK_KEY"], ascending=False, kind="stable"
+    )
     keys = keys.drop_duplicates(subset=["UPRN"], keep="first")
     keep_keys = set(keys["LMK_KEY"])
     n_dedup = len(keys)
@@ -509,7 +517,22 @@ def main() -> None:
     # Phase 4: Join EPC to geometry
     print("\n[4/5] Joining EPC data to geometry...")
     epc_df = pd.read_parquet(cleaned_path)
-    merged = uprn_gdf[["UPRN", "geometry"]].merge(epc_df, on="UPRN", how="inner")
+    n_epc = len(epc_df)
+    # 1:1 — one deduplicated certificate per UPRN, one geometry per UPRN.
+    merged = uprn_gdf[["UPRN", "geometry"]].merge(
+        epc_df, on="UPRN", how="inner", validate="1:1"
+    )
+    # Certificates whose UPRN had no OS geometry are dropped here; a large drop
+    # signals a UPRN-vintage or geocoding regression, so raise rather than
+    # silently shrink the sample. A looser floor than the postcode joins: OS Open
+    # UPRN genuinely lacks some very-new-build UPRNs, so a few percent unmatched
+    # is expected, but a double-digit drop is a regression.
+    assert_match_rate(
+        n_epc,
+        len(merged),
+        name="EPC certificate ↔ UPRN geometry",
+        max_drop_fraction=0.10,
+    )
     epc_spatial = gpd.GeoDataFrame(merged, geometry="geometry", crs=uprn_gdf.crs)
     del epc_df, uprn_gdf, merged
     gc.collect()

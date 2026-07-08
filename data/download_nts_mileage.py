@@ -23,11 +23,9 @@ Output:
         One row per 2021 rural-urban class.
 """
 
-from pathlib import Path
-
 import pandas as pd
-import requests
 
+from urban_energy.fetch import download_and_cache
 from urban_energy.paths import CACHE_DIR as _CACHE_ROOT
 from urban_energy.paths import DATA_DIR
 
@@ -53,36 +51,32 @@ RUC21_CLASSES = {
 }
 
 
-def download_and_cache(url: str, filename: str) -> Path:
-    """Download a file with caching; return the cached path."""
-    cache_path = CACHE_DIR / filename
-    if cache_path.exists():
-        print(f"  Loading cached {filename} ({cache_path.stat().st_size / 1e6:.1f} MB)")
-        return cache_path
-    print(f"  Downloading {filename}...")
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    headers = {"User-Agent": "urban-energy-research/1.0"}
-    resp = requests.get(url, timeout=300, headers=headers)
-    resp.raise_for_status()
-    cache_path.write_bytes(resp.content)
-    print(f"  Cached to {cache_path}")
-    return cache_path
-
-
 def main() -> None:
     """Extract latest-year car miles/person by 2021 rural-urban class."""
     print("Downloading NTS9904 car mileage by rural-urban classification")
-    path = download_and_cache(NTS9904_URL, NTS9904_FILENAME)
+    path = download_and_cache(NTS9904_URL, CACHE_DIR / NTS9904_FILENAME, timeout=300)
 
     df = pd.read_excel(path, sheet_name=SHEET, engine="odf", header=5)
     df.columns = [str(c).strip() for c in df.columns]
     year_col, ruc_col = df.columns[0], df.columns[1]
 
-    # Latest year reported on the 2021 (six-category) classification.
+    # Latest year reported on the 2021 (six-category) classification. Select by
+    # the numeric maximum of the parsed year, not by row order: the year label
+    # can be a single year or a rolling range ("2023-2024"), so parse the last
+    # four-digit year and take max() to stay deterministic across re-downloads.
     df["_is_ruc21"] = df[ruc_col].astype(str).str.strip().isin(RUC21_CLASSES)
     ruc21 = df[df["_is_ruc21"]].copy()
-    latest_year = ruc21[year_col].dropna().astype(str).unique()[-1]
-    latest = ruc21[ruc21[year_col].astype(str) == latest_year]
+    year_num = pd.to_numeric(
+        ruc21[year_col].astype(str).str.extract(r"(\d{4})")[0], errors="coerce"
+    )
+    if year_num.notna().any():
+        latest_num = year_num.max()
+        latest = ruc21[year_num == latest_num]
+        latest_year = str(int(latest_num))
+    else:
+        # Fallback: no four-digit year parses — keep the last distinct label.
+        latest_year = ruc21[year_col].dropna().astype(str).unique()[-1]
+        latest = ruc21[ruc21[year_col].astype(str) == latest_year]
 
     out = pd.DataFrame(
         {

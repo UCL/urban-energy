@@ -9,8 +9,8 @@ computed from open data.
 removed pending a fresh two-axis rebuild — see below).*
 
 > **⏸ Current focus.** The live work is the **[argument](paper/summary.md)** (the canonical
-> two-axis statement) and the **data + analysis pipeline**. The **paper ([PAPER.md](PAPER.md)) is
-> deferred**, and the **Atlas is pending** — its scoring and the XGBoost planning models are to
+> two-axis statement) and the **data + analysis pipeline**. The **paper ([PAPER.md](PAPER.md))** is now
+> drafted on the two-axis frame (finalisation pending), and the **Atlas is pending** — its scoring and the XGBoost planning models are to
 > be reevaluated for the two-axis frame (that code lives in git history). The theory + headline
 > below are the current two-axis frame.
 
@@ -68,7 +68,7 @@ less access per Joule.** This is the carbon/infrastructure lock-in (Seto et al. 
 | --- | ---: | ---: | ---: |
 | Heat (metered) | 10,194 | 15,020 | 1.6× |
 | Car travel (NTS-anchored) | 3,240 | 9,272 | 3.1× |
-| **Total energy** | **13,674** | **23,832** | **2.1×** |
+| **Total energy** (per-OA median) | **13,674** | **23,832** | **2.1×** |
 
 The Flat/Detached columns are observed medians; the gap is the compositional flat-to-detached
 estimate per dwelling, so it is not the column quotient. Energy is modelled per dwelling with
@@ -103,7 +103,7 @@ homes and longer trips, while the access deficit is **100% unchanged**. Built fo
 
 ### ⏸ Pending (next phase)
 
-1. **The paper** — deferred ([PAPER.md](PAPER.md)).
+1. **The paper** ([PAPER.md](PAPER.md)): drafted on the two-axis frame; finalisation and submission pending.
 2. **The NEPI Atlas + planning tool** — pending: reevaluate the place-scoring and the XGBoost
    planning models for the two-axis frame (their code lives in git history).
 
@@ -114,7 +114,7 @@ homes and longer trips, while the access deficit is **100% unchanged**. Built fo
 | Path | Purpose |
 | ---- | ------- |
 | [paper/summary.md](paper/summary.md) | **The argument** — canonical two-axis statement (single source of truth) |
-| [PAPER.md](PAPER.md) | The formal IMRaD paper — **⏸ deferred** (old three-surface framing) |
+| [PAPER.md](PAPER.md) | The formal IMRaD paper (current two-axis draft; finalisation pending). Old three-surface draft archived at [paper/archive/PAPER_three_surface_deferred.md](paper/archive/PAPER_three_surface_deferred.md) |
 | [CLAUDE.md](CLAUDE.md) | **Technical brief** — codebase layout, data, architecture, conventions |
 | [REPRODUCTION.md](REPRODUCTION.md) | **How to rebuild** — orchestrator-driven recipe, manual downloads |
 | [ROADMAP.md](ROADMAP.md) | **Status, scope & open work** — incl. the methodology decisions |
@@ -163,7 +163,7 @@ from the tree in the migration (in git history, pending reevaluation).
 
 **Current focus:** keeping the argument + processing pipeline watertight.
 
-**⏸ Pending (next phase):** the paper ([PAPER.md](PAPER.md)); reevaluating the Atlas scoring +
+**⏸ Pending (next phase):** finalising the paper ([PAPER.md](PAPER.md)) (drafted on the two-axis frame); reevaluating the Atlas scoring +
 planning models for the two-axis frame.
 
 ---

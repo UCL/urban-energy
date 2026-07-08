@@ -35,6 +35,11 @@ from pathlib import Path
 
 MIN_FREE_GB = 80  # EPC raw (~55 GB) + UPRN dominate the footprint
 
+# Size floor below which an output file is treated as truncated / not built. The
+# smallest real product (a per-OA parquet) is comfortably above this; the floor
+# only catches zero-byte or grossly-truncated writes from an interrupted run.
+MIN_OUTPUT_BYTES = 1024
+
 
 @dataclass(frozen=True)
 class Stage:
@@ -46,7 +51,29 @@ class Stage:
     note: str = ""
 
     def is_done(self) -> bool:
-        return bool(self.outputs) and all(o.exists() for o in self.outputs)
+        """
+        True only if EVERY declared output exists and clears the size floor.
+
+        Existence alone is insufficient: an interrupted or failed write can
+        leave a zero-byte or truncated file that must not count as built. All
+        outputs of a multi-output stage are checked, not just the first.
+        """
+        if not self.outputs:
+            return False
+        for out in self.outputs:
+            if not out.exists():
+                return False
+            if out.is_dir():
+                # A directory output counts as built only if it is non-empty.
+                if not any(out.iterdir()):
+                    return False
+                continue
+            try:
+                if out.stat().st_size < MIN_OUTPUT_BYTES:
+                    return False
+            except OSError:
+                return False
+        return True
 
 
 @dataclass(frozen=True)
@@ -67,42 +94,93 @@ def build_stages(p: Paths) -> list[Stage]:
     """Ordered acquisition manifest (downloads → OA aggregations)."""
     s = p.data / "statistics"
     return [
-        Stage("census", (s / "census_oa_joined.gpkg",),
-              ("data/download_census.py",),
-              note="Census 2021 OA tables + OA/LSOA geometry"),
-        Stage("energy_postcode", (s / "postcode_energy_consumption.parquet",),
-              ("data/download_energy_postcode.py",)),
-        Stage("imd", (s / "lsoa_imd2025.parquet",), ("data/download_imd.py",),
-              note="IoD2025 income domain (deprivation control)"),
-        Stage("vehicles", (s / "lsoa_vehicles.parquet",),
-              ("data/download_vehicles.py",), note="DVLA fleet → BEV share"),
-        Stage("nts_mileage", (s / "nts_mileage_by_ruc.parquet",),
-              ("data/download_nts_mileage.py",),
-              note="travel-energy anchor: car miles/person by 2021 RUC"),
-        Stage("ruc", (s / "oa21_ruc21.parquet",), ("data/download_ons_ruc.py",),
-              note="OA → 2021 rural-urban class"),
-        Stage("fsa", (p.data / "fsa" / "fsa_establishments.gpkg",),
-              ("data/download_fsa.py",), note="food service + grocery retail"),
-        Stage("naptan", (p.data / "transport" / "naptan_england.gpkg",),
-              ("data/download_naptan.py",)),
-        Stage("gias", (p.data / "education" / "gias_schools.gpkg",),
-              ("data/prepare_gias.py",)),
-        Stage("nhs", (p.data / "health" / "nhs_facilities.gpkg",),
-              ("data/prepare_nhs.py",)),
-        Stage("epc", (p.data / "epc" / "epc_domestic_spatial.parquet",),
-              ("data/process_epc.py",),
-              note="~55 GB raw → build year + floor area + best-fabric intensity"),
-        Stage("workplace", (p.data / "employment" / "workplace_jobs.gpkg",),
-              ("data/download_workplace.py",),
-              note="Census 2021 WP101EW workplace jobs → OA points"),
+        Stage(
+            "census",
+            (s / "census_oa_joined.gpkg",),
+            ("data/download_census.py",),
+            note="Census 2021 OA tables + OA/LSOA geometry",
+        ),
+        Stage(
+            "energy_postcode",
+            (s / "postcode_energy_consumption.parquet",),
+            ("data/download_energy_postcode.py",),
+        ),
+        Stage(
+            "imd",
+            (s / "lsoa_imd2025.parquet",),
+            ("data/download_imd.py",),
+            note="IoD2025 income domain (deprivation control)",
+        ),
+        Stage(
+            "vehicles",
+            (s / "lsoa_vehicles.parquet",),
+            ("data/download_vehicles.py",),
+            note="DVLA fleet → BEV share",
+        ),
+        Stage(
+            "nts_mileage",
+            (s / "nts_mileage_by_ruc.parquet",),
+            ("data/download_nts_mileage.py",),
+            note="travel-energy anchor: car miles/person by 2021 RUC",
+        ),
+        Stage(
+            "ruc",
+            (s / "oa21_ruc21.parquet",),
+            ("data/download_ons_ruc.py",),
+            note="OA → 2021 rural-urban class",
+        ),
+        Stage(
+            "fsa",
+            (p.data / "fsa" / "fsa_establishments.gpkg",),
+            ("data/download_fsa.py",),
+            note="food service + grocery retail",
+        ),
+        Stage(
+            "naptan",
+            (p.data / "transport" / "naptan_england.gpkg",),
+            ("data/download_naptan.py",),
+        ),
+        Stage(
+            "gias",
+            (p.data / "education" / "gias_schools.gpkg",),
+            ("data/prepare_gias.py",),
+        ),
+        Stage(
+            "nhs",
+            (p.data / "health" / "nhs_facilities.gpkg",),
+            ("data/prepare_nhs.py",),
+        ),
+        Stage(
+            "epc",
+            (p.data / "epc" / "epc_domestic_spatial.parquet",),
+            ("data/process_epc.py",),
+            note="~55 GB raw → build year + floor area + best-fabric intensity",
+        ),
+        Stage(
+            "workplace",
+            (p.data / "employment" / "workplace_jobs.gpkg",),
+            ("data/download_workplace.py",),
+            note="Census 2021 WP101EW workplace jobs → OA points",
+        ),
         # dependent aggregations
-        Stage("postcode_oa_lookup", (s / "postcode_oa_lookup.parquet",),
-              ("data/build_postcode_oa_lookup.py",), note="needs census + Code-Point"),
-        Stage("energy_oa", (s / "oa_energy_consumption.parquet",),
-              ("data/aggregate_energy_oa.py",),
-              note="primary heat DV; needs energy_postcode + postcode_oa_lookup"),
-        Stage("epc_oa", (s / "oa_epc.parquet",), ("data/aggregate_epc_oa.py",),
-              note="EPC floor area + best-fabric intensity + build year → OA"),
+        Stage(
+            "postcode_oa_lookup",
+            (s / "postcode_oa_lookup.parquet",),
+            ("data/build_postcode_oa_lookup.py",),
+            note="needs census + Code-Point",
+        ),
+        Stage(
+            "energy_oa",
+            (s / "oa_energy_consumption.parquet",),
+            ("data/aggregate_energy_oa.py",),
+            note="primary heat DV; needs energy_postcode + postcode_oa_lookup",
+        ),
+        Stage(
+            "epc_oa",
+            (s / "oa_epc.parquet",),
+            ("data/aggregate_epc_oa.py",),
+            note="EPC floor area + best-fabric intensity + build year → OA",
+        ),
     ]
 
 
@@ -118,13 +196,14 @@ def _manual_prereqs(p: Paths) -> list[tuple[str, bool]]:
     d = p.data
     oa = list(d.glob("Output_Areas_*")) if d.exists() else []
     nhs_ok = any(
-        (x / "epraccur.csv").exists()
-        for x in (d, d / "nhs_ods", p.cache / "nhs_ods")
+        (x / "epraccur.csv").exists() for x in (d, d / "nhs_ods", p.cache / "nhs_ods")
     )
     return [
         ("OA 2021 boundaries (Output_Areas_*)  ←census", bool(oa)),
-        ("OS Open Greenspace  ←access", (
-            d / "opgrsp_gpkg_gb" / "Data" / "opgrsp_gb.gpkg").exists()),
+        (
+            "OS Open Greenspace  ←access",
+            (d / "opgrsp_gpkg_gb" / "Data" / "opgrsp_gb.gpkg").exists(),
+        ),
         ("OS Code-Point Open  ←postcode_oa_lookup", (d / "codepo_gpkg_gb").exists()),
         ("OS Open UPRN (any vintage)  ←epc", latest_uprn_gpkg() is not None),
         ("EPC domestic certificates  ←epc", epc_input_dir() is not None),
@@ -153,14 +232,19 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     base = p.data if p.data.exists() else p.data.parent
     try:
         free_gb = shutil.disk_usage(base).free / 1e9
-        print(f"\n  {'✓' if free_gb >= MIN_FREE_GB else '⚠'} free disk: "
-              f"{free_gb:,.0f} GB (wants ~{MIN_FREE_GB}+)")
+        print(
+            f"\n  {'✓' if free_gb >= MIN_FREE_GB else '⚠'} free disk: "
+            f"{free_gb:,.0f} GB (wants ~{MIN_FREE_GB}+)"
+        )
     except OSError:
         print(f"\n  ⚠ could not stat free disk on {base}")
 
     print("\n" + "-" * 68)
-    print(f"{missing} manual download(s) missing." if missing
-          else "All manual downloads present.")
+    print(
+        f"{missing} manual download(s) missing."
+        if missing
+        else "All manual downloads present."
+    )
     print("Env OK. Run `… pipeline status` to see what's built.")
     return 0
 
@@ -181,8 +265,10 @@ def cmd_status(args: argparse.Namespace) -> int:
         except ValueError:
             pass
         done = st.is_done()
-        print(f"{'✓' if done else '✗'} {st.name:<18} "
-              f"{'done' if done else 'missing':<9} {out}")
+        print(
+            f"{'✓' if done else '✗'} {st.name:<18} "
+            f"{'done' if done else 'missing':<9} {out}"
+        )
     return 0
 
 
@@ -229,7 +315,8 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="urban_energy.pipeline", description=__doc__,
+        prog="urban_energy.pipeline",
+        description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     sub = parser.add_subparsers(dest="command", required=True)
@@ -244,8 +331,10 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
     dispatch: dict[str, Callable[[argparse.Namespace], int]] = {
-        "doctor": cmd_doctor, "status": cmd_status,
-        "list": cmd_list, "run": cmd_run,
+        "doctor": cmd_doctor,
+        "status": cmd_status,
+        "list": cmd_list,
+        "run": cmd_run,
     }
     return dispatch[args.command](args)
 

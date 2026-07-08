@@ -142,7 +142,7 @@ def oa_centroids(oa_codes: pd.Series) -> np.ndarray:
     pts = cen.geometry.representative_point()
     cen = cen.assign(x=pts.x.to_numpy(), y=pts.y.to_numpy())
     m = pd.DataFrame({"OA21CD": np.asarray(oa_codes)}).merge(
-        cen[["OA21CD", "x", "y"]], on="OA21CD", how="left"
+        cen[["OA21CD", "x", "y"]], on="OA21CD", how="left", validate="m:1"
     )
     return m[["x", "y"]].to_numpy()
 

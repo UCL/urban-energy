@@ -4,7 +4,7 @@ Single source of truth for status, open work, and methodology decisions.
 Updated 2026-06-15 (two-axis reframe; paper + Atlas deferred).
 
 > **⏸ Current focus.** The live work is the **[argument](paper/summary.md)** and the
-> **data + analysis pipeline**. The **paper ([PAPER.md](PAPER.md)) is deferred**; the **Atlas is
+> **data + analysis pipeline**. The **paper ([PAPER.md](PAPER.md))** is drafted on the two-axis frame (finalisation pending); the **Atlas is
 > pending** — its place-scoring and XGBoost planning models are to be reevaluated for the
 > two-axis frame (that code lives in git history).
 
@@ -19,7 +19,9 @@ Updated 2026-06-15 (two-axis reframe; paper + Atlas deferred).
 
 ### ⏸ Pending (next phase)
 
-1. **The paper** — deferred ([PAPER.md](PAPER.md)).
+1. **The paper** ([PAPER.md](PAPER.md)): drafted on the two-axis frame and matching the canonical
+   `summary.md` numbers; finalisation and submission pending. The old three-surface draft is archived
+   at [paper/archive/PAPER_three_surface_deferred.md](paper/archive/PAPER_three_surface_deferred.md).
 2. **The NEPI Atlas + planning tool** — pending: reevaluate the place-scoring and the XGBoost
    planning models for the two-axis frame (code in git history).
 
@@ -46,11 +48,12 @@ The rebuild targets only what the two-axis analysis consumes:
 
 - **National OA dataset** — assembled in the stats layer.
 - **Network access** (`stats/oa_network_access.py`): cityseer over OS Open Roads, national network
-  built **once** and queried per catchment band, each OA at its own NTS car-trip catchment;
-  rate **6.3× access per kWh**, validated to ~2% of a literal per-OA computation (~12 min).
+  built **once** and queried per catchment band, each OA at its own NTS car-trip catchment,
+  the built-once counts matching a literal per-OA computation to ~2% (~12 min); the rate is
+  **3.6× access per kWh** (access advantage × energy saving, `access_profile.py`).
 - **Two-axis analysis** ([paper/summary.md](paper/summary.md)): NTS-anchored
-  car-travel energy, lock-in (per household 2.0× → 1.5×; per person 1.5× → 1.15×), network access
-  rate (6.3× access per kWh) + on-foot gap (~24×), heat-vs-size decomposition — all on the shared
+  car-travel energy, lock-in (per dwelling 2.12× → 1.51×; at equal family size 1.71× → 1.18×), network
+  access rate (3.6× access per kWh) + on-foot gap (~24×), heat-vs-size decomposition, all on the shared
   `stats/oa_data.py` core.
 - **Two-axis migration cleanup:** stripped the retired three-surface / A–G code and
   the old Atlas; unified the EPC→OA aggregation (`data/aggregate_epc_oa.py`); lean
@@ -78,8 +81,9 @@ These are the contestable scientific choices; none gate acquisition.
 - **Under-recording robustness.** Flat metered energy omits communal/bulk gas (district
   heating); detached omits off-gas. Re-add an under-recording check before publishing the
   heat gradient (the old `form_bias` flags were removed with the pipeline).
-- **Spatial autocorrelation.** Consider spatial error / lag models (or spatially-clustered SEs)
-  on the form/size regression.
+- **Spatial autocorrelation.** LAD-clustered SEs are now the delivered primary inference
+  (every headline ratio carries a LAD-clustered 95% CI; composites carry cluster-bootstrap
+  CIs). What remains open is an optional spatial error / lag model as a cross-check.
 
 ### Forward work (out of current scope)
 - **Atlas (pending):** reevaluate the place-scoring and the XGBoost planning models for the
@@ -90,5 +94,5 @@ These are the contestable scientific choices; none gate acquisition.
 
 ### Paper / repo
 - Finalise `paper/references.bib`.
-- Expand the pytest suite (form-bias tests landed; pipeline/stats coverage next).
+- (Re)establish the pytest suite: none currently (the earlier form-bias tests were removed); pipeline and stats coverage pending.
 - Pre-submission cover-letter framing for the target journal.

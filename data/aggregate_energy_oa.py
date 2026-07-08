@@ -18,7 +18,9 @@ Output:
 
 import pandas as pd
 
+from urban_energy.checks import assert_match_rate
 from urban_energy.paths import DATA_DIR
+from urban_energy.text import normalise_postcode as _normalise_postcode
 
 OUTPUT_DIR = DATA_DIR / "statistics"
 
@@ -33,8 +35,10 @@ def normalise_postcode(s: pd.Series) -> pd.Series:
     """
     Normalise postcode format for matching.
 
-    Strips whitespace, converts to uppercase. Does NOT remove the internal
-    space — both DESNZ and Code-Point use the standard "AB10 1AU" format.
+    Strips whitespace, converts to uppercase. Keeps the internal space — both
+    DESNZ and the Code-Point-derived lookup use the standard "AB10 1AU" format,
+    so both sides of the join must retain the space. Thin wrapper over
+    :func:`urban_energy.text.normalise_postcode` with ``keep_space=True``.
 
     Parameters
     ----------
@@ -46,7 +50,7 @@ def normalise_postcode(s: pd.Series) -> pd.Series:
     pd.Series
         Normalised postcode strings.
     """
-    return s.str.strip().str.upper()
+    return _normalise_postcode(s, keep_space=True)
 
 
 def aggregate_postcode_to_oa(
@@ -75,13 +79,13 @@ def aggregate_postcode_to_oa(
     energy["Postcode"] = normalise_postcode(energy["Postcode"])
     lookup["Postcode"] = normalise_postcode(lookup["Postcode"])
 
-    # Join energy to OA lookup
+    # Join energy to OA lookup. m:1 — the lookup holds one OA per postcode, so a
+    # duplicate-postcode lookup can never fan out the energy rows.
     lookup_cols = ["Postcode", "OA21CD", "LSOA21CD"]
-    merged = energy.merge(lookup[lookup_cols], on="Postcode", how="inner")
-    n_matched = len(merged)
-    n_total = len(energy)
-    pct = n_matched / n_total
-    print(f"  Matched {n_matched:,}/{n_total:,} postcodes ({pct:.1%})")
+    merged = energy.merge(
+        lookup[lookup_cols], on="Postcode", how="inner", validate="m:1"
+    )
+    assert_match_rate(len(energy), len(merged), name="energy postcode ↔ OA lookup")
 
     # Compute meter counts per postcode (use max of gas/elec meters)
     elec_meters = pd.to_numeric(
@@ -117,8 +121,14 @@ def aggregate_postcode_to_oa(
     # Count metrics
     results["oa_num_meters"] = merged.groupby("OA21CD")["_meters"].sum()
     results["oa_num_postcodes"] = merged.groupby("OA21CD")["Postcode"].count()
-    # Per-fuel meter counts (feed the Form under-recording flags, TODO #6):
-    # low gas-meter coverage flags off-gas / communal-gas OAs.
+    # Per-fuel meter counts. NOTE (2026-07-08): these once fed the Form-surface
+    # "under-recording" flags (off-gas / communal-gas OAs, methodology item #6),
+    # removed with the form_bias module in the two-axis migration (git 624c50d).
+    # The counts are still emitted because low gas-meter coverage relative to
+    # electricity is a useful off-gas signal. A re-add would derive, per OA:
+    # gas-meter coverage = oa_gas_num_meters / oa_elec_num_meters, plus the
+    # Census TS044 flat share, and flag OAs below a coverage floor as likely
+    # under-recording metered gas (see the archived tests/test_form_bias.py).
     results["oa_elec_num_meters"] = elec_meters.groupby(merged["OA21CD"]).sum()
     results["oa_gas_num_meters"] = gas_meters.groupby(merged["OA21CD"]).sum()
 

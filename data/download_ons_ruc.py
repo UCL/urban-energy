@@ -20,13 +20,12 @@ Output:
         Columns: OA21CD, RUC21NM (residence class), urban_rural_flag
 """
 
-from pathlib import Path
-
 import pandas as pd
-import requests
 
+from urban_energy.fetch import download_and_cache
 from urban_energy.paths import CACHE_DIR as _CACHE_ROOT
 from urban_energy.paths import DATA_DIR
+from urban_energy.text import england_code_mask
 
 OUTPUT_DIR = DATA_DIR / "statistics"
 CACHE_DIR = _CACHE_ROOT / "ons_geography"
@@ -38,32 +37,16 @@ RUC21_URL = (
 RUC21_FILENAME = "oa21_ruc21_ew_lu.csv"
 
 
-def download_and_cache(url: str, filename: str) -> Path:
-    """Download a file with caching; return the cached path."""
-    cache_path = CACHE_DIR / filename
-    if cache_path.exists():
-        print(f"  Loading cached {filename} ({cache_path.stat().st_size / 1e6:.1f} MB)")
-        return cache_path
-    print(f"  Downloading {filename}...")
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    headers = {"User-Agent": "urban-energy-research/1.0"}
-    resp = requests.get(url, timeout=300, headers=headers)
-    resp.raise_for_status()
-    cache_path.write_bytes(resp.content)
-    print(f"  Cached to {cache_path}")
-    return cache_path
-
-
 def main() -> None:
     """Build the OA21 → 2021 Rural-Urban Classification lookup."""
     print("Downloading ONS 2021 Rural-Urban Classification of Output Areas")
-    path = download_and_cache(RUC21_URL, RUC21_FILENAME)
+    path = download_and_cache(RUC21_URL, CACHE_DIR / RUC21_FILENAME, timeout=300)
 
     df = pd.read_csv(path, usecols=["OA21CD", "RUC21NM", "Urban_rural_flag"])
     df = df.rename(columns={"Urban_rural_flag": "urban_rural_flag"})
     df["RUC21NM"] = df["RUC21NM"].astype(str).str.strip()
     # England only, consistent with the rest of the pipeline.
-    df = df[df["OA21CD"].astype(str).str.startswith("E")].reset_index(drop=True)
+    df = df[england_code_mask(df["OA21CD"])].reset_index(drop=True)
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUTPUT_DIR / "oa21_ruc21.parquet"

@@ -14,11 +14,10 @@ from io import BytesIO
 
 import geopandas as gpd
 import pandas as pd
-import requests
 from shapely.geometry import Point
-from tqdm import tqdm
 
 # Configuration
+from urban_energy.fetch import download_bytes
 from urban_energy.paths import CACHE_DIR as _CACHE_ROOT
 from urban_energy.paths import DATA_DIR
 
@@ -62,39 +61,6 @@ STOP_TYPE_DESCRIPTIONS = {
     "RPL": "Rail platform",
     "TMU": "Tram/Metro/Underground station",
 }
-
-
-def download_file(url: str, desc: str, timeout: int = 600) -> bytes:
-    """
-    Download a file with progress bar.
-
-    Parameters
-    ----------
-    url : str
-        URL to download from.
-    desc : str
-        Description for progress bar.
-    timeout : int
-        Request timeout in seconds.
-
-    Returns
-    -------
-    bytes
-        Downloaded file content.
-    """
-    headers = {"User-Agent": "urban-energy-research/1.0"}
-    response = requests.get(url, stream=True, timeout=timeout, headers=headers)
-    response.raise_for_status()
-
-    total_size = int(response.headers.get("content-length", 0))
-    content = BytesIO()
-
-    with tqdm(total=total_size, unit="B", unit_scale=True, desc=desc) as pbar:
-        for chunk in response.iter_content(chunk_size=8192):
-            content.write(chunk)
-            pbar.update(len(chunk))
-
-    return content.getvalue()
 
 
 def extract_atco_area(atco_code: str) -> int | None:
@@ -159,7 +125,7 @@ def download_naptan() -> pd.DataFrame:
         return pd.read_parquet(cache_path)
 
     print("Downloading NaPTAN national dataset...")
-    content = download_file(NAPTAN_URL, "NaPTAN CSV")
+    content = download_bytes(NAPTAN_URL, desc="NaPTAN CSV")
 
     # Parse CSV
     df = pd.read_csv(BytesIO(content), low_memory=False)
@@ -240,7 +206,10 @@ def create_geodataframe(df: pd.DataFrame) -> gpd.GeoDataFrame:
     df = df[valid_coords].copy()
 
     # Create geometry from coordinates
-    geometry = [Point(lon, lat) for lon, lat in zip(df["Longitude"], df["Latitude"])]
+    geometry = [
+        Point(lon, lat)
+        for lon, lat in zip(df["Longitude"], df["Latitude"], strict=True)
+    ]
 
     # Create GeoDataFrame in WGS84
     gdf = gpd.GeoDataFrame(df, geometry=geometry, crs="EPSG:4326")

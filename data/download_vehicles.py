@@ -27,9 +27,8 @@ Output:
 from pathlib import Path
 
 import pandas as pd
-import requests
-from tqdm import tqdm
 
+from urban_energy.fetch import download_and_cache
 from urban_energy.paths import CACHE_DIR as _CACHE_ROOT
 from urban_energy.paths import DATA_DIR
 
@@ -51,63 +50,6 @@ VEH0135_URL = (
 
 VEH0125_FILENAME = "df_VEH0125.csv"
 VEH0135_FILENAME = "df_VEH0135.csv"
-
-
-def download_file(url: str, dest: Path, timeout: int = 600) -> None:
-    """
-    Download a file with progress bar, streaming directly to disk.
-
-    Parameters
-    ----------
-    url : str
-        URL to download.
-    dest : Path
-        Destination file path.
-    timeout : int
-        Request timeout in seconds.
-    """
-    headers = {"User-Agent": "urban-energy-research/1.0"}
-    response = requests.get(url, stream=True, timeout=timeout, headers=headers)
-    response.raise_for_status()
-
-    total_size = int(response.headers.get("content-length", 0))
-
-    with (
-        open(dest, "wb") as f,
-        tqdm(total=total_size, unit="B", unit_scale=True, desc=dest.name) as pbar,
-    ):
-        for chunk in response.iter_content(chunk_size=65536):
-            f.write(chunk)
-            pbar.update(len(chunk))
-
-
-def download_and_cache(url: str, filename: str) -> Path:
-    """
-    Download a file with caching. Returns path to cached file.
-
-    Parameters
-    ----------
-    url : str
-        URL to download.
-    filename : str
-        Cache filename.
-
-    Returns
-    -------
-    Path
-        Path to the cached file.
-    """
-    cache_path = CACHE_DIR / filename
-
-    if cache_path.exists():
-        print(f"  Loading cached {filename} ({cache_path.stat().st_size / 1e6:.1f} MB)")
-        return cache_path
-
-    print(f"  Downloading {filename}...")
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    download_file(url, cache_path)
-    print(f"  Cached to {cache_path}")
-    return cache_path
 
 
 def _clean_vehicle_count(value: object) -> float | None:
@@ -287,11 +229,11 @@ def main() -> None:
 
     # 1. Download VEH0125 (all vehicles)
     print("\n[1/4] All vehicles (VEH0125)...")
-    veh0125_path = download_and_cache(VEH0125_URL, VEH0125_FILENAME)
+    veh0125_path = download_and_cache(VEH0125_URL, CACHE_DIR / VEH0125_FILENAME)
 
     # 2. Download VEH0135 (ULEVs)
     print("\n[2/4] Ultra-low emission vehicles (VEH0135)...")
-    veh0135_path = download_and_cache(VEH0135_URL, VEH0135_FILENAME)
+    veh0135_path = download_and_cache(VEH0135_URL, CACHE_DIR / VEH0135_FILENAME)
 
     # 3. Parse
     print("\n[3/4] Parsing data...")
@@ -302,7 +244,8 @@ def main() -> None:
 
     # Join cars and ULEVs
     print("\n  --- Joining ---")
-    vehicles_df = cars_df.merge(ulev_df, on="LSOA21CD", how="left")
+    # 1:1 — both frames carry one row per LSOA after the keepership/fuel pivots.
+    vehicles_df = cars_df.merge(ulev_df, on="LSOA21CD", how="left", validate="1:1")
 
     # Derived: EV share of total cars
     vehicles_df["ulev_share"] = vehicles_df["ulev_total"] / vehicles_df[

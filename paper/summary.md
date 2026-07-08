@@ -13,7 +13,7 @@ Every "×" in this document is a flat-versus-detached gap, computed the same way
 - In every table the Flat and Detached columns are observed medians (metered energy, reachable counts), shown to ground the numbers. The ratio columns are the compositional estimate, so they need not equal the quotient of the two columns.
 - The model reads the gap at the extremes, a wholly flat area against a wholly detached one, which few real areas are. Each ratio is therefore the sharp end of the estimate: the gap is at least this large.
 
-*The regression has no intercept and is weighted by households; the flat-to-detached ratio is the exponentiated gap between the pure-flat and pure-detached coefficients. The energy axes are fitted with a log model, the access counts with a Poisson model. Standard errors are not adjusted for spatial autocorrelation between neighbouring areas; the effects are large enough on ~178,000 areas that this does not affect the conclusions.*
+*The regression has no intercept and is weighted by households; the flat-to-detached ratio is the exponentiated gap between the pure-flat and pure-detached coefficients. The energy axes are fitted with a log model, the access counts with a Poisson model (household counts enter as analytic weights, so the effective sample is the number of areas, not the summed household count). Standard errors are clustered by local-authority district (about 309 in England) to allow for spatial dependence between neighbouring areas, and every headline ratio carries a 95% confidence interval on this basis; composite quantities (the rate, the surviving-gap share, the mediated fraction) carry cluster-bootstrap intervals. The intervals are reported in [results_snapshot.txt](results_snapshot.txt).*
 
 ## Counting: per dwelling, not per person
 
@@ -41,12 +41,12 @@ A detached neighbourhood uses about 1.60 times a flat's heat per dwelling. The g
 | --- | --: | --: | --: | --: | --: |
 | gas + electricity | 10,194 | 12,995 | 13,876 | 15,020 | 1.60× |
 
-Flats record fewer domestic gas meters than households (about 0.81 per household, against 0.94 for detached), for two reasons the measure treats differently. An all-electric flat heats with electricity, which is summed into the total energy figure, so its heat is captured. A block on communal heating is metered as non-domestic, so that gas is genuinely missing and the flat's heat understated. Only this second, smaller case is a true undercount, and it does not drive the result: holding gas coverage equal the gap is 1.42×, and on well-measured areas (coverage at least 0.9) it is 1.61×, essentially the 1.60× headline. If anything, the measurement issue slightly understates the gap.
+Flats record fewer domestic gas meters than households (about 0.81 per household, against 0.94 for detached), for two reasons the measure treats differently. An all-electric flat heats with electricity, which is summed into the total energy figure, so its heat is captured. A block on communal heating is metered as non-domestic, so that gas is genuinely missing and the flat's heat understated. Only this second, smaller case is a true undercount, and it does not drive the result: restricting to well-measured areas (gas-meter coverage at least 0.9) leaves the heat gap at 1.61×, essentially the 1.60× headline, and restricting instead to areas whose electricity-meter count is within half the household count leaves it at 1.55×. If anything, the measurement issue slightly understates the gap.
 
 Separating shape from size:
 
 - The detached-versus-flat heat gap blends three effects of low density: bigger homes, more people per home, and a leakier shape. The quantity of interest is the part attributable to shape alone.
-- From the compositional model (the full dwelling mix, with deprivation, tenure, building age and climate held equal), controls are added one at a time — first family size, then floor area — and the gap shrinks from 1.60× to 1.27× to 1.17×. Family and dwelling size together mediate about two-thirds (66%) of the gap. What survives once both are held fixed (about 1.17×, roughly 17%) is the direct effect of the form: exposed walls and no shared surfaces. Family size enters as a freely estimated effect (an elasticity of about 0.5), not as a per-person denominator, so the household is held without forcing energy to scale one-for-one with residents.
+- From the compositional model (the full dwelling mix, with deprivation, tenure, building age and climate held equal), controls are added one at a time — first family size, then floor area — and the gap shrinks from 1.60× to 1.27× to 1.17×. Family and dwelling size together account for about two-thirds (66%) of the gap, as a descriptive covariate adjustment rather than an identified causal mediation. What survives once both are held fixed (about 1.17×, roughly 17%) is the direct effect of the form: exposed walls and no shared surfaces. Family size enters as a freely estimated effect (an elasticity of about 0.5), not as a per-person denominator, so the household is held without forcing energy to scale one-for-one with residents.
 - Local climate (heating-degree-days, from HadUK-Grid, 1991–2020) is now held alongside the others: colder northern and rural siting is part of why detached areas use more heat, and netting it out is built into the direct term above.
 
 *Reproduce: `stats/form_size_decomposition.py` (the shape-versus-size ladder and the gas-coverage checks).*
@@ -71,11 +71,11 @@ Building the estimate:
 | --- | --: | --: | --: | --: | --: |
 | NTS-anchored | 3,240 | 5,088 | 6,660 | 9,272 | 3.07× |
 
-Car travel accounts for 24–37% of all household energy. Combining the two:
+Car travel accounts for about 24% of household energy in flat-dominated areas and 39% in detached (the ratio of the median columns above and below). Combining the two:
 
 | total energy, kWh per dwelling/yr | Flat | Terraced | Semi | Detached | flat→detached |
 | --- | --: | --: | --: | --: | --: |
-| heat + car travel | 13,674 | 18,265 | 20,564 | 23,832 | **2.12×** |
+| total household energy (per-OA median) | 13,674 | 18,265 | 20,564 | 23,832 | **2.12×** |
 
 In each table the dwelling-type columns are observed medians; the ratio is the compositional flat-to-detached estimate per dwelling, so it is not the quotient of the columns.
 
@@ -118,7 +118,7 @@ For each area the rate is a division — amenities reachable within its *own car
 
 - **Access advantage** — at their own catchments a flat and a detached area reach a *similar* number of amenities: flat-to-detached **1.2×**.
 - **Energy saving** — the detached area gets there only by spending about **3.1×** the car energy (the travel figure from the energy section).
-- Dividing one area's rate by the other's flips the energy term over, so the two multiply: **1.2 × 3.1 ≈ 3.6×**. Same reach, a third of the fuel.
+- Dividing one area's rate by the other's flips the energy term over, so the two multiply: **1.17 × 3.07 = 3.6×**. Same reach, a third of the fuel.
 
 This is reconstructable straight from the access and energy tables — it is not a separate model. (An earlier version modelled the per-area ratio directly and reported a spurious 6.3×; that double-counted and did not reconcile with the two axes.)
 
@@ -156,7 +156,7 @@ Households are not assigned to dwelling types at random; people who choose detac
 - **The observed selection channels are already held.** The comparison conditions on deprivation (overall IMD and its income domain), tenure, building age and climate; adding occupational class (Census NS-SeC) on top moves the gap by essentially nothing, so selection on these observables is not what drives it.
 - **A coefficient-stability bound (Oster, 2019)** asks how strong selection on *unobservables* would have to be, relative to those observed confounds, to explain the gap away. The total-energy gap is the robust part (δ* ≈ 1: unobserved sorting would have to be about as strong as everything already measured combined), because much of it is the structural travel gap — a function of where destinations sit, not who occupies the house. The heat sub-component is more entangled with deprivation and tenure, so the case rests on total energy and access rather than on the heat figure alone.
 
-The estimand throughout is therefore a *place-level* one — the energy and access profile of a neighbourhood type, conditional on observed confounds — not a household treatment effect. The definitive test of the latter would difference out fixed household preferences using homes observed before and after a move (panel microdata such as Understanding Society); that is left to future work.
+The estimand throughout is therefore a *place-level* one, the energy and access profile of a neighbourhood type conditional on observed confounds, not a household treatment effect. The definitive test of the latter would difference out fixed household preferences using homes observed before and after a move (panel microdata such as Understanding Society); that mover-panel test is out of scope here and is reported as the principal limitation of the place-level estimand.
 
 *Reproduce: `stats/form_size_decomposition.py` (section 6 — the Oster bound and NS-SeC control).*
 

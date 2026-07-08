@@ -18,6 +18,7 @@ import geopandas as gpd
 import pandas as pd
 
 from urban_energy.paths import DATA_DIR
+from urban_energy.text import SCOTTISH_WELSH_POSTCODE_AREAS
 
 OUTPUT_DIR = DATA_DIR / "statistics"
 
@@ -76,26 +77,7 @@ def load_codepoint_postcodes() -> gpd.GeoDataFrame:
     postcodes["Postcode"] = postcodes["Postcode"].str.strip().str.upper()
 
     # Filter to England postcodes (exclude Scottish and Welsh areas)
-    scottish_areas = {
-        "AB",
-        "DD",
-        "DG",
-        "EH",
-        "FK",
-        "G",
-        "HS",
-        "IV",
-        "KA",
-        "KW",
-        "KY",
-        "ML",
-        "PA",
-        "PH",
-        "TD",
-        "ZE",
-    }
-    welsh_areas = {"CF", "LD", "LL", "NP", "SA"}
-    exclude = scottish_areas | welsh_areas
+    exclude = SCOTTISH_WELSH_POSTCODE_AREAS
     area = postcodes["Postcode"].str.extract(r"^([A-Z]{1,2})", expand=False)
     england_mask = ~area.isin(exclude)
     n_before = len(postcodes)
@@ -164,8 +146,12 @@ def build_lookup(
         predicate="within",
     )
 
-    # Drop duplicates (boundary postcodes may match multiple OAs)
+    # Drop duplicates (a centroid on an OA boundary can match multiple OAs).
+    # Sort by (Postcode, OA21CD) first so keep="first" is deterministic: the
+    # lowest OA21CD wins for a boundary postcode, the same way on every run
+    # regardless of the sjoin's row order.
     n_before = len(joined)
+    joined = joined.sort_values(["Postcode", "OA21CD"], kind="stable")
     joined = joined.drop_duplicates(subset=["Postcode"], keep="first")
     n_dups = n_before - len(joined)
     if n_dups > 0:

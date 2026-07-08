@@ -29,11 +29,11 @@ Output:
 from pathlib import Path
 
 import pandas as pd
-import requests
-from tqdm import tqdm
 
+from urban_energy.fetch import download_and_cache
 from urban_energy.paths import CACHE_DIR as _CACHE_ROOT
 from urban_energy.paths import DATA_DIR
+from urban_energy.text import SCOTTISH_WELSH_POSTCODE_AREAS
 
 OUTPUT_DIR = DATA_DIR / "statistics"
 CACHE_DIR = _CACHE_ROOT / "desnz_postcode"
@@ -55,63 +55,6 @@ GAS_URL = (
 
 ELEC_FILENAME = f"postcode_all_meters_electricity_{TARGET_YEAR}.csv"
 GAS_FILENAME = f"postcode_gas_{TARGET_YEAR}.csv"
-
-
-def download_file(url: str, dest: Path, timeout: int = 600) -> None:
-    """
-    Download a file with progress bar, streaming directly to disk.
-
-    Parameters
-    ----------
-    url : str
-        URL to download.
-    dest : Path
-        Destination file path.
-    timeout : int
-        Request timeout in seconds.
-    """
-    headers = {"User-Agent": "urban-energy-research/1.0"}
-    response = requests.get(url, stream=True, timeout=timeout, headers=headers)
-    response.raise_for_status()
-
-    total_size = int(response.headers.get("content-length", 0))
-
-    with (
-        open(dest, "wb") as f,
-        tqdm(total=total_size, unit="B", unit_scale=True, desc=dest.name) as pbar,
-    ):
-        for chunk in response.iter_content(chunk_size=65536):
-            f.write(chunk)
-            pbar.update(len(chunk))
-
-
-def download_and_cache(url: str, filename: str) -> Path:
-    """
-    Download a file with caching. Returns path to cached file.
-
-    Parameters
-    ----------
-    url : str
-        URL to download.
-    filename : str
-        Cache filename.
-
-    Returns
-    -------
-    Path
-        Path to the cached file.
-    """
-    cache_path = CACHE_DIR / filename
-
-    if cache_path.exists():
-        print(f"  Loading cached {filename} ({cache_path.stat().st_size / 1e6:.1f} MB)")
-        return cache_path
-
-    print(f"  Downloading {filename}...")
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    download_file(url, cache_path)
-    print(f"  Cached to {cache_path}")
-    return cache_path
 
 
 def parse_postcode_csv(path: Path, prefix: str) -> pd.DataFrame:
@@ -151,30 +94,9 @@ def parse_postcode_csv(path: Path, prefix: str) -> pd.DataFrame:
     df = df[valid_postcode].copy()
     print(f"  After filtering to individual postcodes: {len(df):,}")
 
-    # Filter to England postcodes (exclude Scotland and Wales)
-    # Postcode areas that are entirely in Scotland or Wales:
-    _scottish_areas = {
-        "AB",
-        "DD",
-        "DG",
-        "EH",
-        "FK",
-        "G",
-        "HS",
-        "IV",
-        "KA",
-        "KW",
-        "KY",
-        "ML",
-        "PA",
-        "PH",
-        "TD",
-        "ZE",
-    }
-    _welsh_areas = {"CF", "LD", "LL", "NP", "SA"}
-    _exclude = _scottish_areas | _welsh_areas
+    # Filter to England postcodes (exclude the Scottish/Welsh postcode areas).
     area = df["Postcode"].str.extract(r"^([A-Z]{1,2})", expand=False)
-    england_mask = ~area.isin(_exclude)
+    england_mask = ~area.isin(SCOTTISH_WELSH_POSTCODE_AREAS)
     n_before = len(df)
     df = df[england_mask].copy()
     print(f"  After filtering to England: {len(df):,} (removed {n_before - len(df):,})")
@@ -236,7 +158,8 @@ def join_gas_electricity(elec_df: pd.DataFrame, gas_df: pd.DataFrame) -> pd.Data
     pd.DataFrame
         Merged data with total energy and gas share columns.
     """
-    merged = elec_df.merge(gas_df, on="Postcode", how="outer")
+    # 1:1 — each DESNZ file has one row per postcode.
+    merged = elec_df.merge(gas_df, on="Postcode", how="outer", validate="1:1")
 
     # Derived: total mean consumption (gas + electricity)
     gas_mean = merged.get("gas_mean_kwh")
@@ -263,11 +186,11 @@ def main() -> None:
 
     # 1. Download electricity
     print("\n[1/4] Electricity consumption data...")
-    elec_path = download_and_cache(ELEC_URL, ELEC_FILENAME)
+    elec_path = download_and_cache(ELEC_URL, CACHE_DIR / ELEC_FILENAME)
 
     # 2. Download gas
     print("\n[2/4] Gas consumption data...")
-    gas_path = download_and_cache(GAS_URL, GAS_FILENAME)
+    gas_path = download_and_cache(GAS_URL, CACHE_DIR / GAS_FILENAME)
 
     # 3. Parse and join
     print("\n[3/4] Parsing data...")

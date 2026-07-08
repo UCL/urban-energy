@@ -132,29 +132,52 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
     oa = gpd.read_file(_CENSUS, columns=_CENSUS_COLS, ignore_geometry=True)
     oa = pd.DataFrame(oa)
 
+    # Fail loudly, and by name, if a census topic table did not make it into the
+    # joined GeoPackage: a silently-absent column otherwise surfaces as a distant
+    # NaN or KeyError deep in the analysis.
+    missing = [c for c in _CENSUS_COLS if c not in oa.columns]
+    if missing:
+        raise KeyError(
+            f"{len(missing)} expected census column(s) absent from {_CENSUS.name}; "
+            f"re-run data/download_census.py. First missing: {missing[:3]}"
+        )
+
     # OA land area (hectares), for population density.
     area = gpd.read_file(_CENSUS, columns=["OA21CD"]).to_crs(27700)
     area["oa_area_ha"] = area.geometry.area / 1e4
+    # Every merge asserts ``validate="m:1"``: the right-hand artefact must be
+    # unique on the join key, so a stray duplicate raises rather than silently
+    # fanning out OA rows (the census base is one row per OA; LSOA-keyed sources
+    # are one row per LSOA).
     oa = oa.merge(
         pd.DataFrame(area.drop(columns="geometry"))[["OA21CD", "oa_area_ha"]],
         on="OA21CD",
         how="left",
+        validate="m:1",
     )
 
     oa = oa.merge(
         pd.read_parquet(_STATS / "oa_energy_consumption.parquet", columns=_ENERGY_COLS),
         on="OA21CD",
         how="left",
+        validate="m:1",
     )
-    oa = oa.merge(pd.read_parquet(_STATS / "oa_epc.parquet"), on="OA21CD", how="left")
-    oa = oa.merge(access_table().reset_index(), on="OA21CD", how="left")
+    oa = oa.merge(
+        pd.read_parquet(_STATS / "oa_epc.parquet"),
+        on="OA21CD",
+        how="left",
+        validate="m:1",
+    )
+    oa = oa.merge(access_table().reset_index(), on="OA21CD", how="left", validate="m:1")
 
     # Fleet (BEV share) and deprivation (income), via the OA→LSOA key.
     veh = pd.read_parquet(_STATS / "lsoa_vehicles.parquet")
     veh["bev_share"] = _num(veh["ulev_battery_electric"]) / _num(
         veh["cars_total"]
     ).replace(0, np.nan)
-    oa = oa.merge(veh[["LSOA21CD", "bev_share"]], on="LSOA21CD", how="left")
+    oa = oa.merge(
+        veh[["LSOA21CD", "bev_share"]], on="LSOA21CD", how="left", validate="m:1"
+    )
     # Deprivation control: the overall Index of Multiple Deprivation (IoD25) plus
     # the income domain. Overall IMD is the broad deprivation signal; income is
     # retained as the sharper material-resources control. Both are confounds, so
@@ -164,13 +187,21 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
         _STATS / "lsoa_imd2025.parquet",
         columns=["LSOA21CD", "imd_overall_score", "imd_income_score"],
     )
-    oa = oa.merge(imd, on="LSOA21CD", how="left")
+    oa = oa.merge(imd, on="LSOA21CD", how="left", validate="m:1")
+
+    # Local-authority district (clustering unit for spatial-dependence-robust SEs).
+    lad = pd.read_parquet(_STATS / "oa_lookup.parquet", columns=["OA21CD", "LAD22CD"])
+    oa = oa.merge(
+        lad.drop_duplicates("OA21CD"), on="OA21CD", how="left", validate="m:1"
+    )
 
     # Climate confound (annual HDD per OA, HadUK-Grid) — optional: present only
     # once data/process_climate.py has run; the ladder includes it when found.
     hdd_path = _STATS / "oa_hdd.parquet"
     if hdd_path.exists():
-        oa = oa.merge(pd.read_parquet(hdd_path), on="OA21CD", how="left")
+        oa = oa.merge(
+            pd.read_parquet(hdd_path), on="OA21CD", how="left", validate="m:1"
+        )
 
     oa = oa.rename(columns={"oa_median_build_year": "median_build_year"})
 
@@ -251,17 +282,6 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 
-def _sigstars(p: float) -> str:
-    """Significance stars for a p-value."""
-    if p < 0.001:
-        return "***"
-    if p < 0.01:
-        return "**"
-    if p < 0.05:
-        return "*"
-    return "ns"
-
-
 def _demean_by_group(df: pd.DataFrame, cols: list[str], group_col: str) -> pd.DataFrame:
     """Within-group demean (Frisch-Waugh-Lovell): absorb a fixed effect."""
     return df[cols] - df.groupby(group_col)[cols].transform("mean")
@@ -296,11 +316,18 @@ def _run_ols(
     if fe_col:
         result._n_fe_groups = sub[fe_col].nunique()
         result._fe_col = fe_col
+    # When a cluster column is supplied, return the cluster-robust fit as the
+    # primary result (so downstream CIs reflect spatial dependence between
+    # neighbouring areas), keeping the HC1 fit reachable via ``._hc1`` for
+    # side-by-side reporting. Falls back to HC1 if the clustered fit fails.
     if cluster_col and cluster_col in sub.columns:
         try:
-            result._clustered_fit = sm.OLS(y, x).fit(
+            clustered = sm.OLS(y, x).fit(
                 cov_type="cluster", cov_kwds={"groups": sub[cluster_col]}
             )
+            clustered._hc1 = result
+            clustered._n_clusters = int(sub[cluster_col].nunique())
+            return clustered
         except Exception:
             pass
     return result

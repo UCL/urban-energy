@@ -48,6 +48,7 @@ from shapely.geometry import Point
 
 from urban_energy.paths import CACHE_DIR as _CACHE_ROOT
 from urban_energy.paths import DATA_DIR
+from urban_energy.text import normalise_postcode
 
 OUTPUT_DIR = DATA_DIR / "health"
 # Manual NHS ODS inputs (NHS retired the legacy bulk download in 2025) live with
@@ -248,9 +249,11 @@ def load_postcode_lookup() -> pd.DataFrame:
     gdf["easting"] = gdf.geometry.x
     gdf["northing"] = gdf.geometry.y
 
+    # NHS joins on a spaceless postcode key (keep_space=False), consistent on
+    # both sides of the geocode (this lookup and the ODS records below).
     lookup = pd.DataFrame(
         {
-            "postcode": gdf[pc_col].str.upper().str.replace(" ", "", regex=False),
+            "postcode": normalise_postcode(gdf[pc_col], keep_space=False),
             "easting": gdf["easting"],
             "northing": gdf["northing"],
         }
@@ -276,9 +279,13 @@ def geocode_by_postcode(df: pd.DataFrame, lookup: pd.DataFrame) -> gpd.GeoDataFr
         Facilities with point geometry in EPSG:27700.
     """
     df = df.copy()
-    df["_pc_key"] = df["postcode"].str.upper().str.replace(" ", "", regex=False)
+    df["_pc_key"] = normalise_postcode(df["postcode"], keep_space=False)
 
     lookup_renamed = lookup.rename(columns={"postcode": "_pc_key"})
+    # Left join: many facilities can share a postcode. No validate= here — the
+    # Code-Point lookup is read without dedup, so its per-key uniqueness is not
+    # guaranteed by construction; a duplicate centroid would be a data quirk, not
+    # a reason to abort geocoding. The match rate is reported below.
     merged = df.merge(lookup_renamed, on="_pc_key", how="left")
 
     n_matched = merged["easting"].notna().sum()
@@ -286,7 +293,9 @@ def geocode_by_postcode(df: pd.DataFrame, lookup: pd.DataFrame) -> gpd.GeoDataFr
     print(f"  Geocoded {n_matched:,}/{n_total:,} facilities by postcode")
 
     merged = merged[merged["easting"].notna()].copy()
-    geometry = [Point(e, n) for e, n in zip(merged["easting"], merged["northing"])]
+    geometry = [
+        Point(e, n) for e, n in zip(merged["easting"], merged["northing"], strict=True)
+    ]
 
     return gpd.GeoDataFrame(
         merged[

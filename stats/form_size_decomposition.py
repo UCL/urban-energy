@@ -55,6 +55,7 @@ import statsmodels.api as sm
 
 # Reuse the canonical loader and OLS plumbing (data construction is already
 # correct: genuine per-household energy, EPC floor-area merge, dominant_type).
+from inference import CLUSTER_COL, cluster_bootstrap, fmt_ci, log_contrast_ci
 from oa_data import _run_ols, load_and_aggregate
 
 # Type shares are in percent (0–100); semi-detached is the omitted reference.
@@ -303,21 +304,24 @@ def regression_ladder(lsoa: pd.DataFrame) -> None:
         ("M2 direct (+ dwelling size)", _FORM + confounds + occupancy + size),
     ]
     print(
-        f"\n  {'Model':<30s} {'R²':>7s} {'β_det':>8s} {'β_flat':>8s} "
-        f"{'Det:Flat':>9s} {'floor e':>8s}"
+        "\n  (Secondary specification: unweighted intercept OLS. The compositional "
+        "\n   household-weighted ladder in §5 is primary; the two are reported "
+        "together\n   so the weighting/parameterisation sensitivity is visible.)"
+    )
+    print(
+        f"\n  {'Model':<30s} {'R²':>7s} {'Det:Flat [95% CI, LAD-clustered]':>32s} "
+        f"{'floor e':>8s}"
     )
     print("  " + "-" * 74)
     ratios: list[float] = []
     hh_elasticity = float("nan")
     for label, xcols in steps:
-        m = _run_ols(sample, _DV, xcols, label)
+        m = _run_ols(sample, _DV, xcols, label, cluster_col=CLUSTER_COL)
         if m is None:
             print(f"  {label:<30s} SKIPPED")
             continue
-        bdet = float(m.params.get("pct_detached", np.nan))
-        bflat = float(m.params.get("pct_flat", np.nan))
-        ratio = _detached_flat_ratio(m)
-        ratios.append(ratio)
+        ci = log_contrast_ci(m, "pct_detached", "pct_flat", scale=100.0)
+        ratios.append(ci[0])
         if "log_hh_size" in m.params and np.isnan(hh_elasticity):
             hh_elasticity = float(m.params["log_hh_size"])
         floor_e = (
@@ -326,10 +330,7 @@ def regression_ladder(lsoa: pd.DataFrame) -> None:
             else np.nan
         )
         floor_str = f"{floor_e:>8.3f}" if not np.isnan(floor_e) else f"{'—':>8s}"
-        print(
-            f"  {label:<30s} {m.rsquared:>7.3f} {bdet:>8.4f} {bflat:>8.4f} "
-            f"{ratio:>8.2f}× {floor_str}"
-        )
+        print(f"  {label:<30s} {m.rsquared:>7.3f} {fmt_ci(ci):>32s} {floor_str}")
 
     if not np.isnan(hh_elasticity):
         print(
@@ -349,13 +350,30 @@ def regression_ladder(lsoa: pd.DataFrame) -> None:
         # model's native decomposition and overstated the mediated share.)
         lt, ld = np.log(ratios[0]), np.log(ratios[-1])
         mediated = (lt - ld) / lt if lt else float("nan")
+
+        def _mediated_stat(frame: pd.DataFrame) -> float:
+            a = _run_ols(frame, _DV, _FORM + confounds, "m0")
+            b = _run_ols(frame, _DV, _FORM + confounds + occupancy + size, "m2")
+            if a is None or b is None:
+                return float("nan")
+            r_a = _detached_flat_ratio(a)
+            r_b = _detached_flat_ratio(b)
+            la = np.log(r_a)
+            return (
+                float((la - np.log(r_b)) / la)
+                if la and r_a > 0 and r_b > 0
+                else float("nan")
+            )
+
+        med = cluster_bootstrap(sample, _mediated_stat)
         print(
             f"\n  Total form gap: {ratios[0]:.2f}×  →  family-size-held "
             f"{ratios[1]:.2f}×  →  size-held direct {ratios[-1]:.2f}×"
         )
         print(
-            f"  Family + dwelling size mediate {mediated:.0%} of the log gap; the "
-            f"residual direct effect is {ratios[-1]:.2f}× ({ratios[-1] - 1:+.0%})."
+            f"  Family + dwelling size account for {mediated:.0%} of the log gap "
+            f"[95% CI {med[1]:.0%}, {med[2]:.0%}]; the residual direct effect is "
+            f"{ratios[-1]:.2f}× ({ratios[-1] - 1:+.0%})."
         )
 
     if _hdd_cols(df):
@@ -412,9 +430,17 @@ def _compositional_frame(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _comp_ols(
-    df: pd.DataFrame, y_col: str, x_cols: list[str], weight_col: str
+    df: pd.DataFrame,
+    y_col: str,
+    x_cols: list[str],
+    weight_col: str,
+    cluster_col: str | None = None,
 ) -> sm.regression.linear_model.RegressionResultsWrapper | None:
-    """No-intercept WLS (household-weighted, HC1 robust) on complete cases.
+    """No-intercept WLS (household-weighted) on complete cases.
+
+    Fitted with HC1 robust SEs by default. When ``cluster_col`` is supplied the
+    primary result carries cluster-robust SEs (spatial dependence between
+    neighbouring areas), with the HC1 fit kept reachable via ``._hc1``.
 
     Parameters
     ----------
@@ -427,6 +453,9 @@ def _comp_ols(
         constant is added; the shares carry the level.
     weight_col : str
         Household-count column used as regression weights.
+    cluster_col : str or None, default None
+        If given (and present in ``df``), the column whose values group OAs into
+        clusters for cluster-robust SEs (typically ``LAD22CD``).
 
     Returns
     -------
@@ -434,10 +463,25 @@ def _comp_ols(
         Fitted WLS results, or ``None`` if too few complete cases.
     """
     cols = [y_col, *x_cols, weight_col]
-    sub = df[cols].apply(pd.to_numeric, errors="coerce").dropna()
+    sub = df[cols].apply(pd.to_numeric, errors="coerce")
+    if cluster_col and cluster_col in df.columns:
+        sub[cluster_col] = df[cluster_col]
+    sub = sub.dropna()
     if len(sub) < len(x_cols) + 10:
         return None
-    return sm.WLS(sub[y_col], sub[x_cols], weights=sub[weight_col]).fit(cov_type="HC1")
+    model = sm.WLS(sub[y_col], sub[x_cols], weights=sub[weight_col])
+    hc1 = model.fit(cov_type="HC1")
+    if cluster_col and cluster_col in sub.columns:
+        try:
+            clustered = model.fit(
+                cov_type="cluster", cov_kwds={"groups": sub[cluster_col]}
+            )
+            clustered._hc1 = hc1
+            clustered._n_clusters = int(sub[cluster_col].nunique())
+            return clustered
+        except Exception:
+            pass
+    return hc1
 
 
 def compositional_ladder(lsoa: pd.DataFrame) -> None:
@@ -493,24 +537,27 @@ def compositional_ladder(lsoa: pd.DataFrame) -> None:
         ("D1        (+ family size)", _SHARE_FRACS + confounds + occupancy),
         ("D2 direct (+ dwelling size)", _SHARE_FRACS + confounds + occupancy + size),
     ]
-    print(f"\n  {'Model':<32s} {'Det:Flat':>9s} {'b_flat':>9s} {'b_det':>9s}")
-    print("  " + "-" * 62)
+    print(
+        f"\n  {'Model':<32s} {'Det:Flat [95% CI, LAD-clustered]':>32s}"
+        f"   {'HC1 CI':>16s}"
+    )
+    print("  " + "-" * 82)
     ratios: list[float] = []
     hh_elasticity = float("nan")
     m0 = None
     for label, xcols in steps:
-        m = _comp_ols(sample, _DV, xcols, "total_hh")
+        m = _comp_ols(sample, _DV, xcols, "total_hh", cluster_col=CLUSTER_COL)
         if m is None:
             print(f"  {label:<32s} SKIPPED")
             continue
-        bflat, bdet = float(m.params["s_flat"]), float(m.params["s_detached"])
-        ratio = float(np.exp(bdet - bflat))
-        ratios.append(ratio)
+        ci = log_contrast_ci(m, "s_detached", "s_flat")
+        hc1 = log_contrast_ci(getattr(m, "_hc1", m), "s_detached", "s_flat")
+        ratios.append(ci[0])
         if "log_hh_size" in m.params and np.isnan(hh_elasticity):
             hh_elasticity = float(m.params["log_hh_size"])
         if m0 is None:
             m0 = m
-        print(f"  {label:<32s} {ratio:>8.2f}× {bflat:>9.3f} {bdet:>9.3f}")
+        print(f"  {label:<32s} {fmt_ci(ci):>32s}   [{hc1[1]:.2f}, {hc1[2]:.2f}]")
 
     if not np.isnan(hh_elasticity):
         print(
@@ -519,28 +566,58 @@ def compositional_ladder(lsoa: pd.DataFrame) -> None:
         )
 
     if len(ratios) >= 3 and ratios[0] > 1:
-        # Log-scale mediation (model-native; see regression_ladder).
+        # Log-scale mediation (model-native; see regression_ladder). The mediated
+        # share combines two model fits, so its CI comes from a LAD-cluster
+        # bootstrap rather than a single covariance.
         lt, ld = np.log(ratios[0]), np.log(ratios[-1])
         mediated = (lt - ld) / lt if lt else float("nan")
+
+        def _mediated_stat(frame: pd.DataFrame) -> float:
+            a = _comp_ols(frame, _DV, _SHARE_FRACS + confounds, "total_hh")
+            b = _comp_ols(
+                frame, _DV, _SHARE_FRACS + confounds + occupancy + size, "total_hh"
+            )
+            if a is None or b is None:
+                return float("nan")
+            r_a = np.exp(a.params["s_detached"] - a.params["s_flat"])
+            r_b = np.exp(b.params["s_detached"] - b.params["s_flat"])
+            la = np.log(r_a)
+            return float((la - np.log(r_b)) / la) if la else float("nan")
+
+        med = cluster_bootstrap(sample, _mediated_stat)
         print(
             f"\n  Total form gap: {ratios[0]:.2f}×  →  family-size-held "
             f"{ratios[1]:.2f}×  →  size-held direct {ratios[-1]:.2f}×"
         )
         print(
-            f"  Family + dwelling size mediate {mediated:.0%} of the log gap; the "
-            f"residual direct effect is {ratios[-1]:.2f}× ({ratios[-1] - 1:+.0%})."
+            f"  Family + dwelling size account for {mediated:.0%} of the log gap "
+            f"[95% CI {med[1]:.0%}, {med[2]:.0%}]; the residual direct effect is "
+            f"{ratios[-1]:.2f}× ({ratios[-1] - 1:+.0%})."
+        )
+        print(
+            "  (Descriptive covariate-adjustment decomposition on cross-sectional"
+            "\n   ecological data, not an identified causal mediation: floor area and"
+            "\n   family size are selected, so sequential ignorability is not claimed,"
+            "\n   and tenure is held as a confound though it may be partly"
+            "\n   post-treatment.)"
         )
 
-    print("\n  Same estimator on each energy axis (shares + confounds):")
+    print("\n  Same estimator on each energy axis (shares + confounds, LAD-clustered):")
     for label, ycol in (
         ("heat", _DV),
         ("travel", "_log_travel"),
         ("total", "_log_total"),
     ):
-        m = _comp_ols(sample, ycol, _SHARE_FRACS + confounds, "total_hh")
+        m = _comp_ols(
+            sample, ycol, _SHARE_FRACS + confounds, "total_hh", cluster_col=CLUSTER_COL
+        )
         if m is not None:
-            r = float(np.exp(float(m.params["s_detached"] - m.params["s_flat"])))
-            print(f"    {label:<7s} Det:Flat {r:.2f}×")
+            ci = log_contrast_ci(m, "s_detached", "s_flat")
+            print(f"    {label:<7s} Det:Flat {fmt_ci(ci)}")
+    print(
+        "    (fitted on this ladder's common-support sample; access_profile fits "
+        "travel on the\n     full frame, so its 3.07× interval differs marginally.)"
+    )
 
     if m0 is not None:
         base = sum(
@@ -567,6 +644,20 @@ def compositional_ladder(lsoa: pd.DataFrame) -> None:
         print(
             "  vs descriptive medians (same sample):          "
             f"Flat {med['Flat']:,.0f}   Detached {med['Detached']:,.0f}"
+        )
+        # Common-support honesty: the pure-type prediction is read at a 100%-of-type
+        # vertex that barely exists in the stock, so it departs from the observable
+        # dominant-type medians. Report the gap rather than hide it.
+        miss_flat = abs(pred["Flat"] / med["Flat"] - 1) if med["Flat"] else float("nan")
+        miss_det = (
+            abs(pred["Detached"] / med["Detached"] - 1)
+            if med["Detached"]
+            else float("nan")
+        )
+        print(
+            f"  pure-type vs median gap:                        "
+            f"Flat {miss_flat:.0%}   Detached {miss_det:.0%}  "
+            "(extrapolation beyond common support)"
         )
 
 
@@ -662,6 +753,100 @@ def selection_robustness(lsoa: pd.DataFrame) -> None:
     )
 
 
+def heat_dv_robustness(lsoa: pd.DataFrame) -> None:
+    """Heat dependent-variable audit: metered-count vs census-household denominator.
+
+    ``building_kwh_per_hh`` divides a meter-based energy total (per-meter mean ×
+    meter count) by a Census household count. Meters are not households (voids,
+    communal/bulk meters, off-gas dwellings with no gas meter), and the mismatch
+    is correlated with dwelling type — the comparison axis. This section reports
+    the meter-to-household ratio by type, then re-estimates the heat and total
+    Detached:Flat gaps (a) excluding OAs where the electricity-meter count departs
+    far from the household count, and (b) winsorising the top of the per-household
+    energy distribution (there is otherwise no upper bound on the DV).
+    """
+    print("\n" + "=" * 70)
+    print("7. HEAT-DV ROBUSTNESS — meter/household denominator + outlier sensitivity")
+    print("=" * 70)
+
+    df = lsoa.copy()
+    hh = pd.to_numeric(df["total_hh"], errors="coerce").replace(0, np.nan)
+    df["elec_meter_ratio"] = (
+        pd.to_numeric(df["oa_elec_num_meters"], errors="coerce") / hh
+    )
+    df["gas_meter_ratio"] = pd.to_numeric(df["oa_gas_num_meters"], errors="coerce") / hh
+
+    print(
+        f"\n  {'type':<10s}{'e mtr/hh':>13s}{'g mtr/hh':>12s}{'% e off[.5,1.5]':>22s}"
+    )
+    for t in ["Flat", "Terraced", "Semi", "Detached"]:
+        sub = df[df["dominant_type"] == t]
+        em = pd.to_numeric(sub["elec_meter_ratio"], errors="coerce")
+        gm = pd.to_numeric(sub["gas_meter_ratio"], errors="coerce")
+        off = (~em.between(0.5, 1.5)).mean() * 100
+        print(f"  {t:<10s}{em.median():>13.2f}{gm.median():>12.2f}{off:>21.0f}%")
+
+    confounds = (
+        ["median_build_year"] + _deprivation_cols(df) + _tenure_cols(df) + _hdd_cols(df)
+    )
+
+    def _heat_total(frame: pd.DataFrame, label: str) -> None:
+        cf = _compositional_frame(frame)
+        cf["_log_total"] = np.log(
+            (
+                pd.to_numeric(cf["building_kwh_per_hh"], errors="coerce")
+                + pd.to_numeric(cf["transport_kwh_per_hh_total_est"], errors="coerce")
+            ).clip(lower=1)
+        )
+        mh = _comp_ols(
+            cf, _DV, _SHARE_FRACS + confounds, "total_hh", cluster_col=CLUSTER_COL
+        )
+        mt = _comp_ols(
+            cf,
+            "_log_total",
+            _SHARE_FRACS + confounds,
+            "total_hh",
+            cluster_col=CLUSTER_COL,
+        )
+        h = (
+            fmt_ci(log_contrast_ci(mh, "s_detached", "s_flat"))
+            if mh is not None
+            else "n/a"
+        )
+        tr = (
+            fmt_ci(log_contrast_ci(mt, "s_detached", "s_flat"))
+            if mt is not None
+            else "n/a"
+        )
+        print(f"  {label:<34s} N={len(cf):>7,}  heat {h}   total {tr}")
+
+    print(
+        "\n  Det:Flat gaps under denominator/outlier sensitivities (LAD-clustered CIs):"
+    )
+    _heat_total(df, "all OAs (headline)")
+    keep = df["elec_meter_ratio"].between(0.5, 1.5)
+    _heat_total(df[keep].copy(), "electricity meters ≈ households")
+    # Gas-coverage restriction: the gas series omits communal/electrically-heated
+    # dwellings (commoner among flats), so restricting to well-gas-measured OAs
+    # (gas meters ≥ 0.9 of households) checks the metered heat gap is not an
+    # artefact of that under-coverage.
+    gas_ok = df["gas_meter_ratio"] >= 0.9
+    _heat_total(df[gas_ok].copy(), "gas-meter coverage ≥ 0.9")
+
+    # Winsorise the top of the per-household energy distribution (no upper bound
+    # exists in the loader filter; a handful of miscoded meters could enter).
+    cap = pd.to_numeric(df["building_kwh_per_hh"], errors="coerce").quantile(0.995)
+    n_over = int(
+        (pd.to_numeric(df["building_kwh_per_hh"], errors="coerce") > cap).sum()
+    )
+    dfw = df.copy()
+    dfw["building_kwh_per_hh"] = pd.to_numeric(
+        dfw["building_kwh_per_hh"], errors="coerce"
+    ).clip(upper=cap)
+    dfw["log_building_kwh_per_hh"] = np.log(dfw["building_kwh_per_hh"].clip(lower=1))
+    _heat_total(dfw, f"winsorised at p99.5 ({cap:,.0f} kWh; {n_over:,} capped)")
+
+
 def main() -> None:
     """Run the full form-vs-size decomposition on the national OA dataset."""
     lsoa = load_and_aggregate()
@@ -677,6 +862,7 @@ def main() -> None:
     regression_ladder(lsoa)
     compositional_ladder(lsoa)
     selection_robustness(lsoa)
+    heat_dv_robustness(lsoa)
 
 
 if __name__ == "__main__":

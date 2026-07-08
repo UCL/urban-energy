@@ -48,10 +48,18 @@ target-version = "py310"
 extend-exclude = ["**/archive/**"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "W"]
+# E/W pycodestyle, F pyflakes, I isort, B flake8-bugbear, UP pyupgrade.
+select = ["E", "F", "I", "W", "B", "UP"]
 
 [tool.ty.src]
 exclude = ["**/archive/**"]
+
+[tool.ty.environment]
+# The data/ and stats/ scripts are flat directories, not installed packages;
+# tests and conftest add them to sys.path at runtime. Tell ty about them so the
+# test imports (`from aggregate_energy_oa import ...`, `from inference import ...`)
+# resolve.
+extra-paths = ["data", "stats"]
 
 [dependency-groups]
 dev = ["pytest>=8.0.0", "ruff>=0.14.14", "setuptools>=80.10.2", "ty>=0.0.14"]

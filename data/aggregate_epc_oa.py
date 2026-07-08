@@ -31,7 +31,9 @@ import re
 
 import pandas as pd
 
+from urban_energy.checks import assert_match_rate
 from urban_energy.paths import DATA_DIR
+from urban_energy.text import normalise_postcode
 
 EPC_PATH = DATA_DIR / "epc" / "epc_domestic_spatial.parquet"
 LOOKUP_PATH = DATA_DIR / "statistics" / "postcode_oa_lookup.parquet"
@@ -45,7 +47,25 @@ MIN_EPC_PER_OA = 5
 
 
 def _band_to_year(band: object) -> float:
-    """Midpoint construction year from an EPC age band (NaN if unparseable)."""
+    """
+    Midpoint construction year from an EPC age band.
+
+    Closed bands ("1900-1929") return the arithmetic midpoint. Open bands return
+    their single boundary year: "2007 onwards" gives 2007, and "before 1900" gives
+    1900 (its upper bound, a conservative lower-bound proxy for the age of a
+    pre-1900 dwelling). This preserves the old-housing signal in the build-year
+    confound rather than discarding it. A band with no parseable year returns NaN.
+
+    Parameters
+    ----------
+    band : object
+        Raw EPC ``CONSTRUCTION_AGE_BAND`` value.
+
+    Returns
+    -------
+    float
+        Representative year, or NaN when no year is parseable.
+    """
     years = [int(y) for y in re.findall(r"\b(1[89]\d{2}|20\d{2})\b", str(band))]
     return sum(years) / len(years) if years else float("nan")
 
@@ -64,7 +84,7 @@ def main() -> None:
             "CONSTRUCTION_AGE_BAND",
         ],
     )
-    epc["POSTCODE"] = epc["POSTCODE"].astype(str).str.strip().str.upper()
+    epc["POSTCODE"] = normalise_postcode(epc["POSTCODE"], keep_space=True)
     floor = pd.to_numeric(epc["TOTAL_FLOOR_AREA"], errors="coerce")
     cur = pd.to_numeric(epc["ENERGY_CONSUMPTION_CURRENT"], errors="coerce")
     pot = pd.to_numeric(epc["ENERGY_CONSUMPTION_POTENTIAL"], errors="coerce")
@@ -76,9 +96,13 @@ def main() -> None:
     )
 
     lookup = pd.read_parquet(LOOKUP_PATH, columns=["Postcode", "OA21CD"])
-    lookup["Postcode"] = lookup["Postcode"].astype(str).str.strip().str.upper()
-    merged = epc.merge(lookup, left_on="POSTCODE", right_on="Postcode", how="inner")
-    print(f"  {len(merged):,} certificates matched to an OA")
+    lookup["Postcode"] = normalise_postcode(lookup["Postcode"], keep_space=True)
+    # m:1 — many certificates share a postcode, but the lookup holds one OA per
+    # postcode, so the lookup cannot fan out the certificate rows.
+    merged = epc.merge(
+        lookup, left_on="POSTCODE", right_on="Postcode", how="inner", validate="m:1"
+    )
+    assert_match_rate(len(epc), len(merged), name="EPC postcode ↔ OA lookup")
 
     # Floor area: median over valid-floor certs, OA kept only if ≥ MIN_EPC_PER_OA.
     floor_oa = (
@@ -112,15 +136,29 @@ def main() -> None:
         .rename(columns={"year": "oa_median_build_year"})
     )
 
+    # Outer merge — each column has its own OA coverage. Floor area is gated by
+    # MIN_EPC_PER_OA (≥5 certs), while intensity and build year keep any OA with
+    # at least one valid cert. So an OA can carry an intensity/build-year value
+    # but a NaN floor area (fewer than 5 floor certs). Downstream consumers must
+    # treat the columns as independently populated, not row-complete.
     oa = (
-        floor_oa.merge(pot_oa, on="OA21CD", how="outer")
-        .merge(cur_oa, on="OA21CD", how="outer")
-        .merge(year_oa, on="OA21CD", how="outer")
+        floor_oa.merge(pot_oa, on="OA21CD", how="outer", validate="1:1")
+        .merge(cur_oa, on="OA21CD", how="outer", validate="1:1")
+        .merge(year_oa, on="OA21CD", how="outer", validate="1:1")
     )
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     oa.to_parquet(OUTPUT_PATH, index=False)
 
     print(f"  wrote {len(oa):,} OAs → {OUTPUT_PATH}")
+    print("    per-column coverage (populated / total OAs):")
+    for col in (
+        "oa_median_floor_area_m2",
+        "epc_current_kwh_m2",
+        "epc_potential_kwh_m2",
+        "oa_median_build_year",
+    ):
+        n_pop = int(oa[col].notna().sum())
+        print(f"      {col:<24s} {n_pop:,} / {len(oa):,} ({n_pop / len(oa):.1%})")
     print(f"    floor median     {oa['oa_median_floor_area_m2'].median():.0f} m²")
     print(f"    current median   {oa['epc_current_kwh_m2'].median():.0f} kWh/m²/yr")
     print(f"    potential median {oa['epc_potential_kwh_m2'].median():.0f} kWh/m²/yr")

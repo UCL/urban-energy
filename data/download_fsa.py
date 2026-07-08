@@ -508,7 +508,10 @@ def create_geodataframe(df: pd.DataFrame) -> gpd.GeoDataFrame:
         GeoDataFrame in EPSG:27700 (British National Grid).
     """
     # Create point geometries from WGS84 coordinates
-    geometry = [Point(lon, lat) for lon, lat in zip(df["longitude"], df["latitude"])]
+    geometry = [
+        Point(lon, lat)
+        for lon, lat in zip(df["longitude"], df["latitude"], strict=True)
+    ]
 
     gdf = gpd.GeoDataFrame(df, geometry=geometry, crs="EPSG:4326")
 

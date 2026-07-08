@@ -204,7 +204,7 @@ def parse_gias(content: bytes) -> gpd.GeoDataFrame:
     df = df[[c for c in output_cols if c in df.columns]].rename(columns=available)
 
     # Build geometry
-    geometry = [Point(e, n) for e, n in zip(df["easting"], df["northing"])]
+    geometry = [Point(e, n) for e, n in zip(df["easting"], df["northing"], strict=True)]
     gdf = gpd.GeoDataFrame(df, geometry=geometry, crs="EPSG:27700")
 
     return gdf

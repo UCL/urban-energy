@@ -1,0 +1,93 @@
+{
+  "_comment": [
+    "Data-source manifest for reproducibility. One entry per downloadable source:",
+    "url = the download URL, filename = the cache basename download_and_cache writes,",
+    "sha256 = expected digest of the raw file. The sha256 slots are null because the",
+    "hashes cannot be computed without downloading the (large, government) files, and",
+    "several publishers re-issue the same logical file at rotating media URLs each year.",
+    "Fill a sha256 in after a verified download and src/urban_energy/fetch.download_and_cache",
+    "will verify every subsequent cached copy against it. Templated / multi-file sources",
+    "(census topic-summary zips, per-LA FSA XML) have no single filename and are recorded",
+    "with a url_template and a null filename."
+  ],
+  "sources": {
+    "desnz_electricity_postcode": {
+      "url": "https://assets.publishing.service.gov.uk/media/694282a1fdbd8404f9e1f1da/Postcode_level_all_meters_electricity_2024.csv",
+      "filename": "postcode_all_meters_electricity_2024.csv",
+      "sha256": null,
+      "note": "DESNZ postcode-level domestic electricity, 2024 (media id rotates yearly)."
+    },
+    "desnz_gas_postcode": {
+      "url": "https://assets.publishing.service.gov.uk/media/6942a4e2501cdd438f4cf502/Postcode_level_gas_2024.csv",
+      "filename": "postcode_gas_2024.csv",
+      "sha256": null,
+      "note": "DESNZ postcode-level domestic gas (weather-corrected), 2024."
+    },
+    "imd_2025_file7": {
+      "url": "https://assets.publishing.service.gov.uk/media/691ded56d140bbbaa59a2a7d/File_7_IoD2025_All_Ranks_Scores_Deciles_Population_Denominators.csv",
+      "filename": "IoD2025_File7_All_Ranks_Scores_Deciles.csv",
+      "sha256": null,
+      "note": "MHCLG English Indices of Deprivation 2025, File 7 (LSOA21)."
+    },
+    "dvla_veh0125": {
+      "url": "https://assets.publishing.service.gov.uk/media/696648a3e8b93f59c3aecd93/df_VEH0125.csv",
+      "filename": "df_VEH0125.csv",
+      "sha256": null,
+      "note": "DfT/DVLA all vehicles by body type/keepership/status, LSOA."
+    },
+    "dvla_veh0135": {
+      "url": "https://assets.publishing.service.gov.uk/media/696648958d599f4c09e1fffe/df_VEH0135.csv",
+      "filename": "df_VEH0135.csv",
+      "sha256": null,
+      "note": "DfT/DVLA ultra-low-emission vehicles by fuel type, LSOA."
+    },
+    "nts9904_mileage": {
+      "url": "https://assets.publishing.service.gov.uk/media/68a42b19f49bec79d23d2986/nts9904.ods",
+      "filename": "nts9904.ods",
+      "sha256": null,
+      "note": "DfT National Travel Survey NTS9904 car miles/person by 2021 RUC."
+    },
+    "ons_ruc21_oa": {
+      "url": "https://open-geography-portalx-ons.hub.arcgis.com/api/download/v1/items/ed33e08c81244b77a15e00545be084e1/csv?layers=0",
+      "filename": "oa21_ruc21_ew_lu.csv",
+      "sha256": null,
+      "note": "ONS 2021 Rural-Urban Classification of Output Areas (EW)."
+    },
+    "census_oa_lookup": {
+      "url": "https://open-geography-portalx-ons.hub.arcgis.com/api/download/v1/items/b9ca90c10aaa4b8d9791e9859a38ca67/csv?layers=0",
+      "filename": "oa_lookup.csv",
+      "sha256": null,
+      "note": "ONS OA21 to LSOA/MSOA/LAD lookup."
+    },
+    "census_topic_summaries": {
+      "url_template": "https://www.nomisweb.co.uk/output/census/2021/census2021-ts{ts:03d}.zip",
+      "filename": null,
+      "sha256": null,
+      "note": "Census 2021 topic-summary zips (TS001, TS006, TS011, TS017, TS044, TS045, TS054, TS058, TS061, TS062). Cached as ts{ts}_oa.parquet after extraction, not the raw zip."
+    },
+    "census_workplace_wp101ew": {
+      "url": "https://www.nomisweb.co.uk/api/v01/dataset/NM_1300_1.data.csv?geography=TYPE299&measures=20100&select=geography_code,obs_value",
+      "filename": "wp101ew_oa.csv",
+      "sha256": null,
+      "note": "NOMIS WP101EW workplace population per OA (paged, 25k rows/page)."
+    },
+    "gias_establishments": {
+      "url_template": "https://ea-edubase-api-prod.azurewebsites.net/edubase/downloads/public/edubasealldata{YYYYMMDD}.csv",
+      "filename": null,
+      "sha256": null,
+      "note": "DfE Get Information About Schools daily bulk CSV (date-stamped URL)."
+    },
+    "fsa_establishments": {
+      "url_template": "https://ratings.food.gov.uk/api/open-data-files/FHRS{code}en-GB.xml",
+      "filename": null,
+      "sha256": null,
+      "note": "FSA Food Hygiene Ratings, one XML per England local authority (~350 files)."
+    },
+    "nhs_ods": {
+      "url_template": "https://files.digital.nhs.uk/assets/ods/current/{name}.zip",
+      "filename": null,
+      "sha256": null,
+      "note": "NHS ODS ets/epraccur/edispensary. Legacy bulk zips retired Oct 2025; export from the ODS Data Search & Export portal. Cached as {name}.csv after zip extraction."
+    }
+  }
+}

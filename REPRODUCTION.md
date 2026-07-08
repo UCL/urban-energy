@@ -56,8 +56,8 @@ Stages skip when their declared outputs already exist (`--force` to rebuild).
 
 ```bash
 uv run python stats/oa_network_access.py        # build network-access cache (cityseer, ~12 min)
-uv run python stats/lock_in.py                  # energy 2.0× → optimised 1.5× per household (1.5× → 1.15× per person)
-uv run python stats/access_profile.py           # network 6.3× access per kWh + on-foot gap ~24×
+uv run python stats/lock_in.py                  # energy per dwelling 2.12× → optimised 1.51× (equal family size 1.71× → 1.18×)
+uv run python stats/access_profile.py           # network 3.6× access per kWh + on-foot gap ~24×
 uv run python stats/form_size_decomposition.py  # heat vs dwelling/household size
 ```
 

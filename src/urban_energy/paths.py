@@ -13,7 +13,7 @@ load_dotenv(PROJECT_DIR / ".env")
 
 _base = os.environ.get("URBAN_ENERGY_DATA_DIR")
 if _base is None:
-    raise EnvironmentError(
+    raise OSError(
         "URBAN_ENERGY_DATA_DIR is not set. "
         "Create a .env file in the project root with: "
         "URBAN_ENERGY_DATA_DIR=/path/to/temp"

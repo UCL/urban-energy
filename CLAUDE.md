@@ -35,7 +35,7 @@ urban-energy/
 │   ├── lock_in.py             # Residual energy gap after best fabric + full EV
 │   ├── form_size_decomposition.py # Heat vs dwelling/household-size decomposition
 │   ├── argument_figures.py    # The two paper/summary.md figures
-│   ├── figures/{oa,nepi}/     # Legacy three-surface PNGs (referenced only by the deferred PAPER)
+│   ├── figures/{oa,nepi}/     # Legacy three-surface PNGs (not referenced by the current two-axis PAPER)
 │   └── archive/               # Archived LSOA analysis scripts
 ├── tests/                     # pytest framework configured, tests pending
 ├── temp/                      # Default $URBAN_ENERGY_DATA_DIR (gitignored)
@@ -174,7 +174,9 @@ are run on demand rather than wired as pipeline stages.
 > **⏸ Pending.** The earlier three-surface / A–G scorecard, the empirical access-penalty model,
 > and the Atlas (XGBoost planning models + static site) were removed from the tree in the
 > two-axis migration (git history holds them). The Atlas scoring + models are **pending
-> reevaluation** for the two-axis frame; the paper is deferred. See
+> reevaluation** for the two-axis frame; the paper ([PAPER.md](PAPER.md)) is now drafted on that
+> frame, with the old three-surface draft archived at
+> [`paper/archive/PAPER_three_surface_deferred.md`](paper/archive/PAPER_three_surface_deferred.md). See
 > [`paper/summary.md`](paper/summary.md) and [ROADMAP.md](ROADMAP.md).
 
 ---

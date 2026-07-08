@@ -27,11 +27,11 @@ import re
 from io import BytesIO
 
 import pandas as pd
-import requests
-from tqdm import tqdm
 
+from urban_energy.fetch import download_and_cache
 from urban_energy.paths import CACHE_DIR as _CACHE_ROOT
 from urban_energy.paths import DATA_DIR
+from urban_energy.text import england_code_mask
 
 OUTPUT_DIR = DATA_DIR / "statistics"
 CACHE_DIR = _CACHE_ROOT / "imd"
@@ -43,69 +43,6 @@ IMD_URL = (
     "File_7_IoD2025_All_Ranks_Scores_Deciles_Population_Denominators.csv"
 )
 IMD_FILENAME = "IoD2025_File7_All_Ranks_Scores_Deciles.csv"
-
-
-def download_file(url: str, desc: str, timeout: int = 300) -> bytes:
-    """
-    Download a file with progress bar.
-
-    Parameters
-    ----------
-    url : str
-        URL to download.
-    desc : str
-        Description for progress bar.
-    timeout : int
-        Request timeout in seconds.
-
-    Returns
-    -------
-    bytes
-        Downloaded file content.
-    """
-    headers = {"User-Agent": "urban-energy-research/1.0"}
-    response = requests.get(url, stream=True, timeout=timeout, headers=headers)
-    response.raise_for_status()
-
-    total_size = int(response.headers.get("content-length", 0))
-    content = BytesIO()
-
-    with tqdm(total=total_size, unit="B", unit_scale=True, desc=desc) as pbar:
-        for chunk in response.iter_content(chunk_size=8192):
-            content.write(chunk)
-            pbar.update(len(chunk))
-
-    return content.getvalue()
-
-
-def download_and_cache(url: str, filename: str) -> bytes:
-    """
-    Download a file with caching to avoid re-downloading.
-
-    Parameters
-    ----------
-    url : str
-        URL to download.
-    filename : str
-        Cache filename.
-
-    Returns
-    -------
-    bytes
-        File content (from cache or fresh download).
-    """
-    cache_path = CACHE_DIR / filename
-
-    if cache_path.exists():
-        print(f"  Loading cached {filename}")
-        return cache_path.read_bytes()
-
-    print(f"  Downloading {filename}...")
-    content = download_file(url, filename)
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    cache_path.write_bytes(content)
-    print(f"  Cached to {cache_path}")
-    return content
 
 
 def _standardise_column_name(col: str) -> str:
@@ -225,7 +162,7 @@ def parse_imd_data(content: bytes) -> pd.DataFrame:
 
     # Filter to England only (should already be England-only but be safe)
     df["LSOA21CD"] = df["LSOA21CD"].astype(str).str.strip()
-    england_mask = df["LSOA21CD"].str.startswith("E")
+    england_mask = england_code_mask(df["LSOA21CD"])
     n_before = len(df)
     df = df[england_mask].copy()
     if len(df) < n_before:
@@ -253,7 +190,8 @@ def main() -> None:
 
     # 1. Download
     print("\n[1/3] Downloading IoD 2025 File 7...")
-    content = download_and_cache(IMD_URL, IMD_FILENAME)
+    imd_path = download_and_cache(IMD_URL, CACHE_DIR / IMD_FILENAME, timeout=300)
+    content = imd_path.read_bytes()
 
     # 2. Parse
     print("\n[2/3] Parsing data...")

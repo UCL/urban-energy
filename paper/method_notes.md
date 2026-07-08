@@ -185,9 +185,8 @@ part of the raw form gap; it is now netted out of the direct term.
 
 ## Open items still to resolve before the paper
 
-1. **`PAPER.md` is the DEFERRED old-method draft** — three-surface / coverage /
-   XGBoost analysis with dominant-type numbers (1.46×, 2.00×, A–G scorecard). It is
-   *not* a stale copy of the current two-axis numbers and was deliberately NOT
-   renumbered (its surrounding prose is about the old method). The canonical current
-   statement is `summary.md`. If/when the paper is revived, rebuild it on the
-   two-axis basis rather than patching numbers.
+1. **`PAPER.md` has been rebuilt on the two-axis basis** and now matches the
+   canonical `summary.md` numbers. The old three-surface / coverage / XGBoost draft
+   (dominant-type numbers 1.46×, 2.00×, A–G scorecard) is archived at
+   `paper/archive/PAPER_three_surface_deferred.md`. Remaining: fold the decisions and
+   citations from this ledger into the manuscript, and finalise `references.bib`.

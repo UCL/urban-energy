@@ -28,6 +28,7 @@ import pandas as pd
 import requests
 
 from urban_energy.paths import CACHE_DIR, DATA_DIR
+from urban_energy.text import england_code_mask
 
 # WP101EW workplace population, 2011 OA (TYPE299), count measure (20100).
 NOMIS_URL = (
@@ -69,7 +70,7 @@ def _fetch_jobs() -> pd.DataFrame:
         df.to_csv(_CACHE, index=False)
     df.columns = [c.lower() for c in df.columns]
     df = df.rename(columns={"geography_code": "OA21CD", "obs_value": "jobs"})
-    df = df[df["OA21CD"].astype(str).str.startswith("E")]  # England only
+    df = df[england_code_mask(df["OA21CD"])]  # England only
     df["jobs"] = pd.to_numeric(df["jobs"], errors="coerce").fillna(0).astype(int)
     return df[["OA21CD", "jobs"]]
 
@@ -82,7 +83,10 @@ def main() -> None:
 
     oa = gpd.read_file(CENSUS_OA, columns=["OA21CD"]).to_crs(27700)
     oa["geometry"] = oa.geometry.representative_point()
-    merged = oa.merge(jobs, on="OA21CD", how="inner")
+    # m:1 — the NOMIS TYPE299 query returns one observation per OA geography, so a
+    # duplicate would fan out the OA geometry; validate raises loudly if that
+    # assumption ever breaks.
+    merged = oa.merge(jobs, on="OA21CD", how="inner", validate="m:1")
     print(
         f"  matched {len(merged):,} / {len(jobs):,} OAs to geometry "
         f"({len(merged) / len(jobs):.1%})"
