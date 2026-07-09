@@ -50,10 +50,10 @@ The rebuild targets only what the two-axis analysis consumes:
 - **Network access** (`stats/oa_network_access.py`): cityseer over OS Open Roads, national network
   built **once** and queried per catchment band, each OA at its own NTS car-trip catchment,
   the built-once counts matching a literal per-OA computation to ~2% (~12 min); the rate is
-  **3.6× access per kWh** (access advantage × energy saving, `access_profile.py`).
+  **3.9× access per kWh** (access advantage × energy saving, `access_profile.py`).
 - **Two-axis analysis** ([paper/summary.md](paper/summary.md)): NTS-anchored
   car-travel energy, lock-in (per dwelling 2.12× → 1.51×; at equal family size 1.71× → 1.18×), network
-  access rate (3.6× access per kWh) + on-foot gap (~24×), heat-vs-size decomposition, all on the shared
+  access rate (3.9× access per kWh) + on-foot gap (~27×), heat-vs-size decomposition, all on the shared
   `stats/oa_data.py` core.
 - **Decarbonisation scenarios** (`stats/scenarios.py` + `scenario_ladder.png`): fabric, heat pumps
   and EVs as **separate** levers over the energy axis, at CCC Seventh Carbon Budget Balanced Pathway
@@ -88,7 +88,7 @@ These are the contestable scientific choices; none gate acquisition.
   stays as the fabric+EV bound (1.51×).
 - **Rate circularity.** Travel energy is partly the cost of low access, so the rate
   contains the inverse of its own numerator; consider rating access against heat + an
-  idealised/electrified travel cost (see summary.md §7). A circularity-robust rate (2.17×) is already
+  idealised/electrified travel cost (see summary.md §7). A circularity-robust rate (2.33×) is already
   reported alongside the headline in `access_profile.py`.
 - **Under-recording robustness.** Addressed. `form_size_decomposition.py` §7 reports the gas-meter
   coverage and electricity-meter denominator checks (heat gap 1.61× at coverage ≥0.9, 1.55× at

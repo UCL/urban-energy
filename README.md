@@ -75,11 +75,11 @@ estimate per dwelling, so it is not the column quotient. Energy is modelled per 
 family size and floor area held as free controls — not divided per person, which would impose a
 household-size elasticity of 1 when heat's is about 0.5 ([paper/summary.md](paper/summary.md)).
 
-**Access** — measured over the road network (cityseer). On foot a flat reaches about **24× the
+**Access** — measured over the road network (cityseer). On foot a flat reaches about **27× the
 amenities, 52× the jobs and 12× the people** of a detached neighbourhood; even at a 25 km drive the
-flat is still **10–14× ahead**. At each area's own car catchment the raw counts nearly converge: a
+flat is still **11–14× ahead**. At each area's own car catchment the raw counts nearly converge: a
 detached area gets there only by driving much further, so per kilowatt-hour a flat returns about
-**3.6× the access** a detached home does.
+**3.9× the access** a detached home does.
 
 **Lock-in** — no decarbonisation lever closes much of the energy gap, and none moves access at all.
 Taken separately, insulation closes about a fifth of the gap, heat pumps leave it marginally wider (a
@@ -143,7 +143,7 @@ uv run python stats/oa_network_access.py        # build network-access cache (ci
 uv run python stats/lock_in.py                  # fabric+EV bound 2.12× → 1.51× (per dwelling)
 uv run python stats/scenarios.py                # scenario ladder: fabric/heat-pump/EV separate levers, CCC pathway
 uv run python stats/maup_scale.py               # MAUP: gap re-fit at OA/LSOA/MSOA (2.12/1.88/1.72×)
-uv run python stats/access_profile.py           # access per kWh 3.6×, on-foot gap ~24×
+uv run python stats/access_profile.py           # access per kWh 3.9×, on-foot gap ~27×
 uv run python stats/form_size_decomposition.py  # heat 1.60× → 1.17× size-held (family size a free control, γ≈0.5)
 ```
 
@@ -160,7 +160,7 @@ Full status, open work, and scope decisions (KEEP / DEFER / CUT) live in
 
 **Done:** the national OA dataset (~178k OAs); the two-axis frame ([paper/summary.md](paper/summary.md));
 NTS-anchored car-travel energy, the lock-in quantification, the **network access** measure (cityseer
-over OS Open Roads, full per-OA curve; on-foot gap ~24×, drivable rate 3.6× access per kWh), and the
+over OS Open Roads, full per-OA curve; on-foot gap ~27×, drivable rate 3.9× access per kWh), and the
 heat-vs-size decomposition (`stats/`), all on a compositional flat-vs-detached estimator; storage centralised behind
 `URBAN_ENERGY_DATA_DIR`; and an executable rebuild
 orchestrator (`urban_energy.pipeline`). The old three-surface code and A–G Atlas were removed

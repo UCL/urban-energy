@@ -33,6 +33,15 @@ _BUS = {"BCT", "BCS", "BCE", "BCQ", "BST"}
 _RAIL = {"RSE", "RLY", "PLT", "MET"}
 _FOOD = {"Restaurant/Cafe/Canteen", "Takeaway/sandwich shop", "Pub/bar/nightclub"}
 _GROCERY = {"Retailers - supermarkets/hypermarkets", "Retailers - other"}
+# OS Open Greenspace functions kept as everyday accessible greenspace. Religious
+# grounds, cemeteries, golf courses, bowling greens, tennis courts and other sports
+# facilities are excluded (not open everyday amenity space).
+_GREEN = {
+    "Public Park Or Garden",
+    "Playing Field",
+    "Play Space",
+    "Allotments Or Community Growing Spaces",
+}
 
 #: service -> (gpkg, filter column or None, allowed values or None, layer or None)
 _SERVICES: dict[str, tuple] = {
@@ -69,8 +78,8 @@ _SERVICES: dict[str, tuple] = {
     ),
     "greenspace": (
         DATA_DIR / "opgrsp_gpkg_gb" / "Data" / "opgrsp_gb.gpkg",
-        None,
-        None,
+        "function",
+        _GREEN,
         "greenspace_site",
     ),
     "bus": (DATA_DIR / "transport" / "naptan_england.gpkg", "stop_type", _BUS, None),
@@ -133,7 +142,10 @@ def access_table(rebuild: bool = False) -> pd.DataFrame:
 
 #: Everyday destinations counted into the access measure (the network catchment in
 #: ``oa_network_access`` and the walkable-richness comparison in ``access_profile``).
-DEST = ["gp", "pharmacy", "hospital", "school", "food", "grocery", "greenspace"]
+# Hospital omitted: its NHS ETS source counts all trust sites (wards, clinics,
+# community units), not hospitals, so the count is not a credible amenity. Health is
+# represented by GP surgeries and pharmacies. See paper/method_notes for the audit.
+DEST = ["gp", "pharmacy", "school", "food", "grocery", "greenspace"]
 
 
 def oa_centroids(oa_codes: pd.Series) -> np.ndarray:

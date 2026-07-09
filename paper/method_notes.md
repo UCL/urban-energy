@@ -11,6 +11,40 @@ scripts named under each decision.
 
 ---
 
+## AUDIT 2026-07-09: amenity layer filtering (the access basket)
+
+The seven on-foot amenity layers were audited for over-inclusion. Four needed
+attention; the network cache was rebuilt on the cleaned set (`stats/oa_access.py`
+`DEST` and `_SERVICES`).
+
+- **Hospital, dropped.** The NHS source is the ETS file (Trusts and Sites), which
+  lists every trust *site* (wards, community clinics, CAMHS units, vaccination
+  centres), 34,670 records, not hospitals. It is not a credible walkable amenity.
+  Health is represented by GP surgeries (12,664) and community pharmacies (11,268),
+  both correctly typed. Removing hospital alone moved the on-foot amenity gap only
+  from 9.5× to 9.2× (dominant-type median), so it does not drive the result. On the
+  fully cleaned six-service basket the on-foot gap is 27.2× compositional (9.7×
+  dominant-median), up from 23.9× on the old basket: cleaning the junk sharpened the
+  gap rather than propping it up.
+- **Greenspace, filtered.** OS Open Greenspace `greenspace_site` (165,978 GB sites)
+  was unfiltered, counting religious grounds (22,460), cemeteries (7,748), golf
+  courses, bowling greens and tennis courts. Kept: Public Park Or Garden, Playing
+  Field, Play Space, Allotments Or Community Growing Spaces (`_GREEN`).
+- **Grocery, kept and relabelled.** Supermarkets/hypermarkets (12,208) plus
+  "Retailers - other" (80,863). The latter is a mixed FSA catch-all (convenience
+  stores, newsagents, off-licences), but corner-shop food access is real everyday
+  access in dense areas, so it is kept and labelled "food retail" rather than
+  "supermarkets".
+- **Schools, kept as all open GIAS establishments.** Filtered to open (status 1/4)
+  in `prepare_gias.py`; the 50,631 open establishments include nurseries, colleges
+  and children's centres alongside schools, retained as education access.
+- **Food, already clean.** `_FOOD` counts restaurants and cafes, takeaways and pubs;
+  hotels and mobile caterers (present in the acquired FSA file) are excluded from
+  the access measure.
+
+The access numbers in `summary.md` and `PAPER.md` were regenerated from the rebuilt
+six-service cache.
+
 ## CORRECTION 2026-06-22 — the rate was 6.3×, is now 3.6×
 
 The headline access-per-kWh rate was wrong. The old `access_profile.py` modelled

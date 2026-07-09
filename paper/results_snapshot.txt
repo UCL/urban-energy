@@ -1,8 +1,8 @@
-# Results snapshot — regenerated 2026-07-09 (science-pass working tree)
+# Results snapshot — regenerated 2026-07-09 (cleaned-amenity cache)
 # Every number below is printed straight from the named script (no hand-editing).
-# Adds the MAUP scale check + decarbonisation scenarios; access_profile now
-# carries jobs/people on-foot CIs. Ratios carry LAD-clustered 95% CIs; composite
-# quantities carry cluster-bootstrap CIs. Regenerate: re-run each stats/ script.
+# Amenity basket cleaned: hospital dropped (NHS ETS = all trust sites), greenspace
+# filtered to parks/fields/play/allotments, grocery = supermarkets + convenience.
+# On-foot amenity gap now 27× (was 24×), rate 3.9× (was 3.6×).
 
 ############################################################
 # stats/form_size_decomposition.py
@@ -168,7 +168,7 @@ Assembling OA data …
     equal family size:   now 1.71× [1.62, 1.81] → opt 1.18× [1.11, 1.25]
 
   55% of the per-dwelling gap (log scale) survives best insulation + a full EV fleet [95% CI 51%, 58%].
-  Access deficit on foot 23.87× [17.36, 32.83]: UNCHANGED — no technology moves destinations closer.
+  Access deficit on foot 27.22× [19.46, 38.07]: UNCHANGED — no technology moves destinations closer.
 
 ############################################################
 # stats/access_profile.py
@@ -183,12 +183,11 @@ Assembling OA data …
   service        Flat     Det   %Det=0
   GP                5       0      60%
   Pharmacy          5       1      49%
-  Hospital         10       0      52%
   School           14       2      27%
   Food             93       6      17%
   Grocery          48       3      25%
-  Greenspace       25       7      11%
-  walkable basket (of 7 on foot, mean):  Flat 6.8   Terraced 6.6   Semi 6.2   Detached 4.6
+  Greenspace       15       4      17%
+  walkable basket (of 7 on foot, mean):  Flat 5.8   Terraced 5.7   Semi 5.4   Detached 4.1
   jobs within 1,600 m (median):  Flat 6,927  Terraced 3,790  Semi 2,100  Detached 598   (Flat:Det 11.6x)
 
   [1b] STRUCTURAL INTENSITY — by type (compactness → complexity)
@@ -199,22 +198,22 @@ Assembling OA data …
 
   [2] LIKE-FOR-LIKE — amenities within the SAME network distance, by type
   dist (m)        Flat  Terraced      Semi  Detached  Flat:Det
-  1600             209       119        67        22     9.5x
-  3200             699       415       264        96     7.3x
-  4800            1344       781       564       202     6.7x
-  6400            2159      1208       923       343     6.3x
-  8000            3142      1644      1307       527     6.0x
-  9600            4395      2090      1752       768     5.7x
-  11200           5352      2532      2184      1027     5.2x
-  12800           6438      3072      2625      1333     4.8x
-  14400           7769      3552      3229      1642     4.7x
-  16000           9463      4143      3825      1988     4.8x
-  17600          10898      4896      4416      2358     4.6x
-  19200          12965      5895      5080      2766     4.7x
-  20800          14872      6844      5909      3237     4.6x
-  22400          16791      7829      6934      3715     4.5x
-  24000          18806      8664      7952      4208     4.5x
-  25600          20812      9950      8796      4653     4.5x
+  1600             184       101        57        19     9.7x
+  3200             613       351       223        80     7.7x
+  4800            1168       661       478       169     6.9x
+  6400            1887      1030       779       286     6.6x
+  8000            2743      1405      1109       437     6.3x
+  9600            3831      1782      1490       633     6.1x
+  11200           4663      2144      1873       847     5.5x
+  12800           5578      2624      2239      1107     5.0x
+  14400           6782      3028      2740      1359     5.0x
+  16000           8208      3546      3236      1653     5.0x
+  17600           9479      4170      3741      1957     4.8x
+  19200          11318      5033      4300      2302     4.9x
+  20800          13080      5822      5031      2683     4.9x
+  22400          14580      6681      5903      3092     4.7x
+  24000          16339      7408      6740      3516     4.6x
+  25600          18021      8520      7460      3906     4.6x
 
   [2b] LIKE-FOR-LIKE JOBS — jobs reachable within the SAME network distance
   dist (m)          Flat    Terraced        Semi    Detached  Flat:Det
@@ -238,9 +237,9 @@ Assembling OA data …
   [3] DRIVABLE RATE — amenities per kWh, at each OA's own catchment
                       Flat  Terraced      Semi  Detached  Flat:Det
   trip dist (km)       7.5       9.9      13.1      18.3     0.4x
-  amenities         2531.4    2254.6    2765.2    2776.0     0.9x
+  amenities         2233.9    1934.9    2357.3    2312.6     1.0x
   travel kWh        3239.7    5087.9    6659.8    9271.7     0.3x
-  access / kWh         0.8       0.5       0.4       0.3     2.9x
+  access / kWh         0.7       0.4       0.4       0.2     3.0x
   jobs (catchment)   102,652    87,077   107,065   101,215     1.0x
   jobs / kWh            33        18        17        11     3.1x
 
@@ -248,22 +247,22 @@ Assembling OA data …
       Poisson log-link · hh-weighted (var_weights) · income-only · NOT density
       Flat:Det CIs: 95% LAD-clustered (delta method, share contrast).
   measure                             Flat           Det         Flat:Det [95% CI]
-  amenities, walk 1,600 m            401.8          16.8     23.87× [17.36, 32.83]
+  amenities, walk 1,600 m            372.1          13.7     27.22× [19.46, 38.07]
   jobs, walk 1,600 m              22,576.6         430.6     52.43× [30.08, 91.39]
   people, walk 1,600 m            25,683.2       2,062.3      12.45× [9.40, 16.51]
-  amenities, catchment             3,335.4       2,844.5        1.17× [0.99, 1.38]
+  amenities, catchment             2,988.3       2,372.2        1.26× [1.05, 1.51]
   jobs, catchment                163,183.5      97,701.6        1.67× [1.30, 2.15]
   people, catchment              333,381.8     285,835.9        1.17× [0.99, 1.38]
 
   on-foot amenity gap companions (vs the pure-type Poisson above):
-    dominant-type medians   Flat 209 / Det 22 = 9.5×
-    support-restricted (≥50% share) medians = 11.7×  (n≥50%-flat 20,100, n≥50%-det 32,626)
+    dominant-type medians   Flat 184 / Det 19 = 9.7×
+    support-restricted (≥50% share) medians = 12.2×  (n≥50%-flat 20,100, n≥50%-det 32,626)
 
   access-per-kWh RATE (headline) = access advantage × energy saving
-    = 1.17 × 3.07 = 3.60×  [95% CI 2.86, 4.35, cluster bootstrap]
-      access advantage 1.17× [0.99, 1.38] · energy saving (full conf) 3.07× [2.82, 3.34]
-  harmonised rate (both income-only, like-for-like conditioning) = 1.17 × 4.24 = 4.98×  [95% CI 3.87, 6.01]
-  circularity-robust rate (access ÷ [heat + electrified travel]) = 1.17 × 1.85 = 2.17×  [95% CI 1.84, 2.47]
+    = 1.26 × 3.07 = 3.87×  [95% CI 3.02, 4.72, cluster bootstrap]
+      access advantage 1.26× [1.05, 1.51] · energy saving (full conf) 3.07× [2.82, 3.34]
+  harmonised rate (both income-only, like-for-like conditioning) = 1.26 × 4.24 = 5.35×  [95% CI 4.08, 6.55]
+  circularity-robust rate (access ÷ [heat + electrified travel]) = 1.26 × 1.85 = 2.33×  [95% CI 1.95, 2.66]
   non-parametric companion: dominant-type median access/kWh ≈ 2.9× (section [3] above).
 
 ############################################################
@@ -382,7 +381,7 @@ Assembling OA data …
   Full rollout (100%): 69% of the status-quo per-dwelling energy gap survives
   (log scale); 31% closed.
 
-  Access deficit on foot 23.87× [17.36, 32.83]: UNCHANGED in every scenario — no
+  Access deficit on foot 27.22× [19.46, 38.07]: UNCHANGED in every scenario — no
   technology moves destinations closer.
 
   COP sensitivity — Balanced Pathway 2040 total Det:Flat (as-lived):
