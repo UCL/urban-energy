@@ -32,12 +32,14 @@ urban-energy/
 │   ├── oa_access.py           # Straight-line KD-tree access (counts within 1,600 m) — cached
 │   ├── travel_energy.py       # NTS-anchored car-travel energy (constrained disaggregation)
 │   ├── access_profile.py      # Per-service access counts + ×/kWh (incl. grocery, jobs)
-│   ├── lock_in.py             # Residual energy gap after best fabric + full EV
+│   ├── lock_in.py             # Residual energy gap after best fabric + full EV (fabric+EV bound, 1.51×)
+│   ├── scenarios.py           # Decarbonisation scenario ladder: fabric/heat-pump/EV as separate levers, CCC pathway
+│   ├── maup_scale.py          # MAUP scale check: the energy gap re-fit at OA/LSOA/MSOA
 │   ├── form_size_decomposition.py # Heat vs dwelling/household-size decomposition
-│   ├── argument_figures.py    # The two paper/summary.md figures
+│   ├── argument_figures.py    # The paper/summary.md figures (energy, access curve, rate, scenario ladder)
 │   ├── figures/{oa,nepi}/     # Legacy three-surface PNGs (not referenced by the current two-axis PAPER)
 │   └── archive/               # Archived LSOA analysis scripts
-├── tests/                     # pytest framework configured, tests pending
+├── tests/                     # pytest suite (26 tests: inference, aggregation, EPC bands, postcode)
 ├── temp/                      # Default $URBAN_ENERGY_DATA_DIR (gitignored)
 └── .claude/settings.local.json # Claude Code permissions
 ```
@@ -168,7 +170,9 @@ are run on demand rather than wired as pipeline stages.
 | `oa_access.py` | Straight-line KD-tree counts within 1,600 m — a fast cross-check, cached |
 | `travel_energy.py` | Total car-travel energy by constrained disaggregation of measured NTS9904 mileage (the `compute_travel_energy` the loader calls) |
 | `access_profile.py` | Access gaps: on-foot (network 1,600 m) **~24×**, 25 km drive **~10–14×**, and the rate **~3.6× access/kWh** |
-| `lock_in.py` | Energy gap surviving best-fabric + full EV (per dwelling 2.12× → 1.51×; at equal family size 1.71× → 1.18×) |
+| `lock_in.py` | Energy gap surviving best-fabric + full EV, the fabric+EV bound (per dwelling 2.12× → 1.51×; at equal family size 1.71× → 1.18×) |
+| `scenarios.py` | Decarbonisation scenario ladder — fabric / heat-pump / EV as **separate** levers, at CCC 7CB Balanced Pathway 2040 uptakes + full deployment. Fabric closes ~20%, heat pumps ~2% wider, EVs ~18%, full rollout leaves 69%; access unchanged in all |
+| `maup_scale.py` | MAUP scale check — the compositional gap re-fit at OA/LSOA/MSOA (total survives: 2.12/1.88/1.72×; support-respecting median 1.74/1.59/1.47×) |
 | `form_size_decomposition.py` | Heat vs dwelling/family-size: per-dwelling DV with family size + floor area as FREE controls (γ≈0.5, never per-person); 1.60× → 1.27× (family-size-held) → 1.17× (size-held direct) |
 
 > **⏸ Pending.** The earlier three-surface / A–G scorecard, the empirical access-penalty model,
@@ -207,9 +211,12 @@ Individual scripts also run standalone (e.g. `uv run python data/download_census
 
 ```bash
 uv run python stats/oa_network_access.py         # build network-access cache (cityseer, ~12 min)
-uv run python stats/lock_in.py                   # energy gap per dwelling 2.12× → 1.51× (equal family size 1.71× → 1.18×)
+uv run python stats/lock_in.py                   # fabric+EV bound: per dwelling 2.12× → 1.51× (equal family size 1.71× → 1.18×)
+uv run python stats/scenarios.py                 # scenario ladder: fabric/heat-pump/EV separate levers, CCC pathway
+uv run python stats/maup_scale.py                # MAUP: gap re-fit at OA/LSOA/MSOA (2.12/1.88/1.72×)
 uv run python stats/access_profile.py            # rate ~3.6× access/kWh + on-foot gap ~24×
 uv run python stats/form_size_decomposition.py   # heat 1.60× → 1.17× size-held (family size a free control, γ≈0.5)
+uv run python stats/argument_figures.py          # regenerate the four summary.md figures (needs the network cache)
 ```
 
 The analysis assembles the frame in-process from the acquired artefacts. The straight-line

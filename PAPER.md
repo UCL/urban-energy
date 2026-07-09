@@ -5,8 +5,8 @@
 > and [`paper/summary.md`](paper/summary.md); the literature synthesis is in
 > [`paper/literature_review.md`](paper/literature_review.md) (§2, §6); the methodological
 > decisions and caveats in [`paper/method_notes.md`](paper/method_notes.md). Reported ratios carry
-> local-authority-clustered 95% confidence intervals. The References section and a few entries in
-> [`paper/references.bib`](paper/references.bib) remain to be finalised. The earlier three-surface /
+> local-authority-clustered 95% confidence intervals. The References are held in
+> [`paper/references.bib`](paper/references.bib) and rendered at typesetting. The earlier three-surface /
 > A–G-scorecard draft is archived at
 > [`paper/archive/PAPER_three_surface_deferred.md`](paper/archive/PAPER_three_surface_deferred.md).
 
@@ -217,4 +217,4 @@ A detached neighbourhood spends about twice a flat's energy per dwelling and rea
 
 ## References
 
-The reference database is [`paper/references.bib`](paper/references.bib); every author-date citation above resolves against its keys, and the formatted list is rendered from it at typesetting. Three entries remain to be finalised (marked `TODO` in the file): the full citation for Ewing et al. (2018), and the author fields for the Sustainability systematic review (systematic2023) and the NEBULA dataset (nebula2025).
+The reference database is [`paper/references.bib`](paper/references.bib); every author-date citation above resolves against its keys, and the formatted list is rendered from it at typesetting.
