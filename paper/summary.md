@@ -126,27 +126,32 @@ For the wider picture: on foot a flat reaches roughly 24 times the amenities, 52
 
 ![Amenities reachable per kWh of car travel by dwelling type: a flat returns about 3.6× a detached home (access advantage 1.2× × energy saving 3.1×).](../stats/figures/argument/access_per_kwh.png)
 
-## Lock-in
+## Decarbonisation scenarios and lock-in
 
-To test whether decarbonisation closes the gap, the energy is recomputed with each home at best-practice insulation and a fully electric fleet.
+To test whether decarbonisation closes the gap, the energy is recomputed under a ladder of technology scenarios: each home's heat and car energy re-priced under insulation, heat pumps and electric vehicles, alone and in combination. Access is unchanged in every scenario, because no technology moves a destination closer.
 
-How the optimised scenario is computed:
+The three levers act differently, and reporting them separately is what shows why the gap holds:
 
-- For best-practice fabric, each area's metered gas (space and water heating) is scaled by the EPC fabric-improvement ratio, potential intensity over current intensity, both EPC-modelled so the performance gap cancels (the median improvement is about half). Metered electricity (appliances, lighting) is left unchanged, since insulation does not affect it. Anchoring to the metered bill keeps the scenario on the same scale as the headline figures, and a best-insulated detached home is still a larger home that loses more heat.
-- The ratio is each area's own, so it reflects local headroom rather than a blanket cut. The EPC's potential rating is its assessor's estimate of what the dwelling could reach after cost-effective measures, so an area whose homes are already efficient has a potential close to its current rating and barely changes, while a poorly rated area is cut much further. It is the median over the EPCs present in the area (about two-thirds of households hold one), and the headroom itself differs by type: flats are already efficient and gain least (a cut under a third), while terraced, semi and detached can roughly halve.
-- For full electrification, car energy is recomputed at the electric fleet's energy per mile with the miles unchanged: technology lowers the energy per mile, not the distance the form forces.
-- Access is unchanged by construction. No fabric or drivetrain change brings a school or shop closer, so the access axis is identical before and after.
+- **Insulation** scales each home's metered gas by its own EPC fabric-improvement ratio (potential over current intensity, both EPC-modelled so the performance gap cancels; median about half). Detached homes carry more headroom, so insulation closes the gap, from 2.12× to 1.83× fully deployed, about a fifth of it.
+- **Heat pumps** deliver the heat as electricity instead of gas, at the pump's efficiency (boiler efficiency over a seasonal coefficient of performance of about 2.8, so roughly a third of the delivered energy). This cuts the smaller-gap heat sharply and leaves the larger-gap car travel, so heat pumps do not close the form gap; fully deployed they leave it marginally wider, at 2.16×. They are essential on the carbon axis, since the electricity that drives them is increasingly clean, but they do not fix the neighbourhood gap.
+- **Electric vehicles** re-price car energy at the electric fleet's energy per mile, miles unchanged. This attacks travel, where the gap is largest, and closes the most of any single lever, to 1.85×, about a fifth.
 
-| total energy gap (per dwelling, compositional) | now | optimised |
+| total energy gap (per dwelling, as-lived, compositional) | Det:Flat | closed |
 | --- | --: | --: |
-| as-lived | 2.12× | 1.51× |
-| at equal family size | 1.71× | 1.18× |
+| status quo | 2.12× | — |
+| insulation only (100%) | 1.83× | 20% |
+| heat pumps only (100%) | 2.16× | −2% |
+| electric vehicles only (100%) | 1.85× | 18% |
+| CCC Balanced Pathway 2040 (50% heat pumps, 75% EVs) | 1.89× | 16% |
+| full rollout (100% of all three) | 1.68× | 31% |
 
-The energy gap closes only part way: as-lived, from 2.12 to 1.51 times; held at equal family size, from 1.71 to 1.18 times. About 55% of the gap survives. It splits across both halves of the form: a best-insulated detached home is still bigger, so it still loses more heat; and electrification lowers the energy per mile but not the miles, so a detached home still drives substantially further. Technology improves the efficiency of each unit but leaves the structural quantities, floor area and distance, unchanged.
+Anchored to the Climate Change Committee's Seventh Carbon Budget Balanced Pathway, half of homes on heat pumps and three-quarters of cars electric by 2040 leaves the gap at 1.89×, a sixth of it closed. Even full deployment of all three levers leaves 1.68×, two-thirds of the gap surviving. Insulation and electrification lower the energy per unit but not the floor area or the distance, so the structural quantities, and the gap they set, remain.
 
-The access gap does not move, because neither insulation nor electrification brings a school, a job or a shop closer to a house built far from them. The inefficiency of dispersed form is not removed by technology; it is fixed in the street layout, which changes only when places are rebuilt, over generations rather than product cycles. Access therefore has to be measured and planned for directly.
+The access gap does not move at all, because neither insulation, nor a heat pump, nor an electric car brings a school, a job or a shop closer to a house built far from them. On foot a flat still reaches about 24× the amenities of a detached area, before and after, in every scenario. The inefficiency of dispersed form is fixed in the street layout, which changes only when places are rebuilt, over generations rather than product cycles. Access therefore has to be measured and planned for directly.
 
-*Reproduce: `stats/lock_in.py`.*
+![Flat-to-detached total energy gap under each decarbonisation lever: insulation closes about a fifth, heat pumps leave it marginally wider, electric vehicles close about a fifth, and even full deployment of all three leaves two-thirds of the gap; the on-foot access gap of 23.9× is unchanged in every scenario.](../stats/figures/argument/scenario_ladder.png)
+
+*Reproduce: `stats/scenarios.py` (the scenario ladder); `stats/lock_in.py` (the fabric-plus-EV bound, 1.51×).*
 
 ## Self-selection
 

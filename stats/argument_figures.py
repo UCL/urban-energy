@@ -45,6 +45,7 @@ from form_size_decomposition import (  # noqa: E402
     _tenure_cols,
 )
 from oa_data import load_and_aggregate  # noqa: E402
+from scenarios import SCENARIOS, scenario_energy  # noqa: E402
 
 from urban_energy.paths import DATA_DIR, PROJECT_DIR  # noqa: E402
 
@@ -226,6 +227,90 @@ def access_curve(
     print(f"  wrote {out}  (≈{foot:.0f}× on foot → ≈{far:.0f}× at 25 km)")
 
 
+def scenario_ladder(cf: pd.DataFrame, confounds: list[str], out: Path) -> None:
+    """Flat→detached total-energy gap under each decarbonisation lever.
+
+    A horizontal ladder of the compositional Detached:Flat total-energy ratio for
+    the status quo, each lever in isolation (fabric, heat pumps, EVs), and the two
+    combined pathways. Reference lines mark parity (1.0) and the status-quo gap, so
+    the reader sees how far each lever moves the gap toward parity. The access gap
+    is annotated as a constant, because no scenario changes it.
+    """
+    cf = cf.copy()
+    hh = _num(cf["total_hh"])
+    gas = (_num(cf["oa_gas_mean_kwh"]) * _num(cf["oa_gas_num_meters"])).fillna(0) / hh
+    elec = (_num(cf["oa_elec_mean_kwh"]) * _num(cf["oa_elec_num_meters"])).fillna(
+        0
+    ) / hh
+    travel = _num(cf["transport_kwh_per_hh_total_est"])
+
+    labels: list[str] = []
+    ratios: list[float] = []
+    for label, heat_transform, u_heat, u_ev in SCENARIOS:
+        heat, trav = scenario_energy(
+            cf, gas, elec, travel, heat_transform, u_heat, u_ev
+        )
+        cf["_lt"] = np.log((heat + trav).clip(lower=1).to_numpy())
+        preds = _pure_preds(
+            _comp_ols(cf, "_lt", _SHARE_FRACS + confounds, "total_hh"), cf, confounds
+        )
+        labels.append(label)
+        ratios.append(preds["Detached"] / preds["Flat"])
+    status_quo = ratios[0]
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    y = np.arange(len(labels))[::-1]  # first scenario at the top
+    # A lever that lowers the gap toward parity is coloured green (it helps); one
+    # that raises it is coloured warm (it does not).
+    colours = [_ACCESS_C if r <= status_quo + 1e-9 else _HEAT_C for r in ratios]
+    colours[0] = "#8a8a8a"  # status quo: neutral reference
+    ax.barh(y, ratios, 0.62, color=colours)
+    ax.axvline(1.0, color="#444444", lw=1.2)
+    ax.axvline(status_quo, color="#8a8a8a", lw=1.0, ls="--")
+    for yi, r in enumerate(ratios):
+        closed = 1 - np.log(r) / np.log(status_quo) if status_quo > 1 and r > 1 else 0.0
+        if yi == 0:
+            note = ""
+        elif closed >= 0:
+            note = f"  ({closed:.0%} closed)"
+        else:
+            note = f"  ({-closed:.0%} wider)"
+        ax.text(r + 0.01, y[yi], f"{r:.2f}×{note}", va="center", fontsize=9)
+    ax.set_yticks(y, labels)
+    ax.set_xlim(1.0, max(ratios) + 0.35)
+    ax.set_xlabel("Detached : Flat total energy per dwelling")
+    ax.text(
+        1.005,
+        len(labels) - 0.4,
+        "parity",
+        rotation=90,
+        va="top",
+        fontsize=8,
+        color="#444444",
+    )
+    ax.set_title(
+        "Technology narrows the energy gap only part way",
+        fontsize=12,
+        fontweight="bold",
+    )
+    ax.text(
+        0.5,
+        -0.16,
+        "Access on foot: 23.9× flat vs detached, identical in every scenario "
+        "(no technology moves a destination closer).",
+        transform=ax.transAxes,
+        ha="center",
+        fontsize=9,
+        color=_ACCESS_C,
+        fontweight="bold",
+    )
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout()
+    fig.savefig(out, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  wrote {out}  (status quo {status_quo:.2f}× → full {ratios[-1]:.2f}×)")
+
+
 def main() -> None:
     """Build the argument figures (method-D basis) into stats/figures/argument/."""
     _OUT.mkdir(parents=True, exist_ok=True)
@@ -248,6 +333,7 @@ def main() -> None:
     energy_gradient(cf, confounds, _OUT / "energy_gradient.png")
     access_per_kwh(cf, income, confounds, _OUT / "access_per_kwh.png")
     access_curve(cf, income, dists, _OUT / "access_curve.png")
+    scenario_ladder(cf, confounds, _OUT / "scenario_ladder.png")
 
 
 if __name__ == "__main__":

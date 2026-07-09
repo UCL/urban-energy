@@ -1,9 +1,15 @@
 # NEPI — Step-by-Step Robustness Plan
 
-> **⏸ Predates the two-axis migration.** Derived from the pre-migration audit; many steps
-> targeted the old three-surface / A–G code that has since been **removed**, and several
-> construction fixes (per-household energy, NTS travel, EPC floor area) are already done. Kept
-> for the carry-over items; [`summary.md`](summary.md) is the current canonical statement.
+> **⏸ SUPERSEDED — predates the two-axis migration.** Derived from the pre-migration audit;
+> many steps targeted the old three-surface / A–G code that has since been **removed**, and the
+> construction fixes and confound controls (per-dwelling energy, NTS travel, EPC floor area,
+> HDD climate, Oster bounds, LAD-clustered CIs) are already done. Do not read the phase list
+> below as live. The finding-by-finding reconciliation is in
+> [`methodology_review.md`](methodology_review.md) ("Reconciliation against the current two-axis
+> frame"); the live open-work list is [ROADMAP.md](../ROADMAP.md) §"Open work" — as of
+> 2026-07-09 that is MAUP scale/zonation (Step 10, being addressed now), an optional spatial
+> error/lag cross-check (Steps 7/12), and formal out-of-sample validation (Step 11).
+> [`summary.md`](summary.md) is the canonical statement of the numbers.
 
 A sequenced, executable plan to improve the robustness of the NEPI argument,
 derived from [methodology_review.md](methodology_review.md). Ordered by

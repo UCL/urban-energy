@@ -1,10 +1,36 @@
 # NEPI — Methodological Rigour Review
 
-> **⏸ Predates the two-axis migration.** This audit was written against the old
-> three-surface / A–G analysis, much of which has since been **removed** (its file:line
-> citations point at deleted code). Kept for the methodological concerns that carry over to
-> the two-axis work (spatial autocorrelation, climate/tenure confounds, the per-household fix);
-> [`summary.md`](summary.md) is the current canonical statement.
+> **⏸ SUPERSEDED — predates the two-axis migration.** This audit was written against the
+> old three-surface / A–G analysis, much of which has since been **removed** (its file:line
+> citations point at deleted code). It is retained as a record and for the concerns that carry
+> over. Do not read it as a live task list; the reconciliation immediately below maps each
+> finding to its current state, and [`summary.md`](summary.md) + [ROADMAP.md](../ROADMAP.md) are
+> the canonical statements. The step-by-step plan derived from this audit,
+> [`robustness_plan.md`](robustness_plan.md), is superseded on the same basis.
+
+## Reconciliation against the current two-axis frame (2026-07-09)
+
+**Addressed in the two-axis analysis** (verified against
+[`results_snapshot.txt`](results_snapshot.txt)): A1 per-meter→per-dwelling unit (energy is now
+metered per dwelling, with household size and floor area as free controls, not denominators);
+B2 self-selection (explicit upper-bound framing + place-level estimand, §Self-selection);
+B5/D5 sensitivity-to-unobservables (Oster δ\* bound + NS-SeC control, δ\*≈1.1 total / 0.3 heat);
+D1 climate (HDD held); D2 floor area / tenure / occupancy (held or free control); the bootstrap
+"precision theatre" (every headline ratio now carries a LAD-clustered 95% CI, composites a
+cluster bootstrap); and the Part F positioning (metered-over-EPC, Norman, Huebner, Rode) is
+written into PAPER §2/§5.
+
+**N/A — the code these findings targeted was removed** with the three-surface / A–G migration,
+so they do not apply to the two-axis frame and are deferred to any future Atlas rebuild: A2, A3
+(the summed composite and its 85% reference — there is no summed composite now); B1 (the
+access-penalty OLS); C4 (the plurality-steepening test); C6 (the ML random-CV leak); E1–E4 (the
+percentile bands and composite weighting).
+
+**Carried-over OPEN items** (the live list is [ROADMAP.md](../ROADMAP.md) §"Open work"): **C2
+MAUP** scale/zonation — the one substantive robustness gap, being addressed now; **C3** an
+optional spatial error/lag model as a cross-check on the LAD-clustered SEs (clustering is the
+delivered primary inference); **D4** formal out-of-sample validation of the axes (the travel
+axis is already NTS-anchored, the energy axis metered).
 
 An intensive, literature-grounded audit of the NEPI methodology, identifying
 opportunities to strengthen the rigour of the argument. Produced 2026-06-10 from

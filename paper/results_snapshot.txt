@@ -1,7 +1,8 @@
-# Results snapshot — regenerated 2026-07-08 (review-remediation working tree)
+# Results snapshot — regenerated 2026-07-09 (science-pass working tree)
 # Every number below is printed straight from the named script (no hand-editing).
-# Ratios now carry LAD-clustered 95% CIs; composite quantities carry cluster-
-# bootstrap CIs. Regenerate: re-run each stats/ script.
+# Adds the MAUP scale check + decarbonisation scenarios; access_profile now
+# carries jobs/people on-foot CIs. Ratios carry LAD-clustered 95% CIs; composite
+# quantities carry cluster-bootstrap CIs. Regenerate: re-run each stats/ script.
 
 ############################################################
 # stats/form_size_decomposition.py
@@ -248,6 +249,8 @@ Assembling OA data …
       Flat:Det CIs: 95% LAD-clustered (delta method, share contrast).
   measure                             Flat           Det         Flat:Det [95% CI]
   amenities, walk 1,600 m            401.8          16.8     23.87× [17.36, 32.83]
+  jobs, walk 1,600 m              22,576.6         430.6     52.43× [30.08, 91.39]
+  people, walk 1,600 m            25,683.2       2,062.3      12.45× [9.40, 16.51]
   amenities, catchment             3,335.4       2,844.5        1.17× [0.99, 1.38]
   jobs, catchment                163,183.5      97,701.6        1.67× [1.30, 2.15]
   people, catchment              333,381.8     285,835.9        1.17× [0.99, 1.38]
@@ -305,3 +308,84 @@ TRAVEL-ENERGY SENSITIVITY
     (these are dominant-type medians; the compositional pure-type travel gap is 3.07×.)
 
   (TRIPS_PER_YEAR=370 sets the access catchment radius in oa_network_access.py; a full sweep needs the network cache rebuilt and is documented there, not run here.)
+
+############################################################
+# stats/maup_scale.py
+############################################################
+Assembling OA data …
+  178,353 OAs
+    heat   median   13,248 kWh/hh
+    travel median    6,297 kWh/hh
+    dominant type: Flat 32,743  Terraced 43,946  Semi 58,318  Detached 43,346
+
+==========================================================================
+MAUP SCALE LADDER — compositional flat→detached gap by zonation
+  Same no-intercept household-weighted model (option D), LAD-clustered CIs.
+  Coarser units aggregate OA shares + metered energy household-weighted.
+==========================================================================
+
+  scale      units            heat Det:Flat           total Det:Flat
+  ------------------------------------------------------------------
+  OA       178,353       1.60× [1.45, 1.76]       2.12× [2.01, 2.24]
+  LSOA      33,742       1.17× [1.02, 1.34]       1.88× [1.74, 2.02]
+  MSOA       6,855       0.91× [0.76, 1.09]       1.72× [1.54, 1.91]
+
+  Reading: the compositional contrast reads the gap at pure-type vertices (100%
+  flat vs 100% detached). Few LSOAs and almost no MSOAs approach a pure mix, so at
+  coarse scales this is increasingly an out-of-support extrapolation — which is
+  why the heat sub-component (already the confound-entangled, non-robust piece;
+  §4.5) attenuates fastest. The support-respecting companion below compares
+  typical units.
+
+==========================================================================
+  SUPPORT-RESPECTING COMPANION — dominant-type median ratio by zonation
+==========================================================================
+
+  scale    flat n    det n      heat Det:Flat     total Det:Flat
+  ------------------------------------------------------------
+  OA       32,743   43,346              1.47×              1.74×
+  LSOA      5,169    8,778              1.32×              1.59×
+  MSOA        957    1,909              1.17×              1.47×
+
+############################################################
+# stats/scenarios.py
+############################################################
+Assembling OA data …
+  178,353 OAs
+    heat   median   13,248 kWh/hh
+    travel median    6,297 kWh/hh
+    dominant type: Flat 32,743  Terraced 43,946  Semi 58,318  Detached 43,346
+
+  Heat-pump COP 2.8, boiler efficiency 0.9 (heat-pump delivered-energy factor 0.32 vs a gas boiler).
+  Pathway uptakes: CCC 7CB Balanced Pathway 2040 (heat pumps 50%, EVs 75%).
+
+  Flat→Detached TOTAL energy gap (per dwelling, compositional, method D):
+
+  scenario                             as-lived [95% CI]       equal family size
+  ----------------------------------------------------------------------------
+  S0 status quo                       2.12× [2.01, 2.24]      1.71× [1.62, 1.81]
+  Fabric only (100%)                  1.83× [1.75, 1.91]      1.46× [1.39, 1.54]
+  Heat pumps only (100%)              2.16× [2.08, 2.25]      1.79× [1.70, 1.88]
+  EVs only (100%)                     1.85× [1.72, 1.99]      1.48× [1.37, 1.59]
+  CCC Balanced Pathway 2040           1.89× [1.80, 1.98]      1.52× [1.44, 1.59]
+  Full rollout (100%)                 1.68× [1.62, 1.74]      1.35× [1.29, 1.42]
+
+  Fabric only (100%): 1.83× closes the status-quo gap by 20% (log scale).
+
+  Heat pumps only (100%): 2.16× widens the status-quo gap by 2% (log scale).
+
+  EVs only (100%): 1.85× closes the status-quo gap by 18% (log scale).
+
+  CCC Balanced Pathway 2040: 84% of the status-quo per-dwelling energy gap survives
+  (log scale); 16% closed.
+
+  Full rollout (100%): 69% of the status-quo per-dwelling energy gap survives
+  (log scale); 31% closed.
+
+  Access deficit on foot 23.87× [17.36, 32.83]: UNCHANGED in every scenario — no
+  technology moves destinations closer.
+
+  COP sensitivity — Balanced Pathway 2040 total Det:Flat (as-lived):
+    COP 2.4:  1.88× [1.79, 1.97]
+    COP 2.8:  1.89× [1.80, 1.98]
+    COP 3.2:  1.89× [1.81, 1.99]

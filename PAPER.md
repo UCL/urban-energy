@@ -14,7 +14,7 @@
 
 ## Abstract
 
-A neighbourhood is conventionally judged by the energy it consumes, not by what that energy buys. This paper judges English neighbourhoods on two measured axes (energy spent and everyday access gained) and the rate between them, across 178,353 Census 2021 Output Areas. Household energy combines metered gas and electricity with National Travel Survey-anchored car-travel energy; access is the count of amenities, jobs and people reachable over the road network. Energy is modelled per dwelling, with household size and floor area as freely estimated controls, and is metered rather than SAP-modelled, avoiding the performance gap. A detached neighbourhood spends about 2.1× a flat's energy per dwelling, yet a flat reaches about 24× the amenities on foot and returns about 3.6× the access per kilowatt-hour. Best-practice fabric and full electrification leave roughly half the energy gap and all of the access gap intact: the access deficit of dispersed form is structural and technology-immune.
+A neighbourhood is conventionally judged by the energy it consumes, not by what that energy buys. This paper judges English neighbourhoods on two measured axes (energy spent and everyday access gained) and the rate between them, across 178,353 Census 2021 Output Areas. Household energy combines metered gas and electricity with National Travel Survey-anchored car-travel energy; access is the count of amenities, jobs and people reachable over the road network. Energy is modelled per dwelling, with household size and floor area as freely estimated controls, and is metered rather than SAP-modelled, avoiding the performance gap. A detached neighbourhood spends about 2.1× a flat's energy per dwelling, yet a flat reaches about 24× the amenities on foot and returns about 3.6× the access per kilowatt-hour. No decarbonisation scenario, up to full deployment of insulation, heat pumps and electric vehicles, closes half the energy gap, and none closes any of the access gap: the access deficit of dispersed form is structural and technology-immune.
 
 ## 1. Introduction
 
@@ -99,9 +99,9 @@ Access counts are non-negative and frequently zero, so they are fitted with a Po
 
 Standard errors are clustered by local-authority district (about 309 in England), because neighbouring Output Areas share unobserved local conditions and are not 178,353 independent observations. Every reported ratio carries a 95% confidence interval on this basis; the intervals are wider than heteroskedasticity-robust ones but do not change the conclusions. Ratios that combine several fits (the rate, the surviving-gap share, the mediated fraction) are given cluster-bootstrap intervals.
 
-### 3.7 The lock-in scenario
+### 3.7 Decarbonisation scenarios
 
-The energy axis is recomputed under best-practice fabric and full electrification, and the gap re-estimated. Fabric: metered gas is scaled by the EPC fabric-improvement ratio (modelled potential over current intensity, median 0.5); metered electricity is unchanged. Both ratio terms are EPC-modelled, so the performance gap cancels, and anchoring to the metered bill holds the scale of §3.3. Electrification: car energy is recomputed at the electric fleet's energy per mile, mileage fixed. Access is unchanged by construction.
+The energy axis is recomputed under a ladder of technology scenarios and the gap re-estimated at each. Three levers act on the per-dwelling energy. Fabric: metered gas is scaled by the EPC fabric-improvement ratio (modelled potential over current intensity, median 0.5); metered electricity is unchanged. Heat pump: the gas heat is instead delivered as electricity at the heat pump's delivered-energy factor, boiler efficiency over seasonal coefficient of performance (0.90/2.8 = 0.32), since a heat pump draws less delivered energy than a boiler for the same useful heat. Electrification: car energy is recomputed at the electric fleet's energy per mile, mileage fixed. Both EPC ratio terms are modelled, so the performance gap cancels, and anchoring to the metered bill holds the scale of §3.3. A lever is applied at a scenario's uptake fraction, blending transformed and untransformed energy. The scenarios are: the status quo; each lever alone at full deployment; the Climate Change Committee's Seventh Carbon Budget (2025) Balanced Pathway at 2040 (heat pumps in half of homes, three-quarters of cars electric); and full deployment of all three. Access is unchanged in every scenario by construction, since no fabric, heat pump or drivetrain moves a destination closer.
 
 ### 3.8 Robustness and the estimand
 
@@ -123,7 +123,7 @@ The type columns are observed medians; the ratio is the compositional flat-to-de
 
 ### 4.2 The access axis
 
-A flat neighbourhood reaches far more at every distance, the gap narrowing as distance grows (Table 3). On foot it reaches 23.9× (95% CI 17–33) the amenities, 52.4× the jobs and 12.5× the people of a detached one. These on-foot ratios are modelled pure-type contrasts read at 100%-of-type compositions; the corresponding dominant-type median ratio is smaller (amenities 9.5×, jobs 11.6×), and the support-restricted median comparing areas at least half of one type is 11.7×, because few real areas approach a pure vertex and several detached medians are zero. The pure-type contrast states the gap between idealised extremes; the median states the gap between typical flat and detached areas, and both are reported. At each area's own car catchment the raw counts nearly converge (amenities 1.17×, confidence interval 0.99–1.38, spanning parity); at a 25 km drive the flat still leads 10–14×.
+A flat neighbourhood reaches far more at every distance, the gap narrowing as distance grows (Table 3). On foot it reaches 23.9× (95% CI 17–33) the amenities, 52.4× (30–91) the jobs and 12.5× (9–17) the people of a detached one. These on-foot ratios are modelled pure-type contrasts read at 100%-of-type compositions; the corresponding dominant-type median ratio is smaller (amenities 9.5×, jobs 11.6×), and the support-restricted median comparing areas at least half of one type is 11.7×, because few real areas approach a pure vertex and several detached medians are zero. The pure-type contrast states the gap between idealised extremes; the median states the gap between typical flat and detached areas, and both are reported. At each area's own car catchment the raw counts nearly converge (amenities 1.17×, confidence interval 0.99–1.38, spanning parity); at a 25 km drive the flat still leads 10–14×.
 
 | Within reach (median) | Flat | Terraced | Semi | Detached | flat:det |
 | --- | --: | --: | --: | --: | --: |
@@ -143,14 +143,20 @@ Population density is 79 people per hectare in a flat neighbourhood against 14 i
 
 A flat returns about 3.6× (95% CI 2.9–4.4) the access per kilowatt-hour of car energy, the product of the access advantage and the energy saving. A flat and a detached home reach a comparable count at their own catchments (1.17×, confidence interval spanning parity, Table 3), but the detached spends about three times the car energy to do so (3.07×, Table 2), so per kilowatt-hour the flat leads 1.17 × 3.07 ≈ 3.6×. The figure depends on how the two axes are conditioned. Matching the access side's income-only conditioning on the energy side raises the energy saving to 4.24× and the rate to about 5.0× (95% CI 3.9–6.0); pricing access instead against an already-electrified travel cost, which removes the dependence between driving distance and catchment (§3.5), lowers the rate to about 2.2× (95% CI 1.8–2.5). The dominant-type median rate is 2.9×. The headline 3.6× sits within this range rather than at its edge.
 
-### 4.4 Lock-in
+### 4.4 Decarbonisation scenarios and lock-in
 
-Best-practice fabric and full electrification close the energy gap only part-way (Table 4): per dwelling from 2.12× (2.01–2.24) to 1.51× (1.43–1.59), and at equal family size from 1.71× (1.62–1.81) to 1.18× (1.11–1.25). About 55% (51–58%) of the gap survives on the log scale, because a larger home still loses more heat and electrification cuts energy per mile but not the miles. The access gap does not move: 23.9× on foot, before and after.
+No technology scenario closes much of the energy gap, and none moves the access gap at all (Table 4; all ratios as-lived, per dwelling, compositional). The three levers act differently. Insulation closes the gap: fabric alone, fully deployed, moves it from 2.12× to 1.83×, 20% of the log-gap, because detached homes carry more fabric headroom. Heat pumps do not: fully deployed they move the gap to 2.16×, marginally wider, because a heat pump sharply cuts the low-gap heat component in delivered-energy terms and unmasks the higher-gap car travel. Electrification closes the most of any single lever, to 1.85× (18%), attacking travel where the gap is largest. The Balanced Pathway for 2040 leaves the gap at 1.89×, closing 16%; even full deployment of all three leaves 1.68×, 31% closed and 69% surviving. Fabric plus full electrification without heat pumps gives 1.51×, the conventional lower bound. On foot the access gap is 23.9× in every scenario, unchanged.
 
-| Total energy gap (per dwelling) | now | optimised |
+| Total energy gap (per dwelling, as-lived) | Det:Flat | log-gap closed |
 | --- | --: | --: |
-| As-lived | 2.12× | 1.51× |
-| At equal family size | 1.71× | 1.18× |
+| Status quo | 2.12× | — |
+| Fabric only (100%) | 1.83× | 20% |
+| Heat pumps only (100%) | 2.16× | −2% |
+| EVs only (100%) | 1.85× | 18% |
+| CCC Balanced Pathway 2040 | 1.89× | 16% |
+| Full rollout (100%) | 1.68× | 31% |
+
+Heat pumps are essential to decarbonisation on the carbon axis (the electricity that drives them is increasingly low-carbon); their near-neutral effect here is specific to the delivered-energy form gap, and reflects that the gap is structural in floor area and distance, not in the heat carrier.
 
 ### 4.5 Robustness
 
@@ -165,6 +171,8 @@ The heat gap is also robust to the meter-versus-household denominator (§3.3). R
 
 The travel estimate has one free parameter, the commute-distance elasticity (0.30). Because each rural-urban class total is held fixed (§3.3), the elasticity only redistributes miles within a class, while the flat-to-detached contrast is largely between classes. Varying it across 0.15, 0.30 and 0.45 moves the travel contrast only from 2.74× to 2.98× (dominant-type median), confirming the contrast is insensitive to it.
 
+The result is not an artefact of the Output Area zonation (the modifiable areal unit problem). Re-aggregating the frame household-weighted to the two coarser census scales that nest above the OA and re-fitting the same model, the total-energy gap holds: 2.12× at OA, 1.88× at LSOA, 1.72× at MSOA on the compositional contrast, and 1.74×, 1.59×, 1.47× comparing dominant-type medians. The mild attenuation with scale is expected, because coarsening averages away within-unit dwelling-type mixing. The heat sub-component's compositional contrast falls faster and reverses at MSOA (1.60× to 1.17× to 0.91×), but this is an out-of-support extrapolation, since almost no MSOA approaches a pure dwelling-type composition; the support-respecting dominant-type median holds heat positive at every scale (1.47× to 1.32× to 1.17×), consistent with total energy being the robust axis.
+
 ## 5. Discussion
 
 ### 5.1 Relation to prior work
@@ -173,7 +181,7 @@ The building-energy result reproduces the English literature: NEED and the Engli
 
 ### 5.2 What technology can and cannot offset
 
-Uniform technology scales energy down without changing the structural quantities. Insulation lowers heat loss per square metre but not floor area or surface; electrification lowers energy per mile but not the miles. The detached-to-flat ratio is therefore near-invariant to uniform improvement: about 55% of the energy gap survives best fabric and full electrification (§4.4). The access deficit is fixed in the street layout, untouched by either, and changes only when places are rebuilt. Access is the binding, technology-immune component, and must be planned for directly.
+Uniform technology scales energy down without changing the structural quantities. Insulation lowers heat loss per square metre but not floor area or surface; electrification lowers energy per mile but not the miles. The detached-to-flat ratio is therefore near-invariant to uniform improvement: between 55% (fabric and electrification) and 69% (adding heat pumps) of the energy gap survives, and heat pumps, which cut delivered heat sharply, leave it marginally wider (§4.4). The access deficit is fixed in the street layout, untouched by any of these, and changes only when places are rebuilt. Access is the binding, technology-immune component, and must be planned for directly.
 
 ### 5.3 The functional unit
 
@@ -205,7 +213,7 @@ Gradient-boosted (XGBoost) models predicting a neighbourhood's score from its fo
 
 ## 7. Conclusion
 
-A detached neighbourhood spends about twice a flat's energy per dwelling and reaches a fraction of its everyday destinations; a flat returns between three and four times the access per kilowatt-hour. Best-practice fabric and full electrification leave roughly half the energy gap and all of the access gap intact, because technology changes the efficiency of floor area and distance but not their quantity. Judged by access gained per unit of energy spent, compact form is the more efficient, and the difference is structural, fixed until places are rebuilt.
+A detached neighbourhood spends about twice a flat's energy per dwelling and reaches a fraction of its everyday destinations; a flat returns between three and four times the access per kilowatt-hour. Full deployment of insulation, heat pumps and electric vehicles leaves most of the energy gap and all of the access gap intact, because technology changes the efficiency of floor area and distance but not their quantity. Judged by access gained per unit of energy spent, compact form is the more efficient, and the difference is structural, fixed until places are rebuilt.
 
 ## References
 

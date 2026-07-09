@@ -172,6 +172,8 @@ def compositional_access(d: pd.DataFrame) -> None:
 
     measures = [
         ("amenities, walk 1,600 m", "net_total_1600"),
+        ("jobs, walk 1,600 m", "net_jobs_1600"),
+        ("people, walk 1,600 m", "net_pop_1600"),
         ("amenities, catchment", "net_amen"),
         ("jobs, catchment", "net_jobs_catch"),
         ("people, catchment", "net_pop_catch"),
