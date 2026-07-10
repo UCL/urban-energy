@@ -1,6 +1,9 @@
 # The Neighbourhood Energy Performance Index: Energy Spent versus Access Gained
 
-> **Status: complete first draft (two-axis frame).** All IMRaD sections are drafted in prose.
+> **Status: superseded as manuscript by [`paper/latex/main.tex`](paper/latex/main.tex)** (Nature
+> Cities submission draft, access-first framing, the policy-lens argument and the NEPI coinage).
+> This file remains the IMRaD source document and section map; edit the manuscript, not this file,
+> for submission-facing prose. All IMRaD sections are drafted in prose.
 > Canonical numbers are cross-checked against [`paper/results_snapshot.txt`](paper/results_snapshot.txt)
 > and [`paper/summary.md`](paper/summary.md); the literature synthesis is in
 > [`paper/literature_review.md`](paper/literature_review.md) (§2, §6); the methodological

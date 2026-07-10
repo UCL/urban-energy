@@ -29,7 +29,7 @@ import matplotlib.patheffects as pe  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
 import pandas as pd  # noqa: E402
 from matplotlib.cm import ScalarMappable  # noqa: E402
-from matplotlib.colors import LinearSegmentedColormap, Normalize  # noqa: E402
+from matplotlib.colors import LinearSegmentedColormap, LogNorm, Normalize  # noqa: E402
 from oa_data import load_and_aggregate  # noqa: E402
 
 from urban_energy.paths import DATA_DIR  # noqa: E402
@@ -88,41 +88,117 @@ def _colourbar(fig, ax, cmap, norm, label: str) -> None:
     cb.set_label(label, fontsize=8.5, color=fs.INK_SECONDARY)
 
 
-def national(gdf: gpd.GeoDataFrame) -> None:
-    """F9: England, every OA by energy spent per dwelling."""
-    lo, hi = gdf["energy"].quantile([0.05, 0.95])
-    norm = Normalize(vmin=float(lo), vmax=float(hi))
-    fig, ax = plt.subplots(figsize=(6.6, 8.2))
-    ax.set_facecolor("#f3f3f1")  # light land so pale low-energy areas stay visible
-    gdf.plot(
-        column="energy", ax=ax, cmap=_WARM, norm=norm, linewidth=0, antialiased=False
+def _scale_bar(ax, x0: float, y0: float, length_m: float, label: str) -> None:
+    """Draw a simple map scale bar (a rule with a centred length label)."""
+    ax.plot(
+        [x0, x0 + length_m],
+        [y0, y0],
+        color=fs.INK,
+        lw=2.0,
+        solid_capstyle="butt",
+        zorder=9,
     )
+    ax.text(
+        x0 + length_m / 2,
+        y0 + length_m * 0.05,
+        label,
+        ha="center",
+        va="bottom",
+        fontsize=7,
+        color=fs.INK_SECONDARY,
+        zorder=9,
+    )
+
+
+def national(gdf: gpd.GeoDataFrame) -> None:
+    """F9: England mapped twice — energy per dwelling beside access on foot.
+
+    The two axes at national scale in one display item: dispersed high-energy
+    form covers most of the land (left, warm ramp), and the high-access places
+    are the compact cities, visible as green islands (right, log-scaled green
+    ramp — walkable access spans orders of magnitude).
+    """
     halo = [pe.withStroke(linewidth=2.4, foreground="white")]
-    for name, e, n in _CITIES:
-        ax.scatter(e, n, s=7, color=fs.INK, zorder=5)
-        ax.annotate(
-            name,
-            (e, n),
-            textcoords="offset points",
-            xytext=(4, 3),
-            fontsize=7.5,
-            color=fs.INK,
-            fontweight="bold",
-            zorder=6,
-            path_effects=halo,
-        )
-    ax.set_axis_off()
-    ax.set_aspect("equal")
-    _colourbar(fig, ax, _WARM, norm, "Energy spent (kWh / dwelling / year)")
-    fs.deck(
-        ax,
-        "A national pattern",
-        "Dispersed, high-energy form covers most of England",
-        "Every Output Area by energy spent; the pale, low-energy areas are the "
-        "compact cities",
+    fig, axes = plt.subplots(1, 2, figsize=(10.4, 7.8))
+    fig.subplots_adjust(top=0.82, bottom=0.09, left=0.01, right=0.99, wspace=0.02)
+
+    e_lo, e_hi = gdf["energy"].quantile([0.05, 0.95])
+    e_norm = Normalize(vmin=float(e_lo), vmax=float(e_hi))
+    gdf.plot(
+        column="energy",
+        ax=axes[0],
+        cmap=_WARM,
+        norm=e_norm,
+        linewidth=0,
+        antialiased=False,
+    )
+    axes[0].set_title(
+        "Energy spent", fontsize=11, color=fs.HEAT, fontweight="bold", loc="left"
+    )
+    _colourbar(fig, axes[0], _WARM, e_norm, "kWh / dwelling / yr  (darker = more)")
+
+    # Walkable access spans orders of magnitude (0 in deep rural, thousands in
+    # inner cities): a log ramp keeps both ends legible. Zeros clip to the floor.
+    acc = pd.to_numeric(gdf["access"], errors="coerce").fillna(0).clip(lower=1)
+    a_lo = max(float(acc.quantile(0.05)), 1.0)
+    a_hi = float(acc.quantile(0.95))
+    a_norm = LogNorm(vmin=a_lo, vmax=a_hi)
+    gdf.assign(_acc=acc).plot(
+        column="_acc",
+        ax=axes[1],
+        cmap=_GREEN,
+        norm=a_norm,
+        linewidth=0,
+        antialiased=False,
+    )
+    axes[1].set_title(
+        "Access on foot", fontsize=11, color=fs.ACCESS, fontweight="bold", loc="left"
+    )
+    _colourbar(
+        fig, axes[1], _GREEN, a_norm, "amenities ≤1.6 km, log scale  (darker = more)"
+    )
+
+    for ax in axes:
+        ax.set_facecolor("#f3f3f1")
+        ax.set_axis_off()
+        ax.set_aspect("equal")
+        for name, e, n in _CITIES:
+            ax.scatter(e, n, s=7, color=fs.INK, zorder=5)
+            ax.annotate(
+                name,
+                (e, n),
+                textcoords="offset points",
+                xytext=(4, 3),
+                fontsize=7,
+                color=fs.INK,
+                fontweight="bold",
+                zorder=6,
+                path_effects=halo,
+            )
+    _scale_bar(axes[0], 90_000, 25_000, 100_000, "100 km")
+
+    fig.text(
+        0.02, 0.955, "THE TWO AXES, MAPPED", fontsize=8.5, fontweight="bold",
+        color=fs.ACCENT,
+    )
+    fig.text(
+        0.02,
+        0.91,
+        "Where energy runs high, access runs low, across the whole of England",
+        fontsize=13,
+        fontweight="bold",
+        color=fs.INK,
+    )
+    fig.text(
+        0.02,
+        0.87,
+        "Every Output Area: energy spent per dwelling (left) and everyday amenities "
+        "within a 1.6 km walk (right); the compact cities are the green islands",
+        fontsize=9.5,
+        color=fs.INK_SECONDARY,
     )
     fs.footer(fig)
-    print(f"  F9 england: {len(gdf):,} OAs")
+    print(f"  F9 england (two-axis): {len(gdf):,} OAs")
     fs.save(fig, "fig9_england", pdf=False)
 
 
@@ -151,6 +227,7 @@ def city(gdf: gpd.GeoDataFrame) -> None:
     for ax in axes:
         ax.set_axis_off()
         ax.set_aspect("equal")
+    _scale_bar(axes[0], x0 + 500, y0 + 500, 5_000, "5 km")
     fig.text(
         0.02, 0.95, "INSIDE ONE CITY", fontsize=8.5, fontweight="bold", color=fs.ACCENT
     )

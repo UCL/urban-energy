@@ -498,6 +498,23 @@ def doorstep(cf: pd.DataFrame) -> None:
         fontsize=9.5,
         fontweight="bold",
     )
+    # Context: the share of detached areas that reach no GP at all on foot.
+    gp_idx = next(
+        (i for i, r in enumerate(rows) if r[0] == "GP surgeries"), None
+    )
+    if gp_idx is not None:
+        z = (
+            _num(d.loc[d["dominant_type"] == "Detached", "net_gp_1600"]).fillna(0) == 0
+        ).mean() * 100
+        ax.annotate(
+            f"{z:.0f}% of detached areas reach no GP at all",
+            (_dx(rows[gp_idx][2]), gp_idx),
+            textcoords="offset points",
+            xytext=(12, -14),
+            ha="left",
+            fontsize=7.5,
+            color=fs.INK_SECONDARY,
+        )
     ax.set_xscale("symlog", linthresh=1)
     ax.set_xlim(0, max(r[1] for r in rows) * 1.8)
     ax.set_xticks([0, 1, 10, 100])
@@ -554,22 +571,24 @@ def access_curve(cf: pd.DataFrame, income: list[str], dists: list[int]) -> None:
     ax.text(
         1.6,
         ymax * 1.5,
-        "on foot",
+        "on foot\n(a 20-minute walk)",
         ha="center",
         va="bottom",
         fontsize=8,
         color=fs.INK_SECONDARY,
         fontweight="bold",
+        linespacing=1.3,
     )
     ax.text(
         km[-1],
         ymax * 1.5,
-        "25 km drive",
+        "25 km drive\n(a typical rural commute)",
         ha="center",
         va="bottom",
         fontsize=8,
         color=fs.INK_SECONDARY,
         fontweight="bold",
+        linespacing=1.3,
     )
     # White halo boxes: both multiples sit in the band the middle curves cross.
     _halo = dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.85)

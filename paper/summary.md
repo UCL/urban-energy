@@ -159,7 +159,7 @@ The pattern is not a matter of a few pure-type extremes: it holds across every n
 
 The two-axis result is national and structural, visible from the whole of England down to a single city. Across England, dispersed high-energy form covers most of the land, with the compact, low-energy cities as pale islands. Inside one city, the same inversion shows over a few kilometres: the compact core spends less energy and reaches more access, the sprawling edge the reverse.
 
-![England, every Output Area by energy spent per dwelling: high-energy dispersed form covers most of the land, with the low-energy compact cities as pale areas.](figures/fig9_england.png)
+![England mapped twice, energy spent per dwelling beside amenities within a 1.6 km walk: dispersed high-energy form covers most of the land, and walkable access concentrates in the compact cities, visible as green islands.](figures/fig9_england.png)
 
 ![Sheffield mapped twice, energy spent beside access on foot: the high-energy ring is the low-access edge, and the low-energy core is the high-access centre.](figures/fig10_city.png)
 
