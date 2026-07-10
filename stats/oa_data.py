@@ -195,12 +195,21 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
         lad.drop_duplicates("OA21CD"), on="OA21CD", how="left", validate="m:1"
     )
 
-    # Climate confound (annual HDD per OA, HadUK-Grid) — optional: present only
-    # once data/process_climate.py has run; the ladder includes it when found.
+    # Climate confound (annual HDD per OA, HadUK-Grid) — built by the pipeline's
+    # ``climate`` stage (data/process_climate.py). The published headline models
+    # hold it, so its absence changes every regression: warn loudly rather than
+    # silently fitting a different specification.
     hdd_path = _STATS / "oa_hdd.parquet"
     if hdd_path.exists():
         oa = oa.merge(
             pd.read_parquet(hdd_path), on="OA21CD", how="left", validate="m:1"
+        )
+    else:
+        print(
+            "  WARNING: climate confound absent "
+            f"({hdd_path.name} not built — run `pipeline run climate`).\n"
+            "  Models will fit WITHOUT heating-degree-days and will NOT match "
+            "the published snapshot."
         )
 
     oa = oa.rename(columns={"oa_median_build_year": "median_build_year"})
@@ -256,6 +265,10 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
     )
 
     # --- Travel: NTS-anchored car-travel energy (constrained disaggregation) ---
+    # Known small overlap: metered domestic electricity already contains any home
+    # EV charging, and the travel figure prices BEV miles again from mileage ×
+    # intensity. At the current national BEV share (~2-3%) the double count is
+    # negligible; revisit if the fleet electrifies materially.
     oa = compute_travel_energy(oa)
     oa["transport_kwh_per_hh_total_est"] = oa["travel_kwh_per_hh_car"]
 

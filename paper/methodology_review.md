@@ -27,7 +27,8 @@ access-penalty OLS); C4 (the plurality-steepening test); C6 (the ML random-CV le
 percentile bands and composite weighting).
 
 **Carried-over OPEN items** (the live list is [ROADMAP.md](../ROADMAP.md) §"Open work"): **C2
-MAUP** scale/zonation — the one substantive robustness gap, being addressed now; **C3** an
+MAUP** — the scale ladder is DONE (`stats/maup_scale.py`, OA/LSOA/MSOA; the zonation half,
+grid/random re-partitions, remains open); **C3** an
 optional spatial error/lag model as a cross-check on the LAD-clustered SEs (clustering is the
 delivered primary inference); **D4** formal out-of-sample validation of the axes (the travel
 axis is already NTS-anchored, the energy axis metered).

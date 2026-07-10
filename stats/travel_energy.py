@@ -39,10 +39,17 @@ Sources / constants
   figures; a petrol/diesel car delivering ~0.58 kWh/vkm and a BEV ~0.20 kWh/vkm
   are the standard fleet-average values. (TODO: pin the exact ECUK table/year cell
   before publication.)
-* Commute-distance elasticity of within-class mileage = 0.30 (the one
-  transparent allocation assumption; commute is a minority of total mileage but
-  correlates with it). Reported with a sensitivity (0.15 / 0.30 / 0.45) in
-  ``sensitivity_report`` below.
+* Commute-distance elasticity of within-class mileage = 0.30 (commute is a
+  minority of total mileage but correlates with it). Reported with a
+  sensitivity (0.15 / 0.30 / 0.45) in ``sensitivity_report`` below.
+* Ownership elasticity of within-class mileage = 1.0: the allocator scales
+  miles proportionally with cars per person. NTS evidence is that additional
+  household cars add *less* than proportional mileage, so proportionality if
+  anything over-allocates to high-ownership (detached) areas. Because the class
+  marginals are held fixed, this assumption moves only the within-class spread;
+  ``sensitivity_report`` sweeps it (1.0 / 0.8 / 0.6 / 0.0, where 0.0 is the
+  measured between-class floor) and reports the flat-to-detached travel gap at
+  each value.
 """
 
 from __future__ import annotations
@@ -59,6 +66,10 @@ KWH_PER_MILE_EV: float = 0.20 * _KM_PER_MILE  # ≈ 0.32
 
 #: Elasticity of within-class per-person mileage to local commute distance.
 COMMUTE_DIST_ELASTICITY: float = 0.30
+
+#: Elasticity of within-class per-person mileage to cars per person. 1.0 is the
+#: proportional headline allocator; swept in ``sensitivity_report``.
+OWNERSHIP_ELASTICITY: float = 1.0
 
 #: Census TS058 distance-to-work bands → representative midpoint (km).
 TS058_BAND_MIDPOINTS_KM: dict[str, float] = {
@@ -131,15 +142,17 @@ def _join_ruc_mileage(lsoa: pd.DataFrame) -> pd.DataFrame:
 
 
 def compute_travel_energy(
-    lsoa: pd.DataFrame, elasticity: float = COMMUTE_DIST_ELASTICITY
+    lsoa: pd.DataFrame,
+    elasticity: float = COMMUTE_DIST_ELASTICITY,
+    ownership_elasticity: float = OWNERSHIP_ELASTICITY,
 ) -> pd.DataFrame:
     """
     Add disaggregated total car-travel energy (kWh/hh/yr) and its components.
 
     For each OA the per-person car mileage is the NTS class marginal scaled by a
-    local allocator (cars-per-person × commute-distance^elasticity), normalised
-    so the population-weighted class mean is preserved. Energy follows from
-    household size and fleet intensity.
+    local allocator (cars-per-person^ownership_elasticity ×
+    commute-distance^elasticity), normalised so the population-weighted class
+    mean is preserved. Energy follows from household size and fleet intensity.
 
     Parameters
     ----------
@@ -150,6 +163,11 @@ def compute_travel_energy(
         Commute-distance elasticity of the allocator, exposed so
         :func:`sensitivity_report` can vary it without mutating the module
         constant.
+    ownership_elasticity : float, default :data:`OWNERSHIP_ELASTICITY`
+        Exponent on cars per person in the allocator. 1.0 spreads a class's
+        miles proportionally with ownership; 0.0 removes the ownership signal,
+        so every OA in a class receives the class average scaled only by the
+        commute factor (the measured between-class floor).
 
     Returns
     -------
@@ -181,7 +199,7 @@ def compute_travel_energy(
     commute_factor = (df["commute_km"] / df["commute_km"].median()).clip(lower=0.1) ** (
         elasticity
     )
-    w = cars_pp.clip(lower=0) * commute_factor.fillna(1.0)
+    w = cars_pp.clip(lower=0) ** ownership_elasticity * commute_factor.fillna(1.0)
 
     # Population-weighted mean of the allocator within each rural-urban class.
     valid = w.notna() & pop.notna() & (pop > 0) & df["ruc_class_miles_pp"].notna()
@@ -243,8 +261,55 @@ def _demo() -> None:
 
 
 def sensitivity_report() -> None:
-    """Coverage counts and commute-elasticity sensitivity of the travel gradient."""
+    """Coverage counts and allocator-assumption sensitivities of the travel gradient.
+
+    Two allocator assumptions are swept: the commute-distance elasticity (the
+    small within-class term) and the ownership elasticity (the large one). Both
+    only redistribute miles *within* a rural-urban class — the measured NTS class
+    marginals are preserved at every setting — so each sweep reports how far the
+    flat-to-detached travel contrast moves while the totals stay anchored.
+    """
+    # Imported lazily: form_size_decomposition imports oa_data, which imports
+    # this module, so a top-level import would be circular.
+    from form_size_decomposition import (
+        _SHARE_FRACS,
+        _comp_ols,
+        _compositional_frame,
+        _deprivation_cols,
+        _hdd_cols,
+        _tenure_cols,
+    )
+    from inference import CLUSTER_COL, fmt_ci, log_contrast_ci
     from oa_data import load_and_aggregate
+
+    def _comp_travel_gap(d: pd.DataFrame) -> str:
+        """Compositional pure-type Det:Flat travel gap (LAD-clustered CI)."""
+        cf = _compositional_frame(d)
+        conf = (
+            ["median_build_year"]
+            + _deprivation_cols(cf)
+            + _tenure_cols(cf)
+            + _hdd_cols(cf)
+        )
+        cf["_log_travel"] = np.log(
+            pd.to_numeric(cf["travel_kwh_per_hh_car"], errors="coerce").clip(lower=1)
+        )
+        m = _comp_ols(
+            cf, "_log_travel", _SHARE_FRACS + conf, "total_hh", cluster_col=CLUSTER_COL
+        )
+        if m is None:
+            return "n/a"
+        return fmt_ci(log_contrast_ci(m, "s_detached", "s_flat"))
+
+    def _dom_medians(d: pd.DataFrame) -> tuple[float, float]:
+        med = {
+            t: pd.to_numeric(
+                d.loc[d["dominant_type"] == t, "travel_kwh_per_hh_car"], errors="coerce"
+            ).median()
+            for t in ("Flat", "Detached")
+        }
+        ratio = med["Detached"] / med["Flat"] if med["Flat"] else float("nan")
+        return med["Flat"], ratio
 
     base = load_and_aggregate()
 
@@ -259,24 +324,31 @@ def sensitivity_report() -> None:
         f"(flat class average, marginal preserved), {n_rucfail:,} rural-urban-class "
         "join failures (NaN mileage, dropped downstream)."
     )
-    print("\n  Commute-elasticity sensitivity — Flat:Det car kWh/hh (median):")
+    print("\n  Commute-elasticity sensitivity — Det:Flat car kWh/hh:")
     for e in (0.15, 0.30, 0.45):
         d = compute_travel_energy(base, elasticity=e)
-        med = {
-            t: pd.to_numeric(
-                d.loc[d["dominant_type"] == t, "travel_kwh_per_hh_car"], errors="coerce"
-            ).median()
-            for t in ("Flat", "Detached")
-        }
-        ratio = med["Detached"] / med["Flat"] if med["Flat"] else float("nan")
+        flat_med, ratio = _dom_medians(d)
         print(
-            f"    elasticity {e:.2f}:  Flat {med['Flat']:,.0f}  "
-            f"Det {med['Detached']:,.0f}  Det:Flat {ratio:.2f}×"
+            f"    elasticity {e:.2f}:  dominant-type median {ratio:.2f}×  "
+            f"(Flat median {flat_med:,.0f} kWh)"
         )
     print(
-        "    (these are dominant-type medians; the compositional pure-type travel "
-        "gap is 3.07×.)"
+        "\n  Ownership-elasticity sensitivity — within-class allocator "
+        "cars_pp**alpha:\n"
+        "  (alpha 1.0 = proportional headline; NTS per-car mileage declines with\n"
+        "   household car count, so alpha < 1 is the realistic direction; alpha 0\n"
+        "   removes the ownership signal entirely, leaving the measured NTS\n"
+        "   between-class gradient — the floor of the contrast. Class marginals\n"
+        "   are preserved exactly at every alpha.)"
     )
+    for a in (1.0, 0.8, 0.6, 0.0):
+        d = compute_travel_energy(base, ownership_elasticity=a)
+        _, ratio = _dom_medians(d)
+        comp = _comp_travel_gap(d)
+        print(
+            f"    alpha {a:.1f}:  dominant-type median {ratio:.2f}×   "
+            f"compositional {comp}"
+        )
     print(
         "\n  (TRIPS_PER_YEAR=370 sets the access catchment radius in "
         "oa_network_access.py; a full sweep needs the network cache rebuilt and is "

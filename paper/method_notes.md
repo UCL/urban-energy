@@ -192,6 +192,9 @@ part of the raw form gap; it is now netted out of the direct term.
   **2.12×**, access_per_kwh **3.6×** (corrected from 6.3×, see above), access_curve **24× → 10×**. `argument_figures.py`
   energy confounds now match the ladder (`_deprivation_cols` + `_hdd_cols`); access
   figures stay income-only.
+  *(Superseded 2026-07-09: the amenity-basket clean moved these to 3.9× and 27× → 11×;
+  the current numbers are in `summary.md` and `results_snapshot.txt`. The 3.6×/24× here
+  are the pre-clean values, kept only as ledger history.)*
 - **Self-selection** — handled three ways (`form_size_decomposition.py` §6 +
   `summary.md` "Self-selection"). (a) Access is location-intrinsic ⇒ immune by
   construction. (b) NS-SeC (occupational class, now in the loader as

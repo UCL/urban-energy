@@ -4,9 +4,11 @@ Lean orchestrator for the urban-energy data acquisition.
 Encodes the load-bearing downloads + OA aggregations as an executable, resumable
 stage manifest. Each stage wraps a script and declares its output files, so the
 runner skips stages whose outputs already exist. The products are the per-OA
-tables the two-axis analysis assembles in the stats layer (``oa_data`` +
-``oa_access``) — there is **no heavy processing pipeline**: access is a
-straight-line KD-tree computed on demand, not a national network run.
+tables the two-axis analysis assembles in the stats layer (``oa_data``). The one
+heavy analysis artefact — the national road-network access curve
+(``stats/oa_network_access.py``, cityseer over OS Open Roads, ~15 min) — is
+built on demand from the stats layer, not here; the straight-line KD-tree
+(``stats/oa_access.py``) remains as a fast cross-check.
 
 Usage::
 
@@ -162,6 +164,13 @@ def build_stages(p: Paths) -> list[Stage]:
             ("data/download_workplace.py",),
             note="Census 2021 WP101EW workplace jobs → OA points",
         ),
+        Stage(
+            "climate",
+            (s / "oa_hdd.parquet",),
+            ("data/process_climate.py",),
+            note="HadUK-Grid → annual HDD per OA (climate confound); "
+            "needs the manual CEDA .nc (see doctor)",
+        ),
         # dependent aggregations
         Stage(
             "postcode_oa_lookup",
@@ -198,16 +207,22 @@ def _manual_prereqs(p: Paths) -> list[tuple[str, bool]]:
     nhs_ok = any(
         (x / "epraccur.csv").exists() for x in (d, d / "nhs_ods", p.cache / "nhs_ods")
     )
+    haduk_ok = (d / "climate").exists() and any((d / "climate").glob("tas*.nc"))
     return [
         ("OA 2021 boundaries (Output_Areas_*)  ←census", bool(oa)),
         (
             "OS Open Greenspace  ←access",
             (d / "opgrsp_gpkg_gb" / "Data" / "opgrsp_gb.gpkg").exists(),
         ),
+        (
+            "OS Open Roads  ←network access (stats/oa_network_access.py)",
+            (d / "oproad_gpkg_gb" / "Data" / "oproad_gb.gpkg").exists(),
+        ),
         ("OS Code-Point Open  ←postcode_oa_lookup", (d / "codepo_gpkg_gb").exists()),
         ("OS Open UPRN (any vintage)  ←epc", latest_uprn_gpkg() is not None),
         ("EPC domestic certificates  ←epc", epc_input_dir() is not None),
         ("NHS ODS (epraccur/ets/edispensary)  ←nhs", nhs_ok),
+        ("HadUK-Grid tas .nc (CEDA)  ←climate", haduk_ok),
     ]
 
 

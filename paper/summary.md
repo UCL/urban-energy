@@ -13,9 +13,12 @@ Every "×" in this document is a flat-versus-detached gap, computed the same way
 - The model holds deprivation (the overall Index of Multiple Deprivation and its income domain), tenure, building age and local climate constant, and weights by the number of households, so the gap reflects the difference the form makes, not differences in deprivation, tenure, the age of the stock or how cold the place is. Access is the exception (see that section): there compactness is the mechanism, so it is not held constant.
 - Energy is reported per dwelling, the unit at which it is metered, billed and emitted. To separate the form from the household that lives in it, family size and floor area enter the model as controls with freely estimated effects, not as denominators. Per-person normalisation is avoided deliberately: heating is a property of the building, so energy rises with household size only sub-linearly (to a power of about 0.5, not 1 — an economy of scale; Huebner and Shipworth, 2017), and dividing by residents would silently impose a power of 1, crediting detached homes for nothing more than housing the larger families that self-select into low-density areas. Holding family size as a control, rather than dividing it away, both estimates that power and keeps the self-selection visible.
 - In every table the Flat and Detached columns are observed medians (metered energy, reachable counts), shown to ground the numbers. The ratio columns are the compositional estimate, so they need not equal the quotient of the two columns.
-- The model reads the gap at the extremes, a wholly flat area against a wholly detached one, which few real areas are. Each ratio is therefore the sharp end of the estimate: the gap is at least this large.
+- The model reads the gap at the extremes, a wholly flat area against a wholly detached one, which few real areas are. Each ratio therefore states the gap between idealised pure types; the gap between typical mixed areas is smaller (for total energy, 2.12× at the vertices against 1.74× between dominant-type medians), and both are reported.
+- The gap is not an artefact of the Output Area zonation. Re-aggregated household-weighted to the two coarser census scales and re-fit with the same model, the total-energy gap holds: 2.12× at OA, 1.88× at LSOA, 1.72× at MSOA (dominant-type medians 1.74/1.59/1.47×). *Reproduce: `stats/maup_scale.py`.*
 
-*The regression has no intercept and is weighted by households; the flat-to-detached ratio is the exponentiated gap between the pure-flat and pure-detached coefficients. The energy axes are fitted with a log model, the access counts with a Poisson model (household counts enter as analytic weights, so the effective sample is the number of areas, not the summed household count). Standard errors are clustered by local-authority district (about 309 in England) to allow for spatial dependence between neighbouring areas, and every headline ratio carries a 95% confidence interval on this basis; composite quantities (the rate, the surviving-gap share, the mediated fraction) carry cluster-bootstrap intervals. The intervals are reported in [results_snapshot.txt](results_snapshot.txt).*
+*The regression has no intercept and is weighted by households; the flat-to-detached ratio is the exponentiated gap between the pure-flat and pure-detached coefficients. The energy axes are fitted with a log model, the access counts with a Poisson model (household counts enter as analytic weights, so the effective sample is the number of areas, not the summed household count). Standard errors are clustered by local-authority district (about 309 in England) to allow for spatial dependence between neighbouring areas, and every headline ratio carries a 95% confidence interval on this basis; composite quantities (the rate, the surviving-gap share, the mediated fraction) carry cluster-bootstrap intervals. The intervals are reported in [results_snapshot.txt](results_snapshot.txt) and drawn together in the forest figure below.*
+
+![Every headline ratio with its 95% confidence interval, on one log ruler: the energy gaps (Detached:Flat) and the access gaps (Flat:Detached), all clustered by local authority.](figures/fig11_forest.png)
 
 ## Counting: per dwelling, not per person
 
@@ -43,7 +46,7 @@ A detached neighbourhood uses about 1.60 times a flat's heat per dwelling. The g
 | --- | --: | --: | --: | --: | --: |
 | gas + electricity | 10,194 | 12,995 | 13,876 | 15,020 | 1.60× |
 
-Flats record fewer domestic gas meters than households (about 0.81 per household, against 0.94 for detached), for two reasons the measure treats differently. An all-electric flat heats with electricity, which is summed into the total energy figure, so its heat is captured. A block on communal heating is metered as non-domestic, so that gas is genuinely missing and the flat's heat understated. Only this second, smaller case is a true undercount, and it does not drive the result: restricting to well-measured areas (gas-meter coverage at least 0.9) leaves the heat gap at 1.61×, essentially the 1.60× headline, and restricting instead to areas whose electricity-meter count is within half the household count leaves it at 1.55×. If anything, the measurement issue slightly understates the gap.
+Flats record fewer domestic gas meters than households (about 0.81 per household, against 0.94 for detached), for two reasons the measure treats differently. An all-electric flat heats with electricity, which is summed into the total energy figure, so its heat is captured. A block on communal heating is metered as non-domestic, so that gas is genuinely missing and the flat's heat understated. Only this second, smaller case is a true undercount, and it does not drive the result: restricting to well-measured areas (gas-meter coverage at least 0.9) leaves the heat gap at 1.61×, essentially the 1.60× headline, and restricting instead to areas whose electricity-meter count is within half the household count leaves it at 1.55×. If anything, the measurement issue slightly understates the gap. The same gas-coverage restriction lowers the *total* gap to 1.74×, but that is a composition effect of the subsample, which drops the off-gas rural detached areas that drive the most, not a weakening of the heat result.
 
 Separating shape from size:
 
@@ -67,7 +70,7 @@ Building the estimate:
 - Within each class, a neighbourhood's share is raised or lowered by its car ownership (cars per person, Census TS045) and, more gently, its commute distance (Census TS058), so lower-ownership, shorter-commute places receive fewer miles.
 - The population-weighted average of the distributed miles in each class is constrained to the survey figure, so the class marginal is reproduced exactly.
 - Energy is miles times household size times the local fleet's energy per mile, where a petrol car uses about 0.93 kWh per mile and an electric one about 0.32, blended by the area's share of electric vehicles (DVLA).
-- One assumption is free: how strongly commute distance pulls the estimate, set by an elasticity of 0.30. The analysis reports how little the result moves when it is varied.
+- Two allocation assumptions are free, and both only redistribute miles within a class, never a class total. Commute distance pulls the estimate with an elasticity of 0.30, and car ownership enters proportionally (an elasticity of 1). Each is swept in the sensitivity report: the commute term barely moves the contrast, and the ownership term is bounded below by the measured between-class gradient. Sweeping the ownership elasticity from 1 to 0 moves the compositional travel gap from 3.07× through 2.80× (at 0.6) to a floor of 2.50×, where only the NTS class differences and household size remain, so under any ownership assumption the travel gap is at least 2.5×. *Reproduce: the sensitivity section of `stats/travel_energy.py`.*
 
 *Reproduce: `stats/travel_energy.py`.*
 
@@ -87,13 +90,13 @@ In each table the dwelling-type columns are observed medians; the ratio is the c
 
 ## Access
 
-Access is the count of things reachable from a neighbourhood, measured as network distance along the road (OS Open Roads, via cityseer) rather than straight-line. Because it is a property of the location, it is the same however the household is counted: per home or per person makes no difference to what is within reach. Three kinds of thing are counted, each in its own unit: amenities (everyday destinations: GPs, pharmacies, hospitals, schools, food outlets, supermarkets, greenspace), jobs (the total number of jobs reachable, summing the job count at each workplace), and people (the total resident population reachable). Each is read at three points on one ruler: a short walk (1.6 km), the area's own car catchment (how far its residents typically drive), and a long drive (25.6 km). What is reachable on foot is a subset of the catchment, which is a subset of the long drive.
+Access is the count of things reachable from a neighbourhood, measured as network distance along the road (OS Open Roads, via cityseer) rather than straight-line. Because it is a property of the location, it is the same however the household is counted: per home or per person makes no difference to what is within reach. Three kinds of thing are counted, each in its own unit: amenities (everyday destinations: GPs, pharmacies, schools, food outlets, supermarkets, greenspace), jobs (the total number of jobs reachable, summing the job count at each workplace), and people (the total resident population reachable). Each is read at three points on one ruler: a short walk (1.6 km), the area's own car catchment (how far its residents typically drive), and a long drive (25.6 km). What is reachable on foot is a subset of the catchment, which is a subset of the long drive.
 
 How access is measured:
 
 - Every count is measured as network distance over Ordnance Survey Open Roads, using the cityseer routing engine. The England street network is built once (about 3.6 million junctions), and reach is measured outward from each neighbourhood along it.
 - From each Output Area, the reachable count is read at every step from a short walk (1,600 m) out to a long drive (25,600 m). The on-foot figure is a subset of the drivable one, the same ruler read closer in.
-- Amenities are a count of seven everyday destinations (GPs, pharmacies and hospitals from the NHS; schools from GIAS; food outlets and supermarkets from the FSA; greenspace from Ordnance Survey). Jobs are the total jobs reachable: each workplace contributes the number of jobs it holds (Census WP101EW), so a large employer counts for more than a small one, rather than each workplace counting as one. People are likewise the total residents reachable.
+- Amenities are a count of six everyday destination types (GPs and pharmacies from the NHS; schools from GIAS; food outlets and supermarkets from the FSA; greenspace from Ordnance Survey). Jobs are the total jobs reachable: each workplace contributes the number of jobs it holds (Census WP101EW), so a large employer counts for more than a small one, rather than each workplace counting as one. People are likewise the total residents reachable.
 - The access ratios come from the same compositional model, holding income equal but not density. Density is the mechanism by which compact form delivers access, so controlling for it would remove the effect under study. Access counts are non-negative with frequent zeros (many detached areas have no GP within a walk), so the model uses a Poisson count form, whose fitted values are constrained to be positive.
 
 Where the counted destinations come from, and how each layer is filtered (England; the greenspace layer is Great Britain, clipped to England by the Output Area extent):
@@ -110,7 +113,7 @@ Where the counted destinations come from, and how each layer is filtered (Englan
 | People | Census 2021 TS001 | — | resident population |
 | ~~Hospitals~~ (excluded) | NHS ETS (trusts and sites) | 34,670 | excluded: the file lists every trust *site* (wards, clinics, community units), not hospitals, so its count is not a credible amenity |
 
-The seven amenity types (the first six rows plus, before it was dropped, hospitals) are summed into the amenity count; jobs and people are reported separately.
+The six amenity types (the first six rows) are summed into the amenity count; hospitals are excluded for the reason in the last row. Jobs and people are reported separately.
 
 | within reach (median) | Flat | Terraced | Semi | Detached | flat:det |
 | --- | --: | --: | --: | --: | --: |
@@ -142,7 +145,7 @@ For each area the rate is a division — amenities reachable within its *own car
 - **Energy saving** — the detached area gets there only by spending about **3.1×** the car energy (the travel figure from the energy section).
 - Dividing one area's rate by the other's flips the energy term over, so the two multiply: **1.26 × 3.07 = 3.9×**. Same reach, a third of the fuel.
 
-This is reconstructable straight from the access and energy tables — it is not a separate model. (An earlier version modelled the per-area ratio directly and reported a spurious 6.3×; that double-counted and did not reconcile with the two axes.)
+This is reconstructable straight from the access and energy tables; it is not a separate model.
 
 For the wider picture: on foot a flat reaches roughly 27 times the amenities, 52 times the jobs and 12 times the people of a detached neighbourhood; at a 25 km drive, where a detached home can reach into denser places, the flat is still 11 to 14 times ahead. For energy the direction reverses — a detached home spends about 1.6 times the heat, 3.1 times the car energy, and 2.1 times the total per dwelling.
 
@@ -151,6 +154,16 @@ For the wider picture: on foot a flat reaches roughly 27 times the amenities, 52
 The pattern is not a matter of a few pure-type extremes: it holds across every neighbourhood in the country. Plotting all 178,353 Output Areas by energy spent against amenities reached, the median falls as spending rises, and the flat and detached areas sit at opposite corners.
 
 ![Every English Output Area by energy spent against amenities reachable on foot: the median line falls as energy rises, with flat areas top-left and detached areas bottom-right.](figures/fig2_country.png)
+
+## The pattern in space
+
+The two-axis result is national and structural, visible from the whole of England down to a single city. Across England, dispersed high-energy form covers most of the land, with the compact, low-energy cities as pale islands. Inside one city, the same inversion shows over a few kilometres: the compact core spends less energy and reaches more access, the sprawling edge the reverse.
+
+![England, every Output Area by energy spent per dwelling: high-energy dispersed form covers most of the land, with the low-energy compact cities as pale areas.](figures/fig9_england.png)
+
+![Sheffield mapped twice, energy spent beside access on foot: the high-energy ring is the low-access edge, and the low-energy core is the high-access centre.](figures/fig10_city.png)
+
+*Reproduce: `stats/map_figures.py`.*
 
 ## Decarbonisation scenarios and lock-in
 
@@ -185,21 +198,11 @@ Households are not assigned to dwelling types at random; people who choose detac
 
 - **Access is a property of the location, not its residents.** A detached neighbourhood has about 27× fewer amenities on foot whoever lives there and however they came to live there, so the access axis — the hard, technology-immune result — is immune to self-selection by construction.
 - **The observed selection channels are already held.** The comparison conditions on deprivation (overall IMD and its income domain), tenure, building age and climate; adding occupational class (Census NS-SeC) on top moves the gap by essentially nothing, so selection on these observables is not what drives it.
-- **A coefficient-stability bound (Oster, 2019)** asks how strong selection on *unobservables* would have to be, relative to those observed confounds, to explain the gap away. The total-energy gap is the robust part (δ* ≈ 1: unobserved sorting would have to be about as strong as everything already measured combined), because much of it is the structural travel gap — a function of where destinations sit, not who occupies the house. The heat sub-component is more entangled with deprivation and tenure, so the case rests on total energy and access rather than on the heat figure alone.
+- **A coefficient-stability bound (Oster, 2019)** asks how strong selection on *unobservables* would have to be, relative to those observed confounds, to explain the gap away. For total energy δ\* ≈ 1.1: unobserved sorting would have to be slightly stronger than everything already measured combined. The bound is a bound, not immunity: at exactly δ = 1 the bias-adjusted total gap is about 1.03×, so selection that strong would essentially close it, which is why the hard result is access, not the energy gaps. The heat sub-component is weaker still (δ\* ≈ 0.3, entangled with deprivation and tenure). The bound is computed on a separate vehicle, a continuous detached-share gradient in an intercept OLS (raw 1.87×, confound-adjusted 1.28×), not on the headline compositional model, because Oster's method needs a centred R².
 
 The estimand throughout is therefore a *place-level* one, the energy and access profile of a neighbourhood type conditional on observed confounds, not a household treatment effect. The definitive test of the latter would difference out fixed household preferences using homes observed before and after a move (panel microdata such as Understanding Society); that mover-panel test is out of scope here and is reported as the principal limitation of the place-level estimand.
 
 *Reproduce: `stats/form_size_decomposition.py` (section 6 — the Oster bound and NS-SeC control).*
-
-## The pattern in space
-
-The two-axis result is national and structural, visible from the whole of England down to a single city. Across England, dispersed high-energy form covers most of the land, with the compact, low-energy cities as pale islands. Inside one city, the same inversion shows over a few kilometres: the compact core spends less energy and reaches more access, the sprawling edge the reverse.
-
-![England, every Output Area by energy spent per dwelling: high-energy dispersed form covers most of the land, with the low-energy compact cities as pale areas.](figures/fig9_england.png)
-
-![Sheffield mapped twice, energy spent beside access on foot: the high-energy ring is the low-access edge, and the low-energy core is the high-access centre.](figures/fig10_city.png)
-
-*Reproduce: `stats/map_figures.py`.*
 
 ## The NEPI scorecard, Atlas and models
 

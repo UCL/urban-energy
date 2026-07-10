@@ -199,6 +199,20 @@ def _access_deficit(cf: pd.DataFrame) -> str:
 def main() -> None:
     """Print the decarbonisation-scenario ladder for the total energy gap."""
     df = load_and_aggregate()
+
+    # One common complete-case sample for every scenario: the fabric factor is
+    # NaN where EPC data are missing, so without this restriction the fabric
+    # scenarios would fit on a smaller sample than S0 and the survives-share
+    # would compare fits across samples.
+    n_all = len(df)
+    df = df[
+        _fabric_factor(df).notna() & _num(df["transport_kwh_per_hh_total_est"]).notna()
+    ].copy()
+    print(
+        f"\n  Common scenario sample: {len(df):,} of {n_all:,} OAs "
+        "(complete EPC fabric factor + travel; every scenario fits on these rows)."
+    )
+
     hh = _num(df["total_hh"])
     gas = (_num(df["oa_gas_mean_kwh"]) * _num(df["oa_gas_num_meters"])).fillna(0) / hh
     elec = (_num(df["oa_elec_mean_kwh"]) * _num(df["oa_elec_num_meters"])).fillna(

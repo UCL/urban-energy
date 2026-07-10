@@ -1,0 +1,230 @@
+%% Nature Cities manuscript.
+%%
+%% Class: Springer Nature sn-jnl (Dec 2024), option [sn-nature] = Nature
+%% Portfolio numbered reference style. Initial submission is format-free
+%% (compiled PDF). Canonical numbers: paper/results_snapshot.txt (2026-07-10);
+%% every figure is built by stats/argument_figures.py or stats/map_figures.py.
+%%
+%% Claim hierarchy (deliberate): access first, the rate second, energy as the
+%% price of the access deficit, lock-in as the payoff. The heat sub-component
+%% appears only inside the decomposition and never carries causal weight.
+%%
+%% Main display items (8): Figs 1-6 + Tables 1-2.
+%% Extended Data (to assemble at submission): fig2_country, fig4_decomposition,
+%% fig5_doorstep, fig9_england, fig10_city, the source/filter table, the
+%% scenario table with CIs, and the Oster table.
+
+\documentclass[pdflatex,sn-nature]{sn-jnl}
+
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{booktabs}
+
+\graphicspath{{../figures/}}
+
+\begin{document}
+
+\title[Access gained per unit of energy spent]{Access gained per unit of energy spent: compact neighbourhoods return more of everyday life per kilowatt-hour}
+
+\author*[1]{\fnm{Gareth} \sur{Simons}}\email{gareth@benchmarkurbanism.com}
+\affil*[1]{\orgdiv{TODO department}, \orgname{University College London}, \orgaddress{\city{London}, \country{United Kingdom}}}
+
+\abstract{A neighbourhood is conventionally judged by the energy it consumes, not by what that energy buys. This paper measures both, for 178,353 English Census Output Areas: everyday access (amenities, jobs and people reachable over the road network) against household energy (metered gas and electricity plus National Travel Survey-anchored car travel), and the rate between them. On foot, a flat-type neighbourhood reaches about 27 times the amenities of a detached-type one. At each area's own driving range the reachable counts nearly converge, but the detached area closes the gap only by spending about three times the car energy, so per kilowatt-hour of driving a flat returns about 3.9 times the access. Total household energy runs about 2.1 times higher per dwelling in detached areas, the price of the access deficit. Recomputing the energy axis under decarbonisation scenarios, full deployment of insulation, heat pumps and electric vehicles closes less than a third of the energy gap and none of the access gap. The access deficit of dispersed form is structural and technology-immune, and has to be planned for directly.}
+
+\keywords{urban form, accessibility, energy, decarbonisation, compact city, neighbourhood}
+
+\maketitle
+
+%% ------------------------------------------------------------------
+%% Introduction (unheaded, per Nature research-article shape).
+%% ------------------------------------------------------------------
+
+Energy policy and neighbourhood assessment judge places by the energy they consume. This ignores what energy is for: the everyday life a household can reach, in work, shops, schools and services, for the energy it spends. A place that consumes little but reaches little is not efficient in any useful sense.
+
+This paper judges a neighbourhood by access gained per unit of energy spent. The premise is ecological: a system extracts more function from each unit of energy when it is compact and complex, cycling energy through many close exchanges rather than letting it dissipate \citep{jacobs1969,jacobs2000}. Compact form does the former, dispersed form the latter. The object of study is therefore the rate between two measured quantities, energy spent and access gained, not energy alone.
+
+Prior work treats the two quantities separately, and each strand carries a known measurement hazard. On the building side, compact forms lose less heat: simulation puts the heat-demand contrast between detached and compact archetypes as high as sixfold \citep{rode2014}, while English metered data place detached gas consumption at about twice a flat's \citep{need2024,ehs2024,wyatt2013,buyuklieva2023}. The gap between those figures is largely the energy performance gap: certificate ratings are modelled, over-predict consumption, and over-predict most for the largest dwellings \citep{crawley2019,summerfield2019,few2023,firth2024}, so modelled energy inflates any form gradient. On the travel side, density associates with lower car use \citep{newman1989}, but the marginal effect is modest \citep{echenique2012}, and the relationship is better read as one of accessibility than of density as such \citep{ewing2018,ellder2022}; at the metropolitan scale the compact-city case remains contested \citep{gaigne2012,mindali2004}. Cutting across both strands is the functional-unit problem: a low-density energy premium that is large per capita narrows or reverses per square metre \citep{norman2006}, because energy is sub-linear in household size \citep{druckman2008,huebner2017}, so the choice of denominator can manufacture or erase a conclusion.
+
+The question is pressing because decarbonisation policy assumes technology closes the gap: insulation and electric vehicles are expected to make every form efficient. Whether that holds is unresolved. If the energy cost of dispersed form is structural, fixed in floor area and distance, technology lowers it uniformly without closing the gap between forms, and the access cost is untouched entirely.
+
+This paper measures both axes for 178,353 of England's 178,605 Census 2021 Output Areas: network-based access to amenities, jobs and people against metered household energy plus survey-anchored car-travel energy, with the rate between them, modelling energy per dwelling with household size and floor area as freely estimated controls, which resolves the functional-unit ambiguity. The closest antecedent to the rate is the mobility energy productivity metric \citep{hou2019}, a composite planning score weighting opportunity accessibility by modelled mode energy intensities for United States locations; a measured access-per-kilowatt-hour contrast between dwelling forms, built from metered energy at national scale, has to our knowledge no precedent. Because households select their dwellings \citep{cao2009,stevens2017}, the estimand is place-level, the profile of a neighbourhood type conditional on observed confounds, and its exposure to residential self-selection is bounded directly. Figure~\ref{fig:inversion} states the finding: the two axes cross.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{fig1_inversion.png}
+\caption{\textbf{The two axes cross.} A detached neighbourhood spends about 2.1$\times$ a flat's energy per dwelling yet reaches about 1/27 of the everyday amenities on foot. Values are compositional pure-type predictions at mean confounds (Methods) across 178,353 English Census 2021 Output Areas.}
+\label{fig:inversion}
+\end{figure}
+
+\section*{Results}
+
+Every flat-to-detached contrast below comes from one compositional, no-intercept regression on each Output Area's dwelling-type mix, household-weighted, holding building age, deprivation, tenure and local climate constant (Methods). The contrast is read between idealised pure types, so it states the sharp end of each gap; the gap between typical mixed areas is smaller, and both are reported. Confidence intervals are 95\%, clustered on 309 local-authority districts.
+
+\subsection*{The access axis}
+
+Access is the count of opportunities reachable from a neighbourhood over the road network: amenities (six everyday destination types), jobs (each workplace weighted by its job count) and people (resident population), each read at a short walk (1,600\,m), at the area's own car catchment, and at a long drive (25,600\,m) (Methods). Access is a property of the location, not of its residents, so it is the same however the household is counted, and it is immune to residential self-selection by construction.
+
+The gap is widest at the doorstep and never closes (Table~\ref{tab:access}, Fig.~\ref{fig:reach}). On foot, a flat-type neighbourhood reaches 27.2$\times$ (95\% CI 19.4--38.1) the amenities, 52.4$\times$ (30.0--91.6) the jobs and 12.5$\times$ (9.4--16.5) the people of a detached-type one. These are pure-type contrasts; between typical areas the on-foot amenity gap is 9.7$\times$ comparing dominant-type medians and 12.2$\times$ comparing areas at least half of one type. At each area's own car catchment the raw counts nearly converge (amenities 1.26$\times$, 1.05--1.51), because a detached area drives further into its larger catchment. At a 25.6\,km drive, where a detached area can reach into denser places, the flat still leads 11.3$\times$ on amenities, 14.4$\times$ on jobs and 11.1$\times$ on people. For context, a flat neighbourhood holds 79 residents per hectare against a detached one's 14, a factor of 5.7.
+
+\begin{table}[t]
+\caption{Opportunities within reach by dwelling type. Type columns are observed medians; the ratio is the compositional flat-to-detached estimate (Methods), not the quotient of the columns.}
+\label{tab:access}
+\begin{tabular}{lrrrrr}
+\toprule
+Within reach (median) & Flat & Terraced & Semi & Detached & flat:det \\
+\midrule
+Amenities, on foot        & 184 & 101 & 57 & 19 & 27.2$\times$ \\
+Amenities, own catchment  & 2,234 & 1,935 & 2,357 & 2,313 & 1.3$\times$ \\
+Amenities, 25.6\,km drive & 18,021 & 8,520 & 7,460 & 3,906 & 11.3$\times$ \\
+Jobs, on foot             & 6,927 & 3,790 & 2,100 & 598 & 52.4$\times$ \\
+Jobs, 25.6\,km drive      & 807,658 & 382,638 & 337,938 & 173,447 & 14.4$\times$ \\
+People, on foot           & 17,838 & 11,861 & 8,207 & 2,766 & 12.5$\times$ \\
+\botrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{fig6_access_curve.png}
+\caption{\textbf{Reach against distance.} Everyday amenities reachable against network distance by dwelling type (compositional pure-type predictions): a flat-type neighbourhood reaches about 27$\times$ a detached-type one on foot and about 11$\times$ at a 25.6\,km drive. The gap is widest at the doorstep and never closes.}
+\label{fig:reach}
+\end{figure}
+
+\subsection*{The energy axis}
+
+Household energy is delivered energy per dwelling per year, in two measured parts: the home's metered gas and electricity, and the car travel of its residents. The home part is metered, not modelled, avoiding the performance gap; the travel part disaggregates measured National Travel Survey mileage across neighbourhoods under exact class constraints (Methods).
+
+A detached neighbourhood spends 2.12$\times$ (95\% CI 2.01--2.24) a flat's total energy per dwelling (Table~\ref{tab:energy}, Fig.~\ref{fig:energy}). The gradient is steepest in travel, 3.07$\times$ (2.81--3.35); the metered home component is 1.60$\times$ (1.45--1.76). That home-energy gap blends three effects of low density: bigger homes, more occupants, and a leakier envelope. Holding household size equal moves it to 1.27$\times$ (1.16--1.40); holding floor area equal as well leaves 1.17$\times$ (1.06--1.30), the direct effect of exposed walls and unshared surfaces. On the log scale, size and occupancy account for 66\% (54--85\%) of the home-energy gap, a descriptive covariate adjustment rather than an identified mediation. The estimated elasticity of home energy is 0.54 with respect to floor area and 0.5 with respect to household size, both well below one, which is why no fixed denominator is used: dividing by residents or by floor area would impose an elasticity of one that the data reject.
+
+\begin{table}[t]
+\caption{Household energy by dwelling type. Type columns are observed medians; the ratio is the compositional flat-to-detached estimate (Methods). The total is the per-area median of home plus travel energy, and medians are not additive.}
+\label{tab:energy}
+\begin{tabular}{lrrrrr}
+\toprule
+kWh per dwelling per year & Flat & Terraced & Semi & Detached & flat$\to$detached \\
+\midrule
+Home (metered gas + electricity) & 10,194 & 12,995 & 13,876 & 15,020 & 1.60$\times$ \\
+Car travel (NTS-anchored)        &  3,240 &  5,088 &  6,660 &  9,272 & 3.07$\times$ \\
+Total                            & 13,674 & 18,265 & 20,564 & 23,832 & 2.12$\times$ \\
+\botrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{fig3_energy_gradient.png}
+\caption{\textbf{The energy axis.} Home plus car-travel energy per dwelling rises from flat to detached, a 2.1$\times$ gap (compositional pure-type predictions; the observed medians are in Table~\ref{tab:energy}).}
+\label{fig:energy}
+\end{figure}
+
+Flats record fewer domestic gas meters than households (0.81 per household against 0.94 for detached), mostly because all-electric flats heat with electricity, which the total captures; communal heating metered as non-domestic is a genuine, smaller undercount. Restricting to well-measured areas (gas-meter coverage at least 0.9) leaves the home-energy gap at 1.61$\times$, so the measurement issue, if anything, slightly understates it. The same restriction lowers the total gap to 1.74$\times$, a composition effect of the subsample, which drops the off-gas rural detached areas that drive the most.
+
+\subsection*{The rate: access per kilowatt-hour}
+
+The rate prices the access a neighbourhood reaches against the car energy it spends reaching it: amenities within the area's own car catchment, divided by its car-travel energy. The flat-to-detached contrast of the rate is, by construction, the product of the two axes already reported: at their own catchments the two forms reach a similar count (access advantage 1.26$\times$), but the detached area gets there on about three times the car energy (energy saving 3.07$\times$), so per kilowatt-hour the flat returns $1.26 \times 3.07 \approx 3.9\times$ (95\% CI 3.1--4.8) the access (Fig.~\ref{fig:rate}). Same reach, a third of the fuel.
+
+The figure depends on how the two axes are conditioned, and the range is reported rather than hidden. Matching the access side's income-only conditioning on the energy side raises the rate to 5.3$\times$ (4.2--6.7); pricing access against an already-electrified travel cost, which removes the dependence between driving distance and catchment size, lowers it to 2.3$\times$ (2.0--2.7); the dominant-type median rate is 3.0$\times$. The headline 3.9$\times$ sits within this range, and every variant leaves the ordering intact: compact form returns a multiple of the access per unit of energy under any conditioning.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{fig7_rate.png}
+\caption{\textbf{The rate.} Everyday amenities reachable per kilowatt-hour of car travel by dwelling type: a flat returns about 3.9$\times$ a detached home's access per kilowatt-hour (access advantage 1.26$\times$ multiplied by energy saving 3.07$\times$).}
+\label{fig:rate}
+\end{figure}
+
+\subsection*{Decarbonisation does not close the gap}
+
+Recomputing the energy axis under a ladder of technology scenarios, with each home's energy re-priced under insulation, heat pumps and electric vehicles alone and in combination (Methods), no scenario closes half the energy gap and none moves the access gap at all. The three levers act differently. Insulation scales each home's gas by its own certificate-derived fabric headroom, which detached homes carry more of, and closes the most per lever: fully deployed it moves the total gap from 2.12$\times$ to 1.83$\times$, 20\% of the log gap. Electrification re-prices miles at electric intensity and closes 18\%, to 1.85$\times$. Heat pumps cut delivered home energy sharply but uniformly, which unmasks the larger travel gap; fully deployed they leave the total gap marginally wider, at 2.16$\times$. On the Climate Change Committee's Balanced Pathway for 2040, with half of homes on heat pumps and three-quarters of cars electric \citep{ccc2025}, the gap stands at 1.89$\times$, one sixth closed. Full deployment of all three levers leaves 1.68$\times$, with 69\% of the log gap surviving; insulation plus full electrification without heat pumps leaves 1.51$\times$, and 55\% (51--58\%) survives.
+
+The access gap does not move in any scenario, because no fabric measure, heat pump or drivetrain brings a school, a job or a shop closer to a house built far from them (Fig.~\ref{fig:scenarios}). On foot a flat still reaches 27$\times$ the amenities, before and after. The inefficiency of dispersed form is fixed in the street layout and the location of destinations, which change over generations rather than product cycles.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{fig8_scenarios.png}
+\caption{\textbf{Locked in.} The flat-to-detached total energy gap under each decarbonisation lever (left), beside the on-foot access gap (right), which is 27$\times$ in every scenario. Bars show compositional pure-type ratios; percentages are the share of the log gap closed relative to the status quo.}
+\label{fig:scenarios}
+\end{figure}
+
+\subsection*{Robustness}
+
+Figure~\ref{fig:forest} draws every headline ratio with its clustered confidence interval. Three families of checks discipline the reading.
+
+First, residential self-selection. Households who choose detached homes may differ in unmeasured ways that also raise energy use, so the energy gaps are read as place-level profiles, not household treatment effects. Adding occupational class to the confounds moves the gaps by essentially nothing. A coefficient-stability bound \citep{oster2019} on a continuous detached-share specification gives $\delta^{*} \approx 1.1$ for total energy: unobserved sorting would need to be slightly stronger than everything measured combined to nullify it. The bound is survival at the margin, not immunity; at exactly $\delta = 1$ the adjusted gap is 1.03$\times$. The home-energy component is weaker still ($\delta^{*} \approx 0.3$). This is why the argument rests on access and the rate, which are location-intrinsic and immune by construction, with the energy gap as the pricing term.
+
+Second, the travel construction. Because each rural-urban class total is anchored exactly to the measured survey figure, the two allocator assumptions only redistribute miles within a class. The commute-distance elasticity barely matters: varying it from 0.15 to 0.45 moves the travel contrast between 2.74$\times$ and 2.98$\times$ on dominant-type medians. The ownership elasticity matters more and is swept to its floor: the compositional travel gap is 3.07$\times$ under proportional allocation, 2.93$\times$ at an elasticity of 0.8, 2.80$\times$ at 0.6, and 2.50$\times$ (2.35--2.65) at zero, where the ownership signal is removed and only the measured between-class mileage gradient and household size remain. Under any within-class allocation, a detached neighbourhood spends at least two and a half times a flat's car energy.
+
+Third, measurement and zonation. The home-energy gap holds under meter-to-household denominator restrictions (1.55--1.61$\times$) and winsorisation (1.59$\times$). Re-aggregating the whole frame to the two coarser census geographies and re-fitting the same model, the total gap holds at 2.12$\times$, 1.88$\times$ and 1.72$\times$ at Output Area, LSOA and MSOA scale, with the support-respecting median companion at 1.74$\times$, 1.59$\times$ and 1.47$\times$, so the result is not an artefact of the zonation.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{fig11_forest.png}
+\caption{\textbf{Every headline gap, with its uncertainty.} Compositional pure-type ratios with 95\% confidence intervals clustered on 309 local-authority districts: energy gaps (detached:flat) above, access gaps (flat:detached) below. The rate is the product of the catchment-amenity and car-travel rows and carries a cluster-bootstrap interval (3.1--4.8), reported in the text.}
+\label{fig:forest}
+\end{figure}
+
+\section*{Discussion}
+
+The component results reproduce the literature where they overlap it, which locates the contribution in the combination rather than any single axis. The metered home-energy gap of 1.60$\times$ matches national metered sources \citep{need2024,ehs2024} and dwelling-level regressions \citep{wyatt2013,buyuklieva2023}, and sits far below simulation contrasts \citep{rode2014} by exactly the performance gap \citep{summerfield2019,few2023,firth2024}. The dependence of the verdict on the functional unit reproduces lifecycle results \citep{norman2006}, and the sub-unit household-size elasticity reproduces the downsizing literature \citep{huebner2017,druckman2008}. The travel contrast points the same way as the urban-form literature but is larger than marginal-effect estimates \citep{echenique2012} because it is a different estimand: a cross-sectional contrast between the extremes of the form distribution, read against the observed rural-urban mileage gradient. The access axis operationalises the accessibility reading of the density-travel relationship \citep{ewing2018,ellder2022}. The rate's nearest relative, the mobility energy productivity metric \citep{hou2019}, is a forward-looking planning score built on modelled travel times and mode energy intensities; the rate here is an empirical national contrast on measured energy, read between dwelling forms and stress-tested under decarbonisation. What this household-scale finding cannot settle is the metropolitan general-equilibrium question, where relocation responses can offset densification gains \citep{gaigne2012}.
+
+The scenario results give the mechanism a precise statement. Uniform technology scales energy down without changing the structural quantities: insulation lowers loss per square metre but not the square metres, electrification lowers energy per mile but not the miles. Between 55\% and 69\% of the energy gap survives full deployment, and heat pumps, which cut delivered home energy hardest, leave the form gap marginally wider because what remains is dominated by travel. The access deficit survives untouched in every scenario. This is lock-in in the strict sense \citep{unruh2000,seto2016}: the quantities that set the gap are fixed in built form and street layout for generations.
+
+Whether a detached neighbourhood is more energy-intensive at all depends on the functional unit, and the unit is a modelling choice, not a presentational one. Per dwelling and per capita it spends more; per square metre the gap nearly closes; per person it narrows because detached homes hold larger households. Since the household-size elasticity of home energy is about 0.5, per-person normalisation imposes a false elasticity of one and silently credits detached homes for housing the larger families that select into them. The resolution adopted here, energy per dwelling with household size and floor area as freely estimated controls, lets the data set the scaling and keeps the selection visible.
+
+For policy, a neighbourhood rating that counts only consumption rewards low-density form for its low per-capita heat while ignoring its travel and access penalties. A two-axis measure values proximity, which retrofit and electrification cannot supply; decarbonising buildings and vehicles is necessary but not sufficient, and access has to be a planned outcome, scored alongside energy. Two caveats temper the reading. Energy saved by efficiency is partly re-spent, so dwelling-level gains need not scale to economy-wide reductions. And access is capitalised into land and rent, so the advantages of compact form are not shared evenly; an access score should be read alongside distributional evidence, not as a welfare verdict.
+
+Five limitations qualify the result. The estimand is place-level, and the definitive self-selection test, differencing out fixed preferences with movers in panel microdata, is out of scope. The analysis is ecological, at area rather than household level, with the usual inferential cautions \citep{robinson1950,greenland2001}. The insulation lever assumes the certificate potential-to-current ratio captures achievable fabric improvement. The access counts treat amenity location as exogenous, though amenities partly follow demand; the near-convergence of counts at each area's own catchment is consistent with the compact advantage being one of proximity rather than supply, and the access figures describe what residents can currently reach. And the analysis is England-only, pending a harmonised Welsh deprivation measure.
+
+Judged by access gained per unit of energy spent, compact form is the more efficient, and the difference is structural: fixed until places are rebuilt, and untouched by every technology on the deployment path.
+
+\section*{Methods}
+
+\subsection*{Unit of analysis}
+
+The unit is the 2021 Census Output Area, the smallest published census geography, about 125 households and 300 residents. Of England's 178,605 Output Areas, the 178,353 with usable metered energy are analysed. Wales is excluded because the English Index of Multiple Deprivation, used as a control, has no directly comparable Welsh equivalent. All inputs are open data, processed to the Output Area on the British National Grid (EPSG:27700): Census 2021 topic tables (population, household size, dwelling-type shares, tenure, occupational class, car ownership, commute distance, workplace jobs); DESNZ sub-national gas and electricity statistics; domestic Energy Performance Certificates (floor area, build year, current and potential intensity); OS Open Roads; amenity registers (Food Standards Agency, Get Information about Schools, NHS Organisation Data Service, OS Open Greenspace); the Indices of Deprivation 2025; DVLA vehicle licensing; National Travel Survey table NTS9904; and HadUK-Grid 1991--2020 heating-degree-days.
+
+\subsection*{The energy axis}
+
+Energy is delivered energy in kilowatt-hours per dwelling per year, not primary energy or carbon. The home component is metered: postcode-level gas and electricity, each a meter count and a mean per meter, are aggregated to the Output Area by meter-weighted means, summed, and divided by census households. Gas is weather-corrected; both series cover domestic meters only. Metered energy is used because certificate ratings over-predict consumption, most for large detached dwellings, and would inflate the form gradient with model error \citep{crawley2019,summerfield2019,few2023,firth2024}.
+
+The travel component is the total car-travel energy of a location's residents, not the commute alone (about one sixth of car mileage). It is estimated by constrained disaggregation. NTS9904 gives measured car-driver miles per person by 2021 rural-urban class of residence, from about 2,500 (urban) to 5,200 (rural). Each class total is distributed across its Output Areas by an allocator combining cars per person (elasticity 1, the proportional headline) and commute distance (elasticity 0.30), constrained so each class's population-weighted mean reproduces the survey figure exactly; only the within-class distribution is estimated, and both elasticities are swept in the sensitivity analysis. Miles are converted at the local fleet's energy per mile, 0.93 (internal combustion) and 0.32 (battery electric) kWh per mile, blended by the DVLA battery-electric share. Metered domestic electricity already contains home electric-vehicle charging, so the travel figure double-counts that overlap; at the current battery-electric fleet share (2--3\%) the effect is negligible.
+
+\subsection*{The access axis}
+
+Access is the count of opportunities reachable from an Output Area over the road network. The England network (OS Open Roads, about 3.6 million junctions) is built once into a routable graph (cityseer \citep{simons2023}), and counts are accumulated outward from each Output Area's nearest node at every distance band from 1,600\,m to 25,600\,m. Amenities are six everyday destination types: general practitioners and pharmacies (NHS), schools (GIAS), food outlets and food shops (FSA), and public parks and greenspace (Ordnance Survey). Jobs are workplace jobs, each workplace weighted by its job count; people are resident population. Each is read at 1,600\,m, at the area's own car catchment, and at 25,600\,m.
+
+\subsection*{The rate}
+
+Per Output Area the rate is the amenity count within the area's own car catchment, divided by its car-travel energy. The catchment is the area's NTS car-driver distance per person divided by 370 trips per person per year, a constant national trip rate, with the resulting one-way distance used as network reach and bounded to [1,600\,m, 25,600\,m]. The flat-to-detached contrast of the rate is by construction the product of the access advantage (catchment amenities, flat:detached) and the energy saving (car-travel energy, detached:flat); it is reconstructable from Tables~\ref{tab:access} and~\ref{tab:energy}, not estimated as a separate model. The two terms are deliberately not independent: the catchment radius and the travel energy are both functions of how far residents drive, which is the intended reading. The conditioning variants reported in the Results bound the rate's dependence on that construction.
+
+\subsection*{The compositional model}
+
+All contrasts come from one compositional, no-intercept regression on each Output Area's dwelling-type shares (flat, terraced, semi-detached, detached, residual) as fractions summing to one. Without an intercept each coefficient is the modelled outcome of a neighbourhood composed entirely of one type, and the ratio is $\exp(b_{\mathrm{detached}} - b_{\mathrm{flat}})$, invariant to the uncentred confounds. Regressions are household-weighted. The estimate is read at pure-composition vertices, which few areas approach, so each ratio states the contrast between idealised extremes; support-respecting median companions are reported alongside.
+
+Energy enters in logarithms per dwelling, so fitted ratios are ratios of conditional geometric means. Household size and floor area are covariates with freely estimated coefficients, never denominators. Four confounds are held throughout: building age, deprivation (the overall Index of Multiple Deprivation and its income domain), tenure (social- and private-rented shares), and climate (heating-degree-days). Access counts are non-negative with frequent zeros and are fitted with a Poisson log link; with households as analytic weights the estimator is quasi-Poisson, using point estimates with a robust sandwich covariance. The access regression holds the income domain but not density, which is the mechanism under study, and not the overall deprivation index, whose barriers and living-environment sub-domains are themselves access measures.
+
+Standard errors are clustered on the 309 local-authority districts, with $t(G-1)$ critical values; every reported ratio carries a 95\% interval on this basis. Composite quantities (the rate, the surviving-gap share, the mediated fraction) carry cluster-bootstrap intervals with 999 replications, resampling whole districts.
+
+\subsection*{Decarbonisation scenarios}
+
+The energy axis is recomputed under technology levers and the gap re-estimated. Insulation scales each home's metered gas by its certificate fabric-improvement ratio (modelled potential over current intensity, median 0.5; both terms modelled, so the performance gap cancels); electricity is unchanged. Heat pumps deliver the gas heat as electricity at the delivered-energy factor of boiler efficiency over a seasonal coefficient of performance ($0.90/2.8 = 0.32$); a sensitivity varies the coefficient between 2.4 and 3.2. Electrification re-prices car energy at electric fleet intensity with miles unchanged. Both heat levers act on metered gas only, so electrically heated homes, commoner among flats, receive no retrofit lever; the direction is conservative for the surviving-gap shares. Partial uptake blends transformed and untransformed energy linearly; the Balanced Pathway scenario uses the Climate Change Committee's 2040 stock shares \citep{ccc2025}. Every scenario is fitted on one common complete-case sample (178,341 areas with a valid fabric ratio). Access is unchanged in every scenario by construction.
+
+\subsection*{Robustness and the estimand}
+
+The estimand is place-level: the energy and access profile of a neighbourhood type conditional on observed confounds, not a household treatment effect. Three checks bound selection on unobservables. Access depends on location and is immune by construction. Occupational class (higher managerial and professional share) is added to the confounds and moves the gaps by essentially nothing. A coefficient-stability bound \citep{oster2019} is computed on a continuous detached-share gradient in an intercept specification (the compositional model has no centred $R^2$), using the coefficient-based approximation with $R_{\max} = \min(1.3\tilde{R}, 1)$; the Results report $\delta^{*}$ together with the $\delta = 1$ bias-adjusted gap. The zonation check re-aggregates all variables household-weighted to LSOA and MSOA geographies and re-fits the identical model.
+
+\subsection*{Data availability}
+
+All inputs are open data: Census 2021, DESNZ sub-national energy consumption statistics, domestic Energy Performance Certificates, NTS9904, DVLA vehicle licensing, the Indices of Deprivation 2025, HadUK-Grid, OS Open Roads, Open Greenspace, Open UPRN and Code-Point Open, the FSA food-hygiene register, GIAS, and the NHS Organisation Data Service. The built per-Output-Area artefacts will be deposited with a DOI on acceptance. % TODO: mint the deposit DOI before submission.
+
+\subsection*{Code availability}
+
+The acquisition pipeline, analysis scripts and figure code are available at \url{https://github.com/UCL/urban-energy}. % TODO: archive a tagged release with a DOI before submission.
+
+\section*{Declarations}
+
+\bmhead{Acknowledgements} % TODO
+\bmhead{Competing interests} The author declares no competing interests.
+
+\bibliography{../references}
+
+\end{document}

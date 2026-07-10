@@ -40,15 +40,24 @@ NAN_CI: tuple[float, float, float, float] = (
     float("nan"),
 )
 
-#: Default bootstrap replications for composite (multi-fit) quantities.
-BOOTSTRAP_REPS = 300
+#: Default bootstrap replications for composite (multi-fit) quantities. 999 is
+#: the publication setting (percentile CIs need ~1,000 draws to stabilise);
+#: pass a smaller ``reps`` explicitly for quick exploratory runs.
+BOOTSTRAP_REPS = 999
 
 #: Default RNG seed (reproducible intervals).
 SEED = 20260708
 
 
-def _z(level: float) -> float:
-    """Two-sided normal critical value for a confidence level."""
+def _crit(level: float, df: float | None = None) -> float:
+    """Two-sided critical value: t with ``df`` degrees of freedom, else normal.
+
+    With cluster-robust covariance the reference distribution is t with G − 1
+    degrees of freedom (G clusters), not the normal; at ~309 local-authority
+    clusters the difference is small but the t value is the correct one.
+    """
+    if df is not None and np.isfinite(df) and df > 0:
+        return float(stats.t.ppf(0.5 + level / 2.0, df))
     return float(stats.norm.ppf(0.5 + level / 2.0))
 
 
@@ -95,11 +104,13 @@ def log_contrast_ci(
         float(cov.loc[a, a]) + float(cov.loc[b, b]) - 2.0 * float(cov.loc[a, b])
     )
     se = float(np.sqrt(var)) if var > 0 else float("nan")
-    z = _z(level)
+    # Cluster-robust fits carry the cluster count; use t(G-1) rather than z.
+    n_clusters = getattr(result, "_n_clusters", None)
+    crit = _crit(level, n_clusters - 1 if n_clusters else None)
     return (
         float(np.exp(logr)),
-        float(np.exp(logr - z * se)),
-        float(np.exp(logr + z * se)),
+        float(np.exp(logr - crit * se)),
+        float(np.exp(logr + crit * se)),
         se,
     )
 

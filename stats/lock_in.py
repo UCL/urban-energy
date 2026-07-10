@@ -80,6 +80,20 @@ def _d_ratio_ci(
 def main() -> None:
     """Print the lock-in: current vs perfectly-optimised energy gap (method D)."""
     df = load_and_aggregate()
+
+    # One common complete-case sample: the fabric factor is NaN where EPC data
+    # are missing, so without this restriction the optimised fit would use a
+    # smaller sample than the status quo and the survives-share would compare
+    # fits across samples.
+    n_all = len(df)
+    df = df[
+        _fabric_factor(df).notna() & _num(df["transport_kwh_per_hh_total_est"]).notna()
+    ].copy()
+    print(
+        f"\n  Common sample: {len(df):,} of {n_all:,} OAs "
+        "(complete EPC fabric factor + travel; now and optimised fit on these rows)."
+    )
+
     hh = _num(df["total_hh"])
 
     def _per_hh(mean_col: str, meter_col: str) -> pd.Series:

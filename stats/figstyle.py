@@ -33,7 +33,8 @@ FIG_DIR = PROJECT_DIR / "paper" / "figures"
 
 # --- Semantic hues: what the quantity is ---
 HEAT = "#c1543b"  # metered gas + electricity (warm)
-TRAVEL = "#3b6ea5"  # NTS-anchored car energy (cool)
+TRAVEL = "#5b7c9d"  # NTS-anchored car energy (cool, slate-leaning so the pair
+#                     with HEAT does not read as the default matplotlib red/blue)
 ACCESS = "#3d8a5f"  # amenities / jobs / people reached (green)
 
 # --- Dwelling-type ordinal ramp (slate): compact → dispersed ---

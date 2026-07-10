@@ -7,8 +7,9 @@
 > below as live. The finding-by-finding reconciliation is in
 > [`methodology_review.md`](methodology_review.md) ("Reconciliation against the current two-axis
 > frame"); the live open-work list is [ROADMAP.md](../ROADMAP.md) §"Open work" — as of
-> 2026-07-09 that is MAUP scale/zonation (Step 10, being addressed now), an optional spatial
-> error/lag cross-check (Steps 7/12), and formal out-of-sample validation (Step 11).
+> 2026-07-10: the MAUP scale ladder (Step 10) is DONE (`stats/maup_scale.py`; the zonation half,
+> grid/random re-partitions, remains open), leaving an optional spatial error/lag cross-check
+> (Steps 7/12) and formal out-of-sample validation (Step 11).
 > [`summary.md`](summary.md) is the canonical statement of the numbers.
 
 A sequenced, executable plan to improve the robustness of the NEPI argument,

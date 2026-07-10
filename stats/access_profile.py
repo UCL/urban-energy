@@ -10,10 +10,10 @@ flat-vs-detached ratios used in ``paper/summary.md``:
   [2] LIKE-FOR-LIKE DRIVABLE — amenities within the SAME fixed distance for every OA,
       by type at each ladder rung: pure density/connectivity, no catchment scaling.
   [3] DRIVABLE RATE — each OA at its OWN car-trip catchment (NTS mileage ÷ trips) ÷ its
-      car-travel energy: the access-per-kWh rate (dominant-type median ~2.9×).
+      car-travel energy: the access-per-kWh rate (dominant-type median ~3.0×).
   [4] COMPOSITIONAL — Poisson flat-vs-detached contrasts (the headline): on foot a flat
-      reaches ~24× the amenities of a detached, and returns ~3.6× the access per kWh
-      (access advantage 1.2× × energy saving 3.1×).
+      reaches ~27× the amenities of a detached, and returns ~3.9× the access per kWh
+      (access advantage 1.26× × energy saving 3.07×).
 
 Jobs are reported alongside the amenities (the total reachable jobs, summed over
 workplaces), so the same flat-vs-detached comparison can be read for employment access.
@@ -55,7 +55,6 @@ TYPES = ["Flat", "Terraced", "Semi", "Detached"]
 LABELS = {
     "gp": "GP",
     "pharmacy": "Pharmacy",
-    "hospital": "Hospital",
     "school": "School",
     "food": "Food",
     "grocery": "Grocery",
@@ -177,6 +176,9 @@ def compositional_access(d: pd.DataFrame) -> None:
         ("amenities, catchment", "net_amen"),
         ("jobs, catchment", "net_jobs_catch"),
         ("people, catchment", "net_pop_catch"),
+        ("amenities, drive 25.6 km", "net_total_25600"),
+        ("jobs, drive 25.6 km", "net_jobs_25600"),
+        ("people, drive 25.6 km", "net_pop_25600"),
     ]
     print("\n  [4] COMPOSITIONAL (option D) — pure all-flat vs all-detached area")
     print(
@@ -202,27 +204,30 @@ def compositional_access(d: pd.DataFrame) -> None:
             access_ratio_ci = ci
         print(f"  {label:<26s}{pf:>14,.1f}{pdet:>14,.1f}{fmt_ci(ci):>26s}")
 
-    # Common-support companions for the on-foot amenity gap. The Poisson row above
-    # is a pure-type prediction read at a 100%-of-type vertex (where several detached
-    # service medians are 0); these two grounded comparisons sit beside it.
-    walk = _num(cf["net_total_1600"])
-    med_flat = float(walk[cf["dominant_type"] == "Flat"].median())
-    med_det = float(walk[cf["dominant_type"] == "Detached"].median())
-    dom_ratio = med_flat / med_det if med_det else float("nan")
-    hi_flat = walk[_num(cf["s_flat"]) >= 0.5]
-    hi_det = walk[_num(cf["s_detached"]) >= 0.5]
-    sup_ratio = (
-        float(hi_flat.median()) / float(hi_det.median())
-        if len(hi_det) and hi_det.median()
-        else float("nan")
-    )
-    print(
-        "\n  on-foot amenity gap companions (vs the pure-type Poisson above):"
-        f"\n    dominant-type medians   Flat {med_flat:,.0f} / Det {med_det:,.0f} "
-        f"= {dom_ratio:.1f}×"
-        f"\n    support-restricted (≥50% share) medians = {sup_ratio:.1f}×  "
-        f"(n≥50%-flat {len(hi_flat):,}, n≥50%-det {len(hi_det):,})"
-    )
+    # Common-support companions for the on-foot gaps. The Poisson rows above are
+    # pure-type predictions read at a 100%-of-type vertex (where several detached
+    # service medians are 0); these grounded comparisons sit beside them. Jobs get
+    # the same companions as amenities because their vertex-vs-support divergence
+    # is the widest of the three measures.
+    for m_label, m_col in (("amenity", "net_total_1600"), ("jobs", "net_jobs_1600")):
+        walk = _num(cf[m_col])
+        med_flat = float(walk[cf["dominant_type"] == "Flat"].median())
+        med_det = float(walk[cf["dominant_type"] == "Detached"].median())
+        dom_ratio = med_flat / med_det if med_det else float("nan")
+        hi_flat = walk[_num(cf["s_flat"]) >= 0.5]
+        hi_det = walk[_num(cf["s_detached"]) >= 0.5]
+        sup_ratio = (
+            float(hi_flat.median()) / float(hi_det.median())
+            if len(hi_det) and hi_det.median()
+            else float("nan")
+        )
+        print(
+            f"\n  on-foot {m_label} gap companions (vs the pure-type Poisson above):"
+            f"\n    dominant-type medians   Flat {med_flat:,.0f} / Det {med_det:,.0f} "
+            f"= {dom_ratio:.1f}×"
+            f"\n    support-restricted (≥50% share) medians = {sup_ratio:.1f}×  "
+            f"(n≥50%-flat {len(hi_flat):,}, n≥50%-det {len(hi_det):,})"
+        )
 
     # The access-per-kWh RATE is a ratio of two divisions (access ÷ energy): for a
     # flat area over a detached one it equals the access advantage (flat:det
@@ -310,7 +315,7 @@ def compositional_access(d: pd.DataFrame) -> None:
             "circularity": ar * er_a,
         }
 
-    rc = cluster_bootstrap_multi(cf, _rates_stat, reps=200)
+    rc = cluster_bootstrap_multi(cf, _rates_stat)
     print(
         f"\n  access-per-kWh RATE (headline) = access advantage × energy saving"
         f"\n    = {access_ratio:.2f} × {er_full[0]:.2f} = {rc['headline'][0]:.2f}×  "
@@ -331,8 +336,8 @@ def compositional_access(d: pd.DataFrame) -> None:
         f"[95% CI {rc['circularity'][1]:.2f}, {rc['circularity'][2]:.2f}]"
     )
     print(
-        "  non-parametric companion: dominant-type median access/kWh ≈ 2.9× "
-        "(section [3] above)."
+        "  non-parametric companion: dominant-type median access/kWh — see the "
+        "'access / kWh' row in section [3] above."
     )
 
 
@@ -367,7 +372,7 @@ def main() -> None:
     d["walk_basket"] = sum((_num(d[f"net_{s}_1600"]) > 0).astype(int) for s in DEST)
     mb = {t: float(d.loc[d["dominant_type"] == t, "walk_basket"].mean()) for t in TYPES}
     print(
-        "  walkable basket (of 7 on foot, mean):  "
+        f"  walkable basket (of {len(DEST)} on foot, mean):  "
         + "   ".join(f"{t} {mb[t]:.1f}" for t in TYPES)
     )
     mj = _med(d, "net_jobs_1600")
@@ -375,6 +380,12 @@ def main() -> None:
         "  jobs within 1,600 m (median):  "
         + "  ".join(f"{t} {mj[t]:,.0f}" for t in TYPES)
         + f"   (Flat:Det {_ratio(mj):.1f}x)"
+    )
+    mp = _med(d, "net_pop_1600")
+    print(
+        "  people within 1,600 m (median):  "
+        + "  ".join(f"{t} {mp[t]:,.0f}" for t in TYPES)
+        + f"   (Flat:Det {_ratio(mp):.1f}x)"
     )
 
     # ---- [1b] STRUCTURAL INTENSITY (network + population, within 1,600 m) ----
@@ -424,6 +435,24 @@ def main() -> None:
             + f"{_ratio(m):>8.1f}x"
         )
 
+    # ---- [2c] LIKE-FOR-LIKE PEOPLE (same network distance, resident population) ----
+    print(
+        "\n  [2c] LIKE-FOR-LIKE PEOPLE — residents reachable within the SAME "
+        "network distance"
+    )
+    print(
+        f"  {'dist (m)':<10s}"
+        + "".join(f"{t:>12s}" for t in TYPES)
+        + f"{'Flat:Det':>10s}"
+    )
+    for dist in ladder:
+        m = _med(d, f"net_pop_{dist}")
+        print(
+            f"  {dist:<10d}"
+            + "".join(f"{m[t]:>12,.0f}" for t in TYPES)
+            + f"{_ratio(m):>8.1f}x"
+        )
+
     # ---- [3] DRIVABLE RATE (each OA at its own catchment) ----
     d["trip_km"] = _num(d["trip_m"]) / 1000
     d["amenities"] = _num(d["net_amen"])
@@ -442,12 +471,14 @@ def main() -> None:
             + "".join(f"{m[t]:>10.1f}" for t in TYPES)
             + f"{_ratio(m):>8.1f}x"
         )
-    # jobs at the same own-catchment radius (weighted sum, then per kWh)
+    # jobs and people at the same own-catchment radius (weighted sums)
     d["jobs_catch"] = _num(d["net_jobs_catch"])
     d["jobs_rate"] = d["jobs_catch"] / d["transport"].replace(0, np.nan)
+    d["pop_catch"] = _num(d["net_pop_catch"])
     for label, col, fmt in [
         ("jobs (catchment)", "jobs_catch", "{:>10,.0f}"),
         ("jobs / kWh", "jobs_rate", "{:>10,.0f}"),
+        ("people (catch)", "pop_catch", "{:>10,.0f}"),
     ]:
         m = _med(d, col)
         print(

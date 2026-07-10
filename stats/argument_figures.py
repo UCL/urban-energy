@@ -10,8 +10,9 @@ story scaffold is in ``paper/figure_design.md``):
   F4 decomposition — how much of the heat gap is the form itself (~17%).
   F5 doorstep    — what a flat reaches on foot that a detached does not.
   F6 reach       — access against distance, widest on foot.
-  F7 rate        — same reach, about a third of the fuel (~3.6× per kWh).
+  F7 rate        — same reach, about a third of the fuel (~3.9× per kWh).
   F8 scenarios   — no decarbonisation lever closes much of the gap; access is fixed.
+  F11 forest     — every headline ratio with its 95% CI on one log ruler.
 
 Maps (F9 England, F10 one city) are built by ``stats/map_figures.py``.
 
@@ -47,6 +48,7 @@ from form_size_decomposition import (  # noqa: E402
     _imd_income_col,
     _tenure_cols,
 )
+from inference import CLUSTER_COL, log_contrast_ci  # noqa: E402
 from matplotlib.colors import LinearSegmentedColormap  # noqa: E402
 from oa_data import load_and_aggregate  # noqa: E402
 from scenarios import SCENARIOS, scenario_energy  # noqa: E402
@@ -208,15 +210,20 @@ def national_scatter(cf: pd.DataFrame) -> None:
             mids.append((lo + hi) / 2)
             meds.append(float(np.median(a_ok[sel])))
     ax.plot(mids, meds, color=fs.INK, lw=2.6, zorder=6, solid_capstyle="round")
+    # Label above the line, anchored at the last binned point INSIDE the x-limit
+    # (the top quantile bin's midpoint falls beyond it and would clip).
+    in_view = [i for i, m in enumerate(mids) if m <= 40_000]
+    anchor = in_view[-1] if in_view else len(mids) - 1
     ax.annotate(
         "median neighbourhood",
-        xy=(mids[-1], meds[-1]),
-        xytext=(0, -22),
+        xy=(mids[anchor], meds[anchor]),
+        xytext=(-10, 18),
         textcoords="offset points",
         fontsize=8.5,
         fontweight="bold",
         color=fs.INK,
-        ha="center",
+        ha="right",
+        bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.75),
         arrowprops=dict(arrowstyle="-", color=fs.INK, lw=0.8, shrinkB=4),
         zorder=7,
     )
@@ -314,8 +321,28 @@ def energy_gradient(cf: pd.DataFrame, confounds: list[str]) -> None:
             fontweight="bold",
             fontsize=9.5,
         )
+        # Per-segment values, so the 1.6× heat / 3.1× travel split is legible
+        # off the bars, not only from the totals.
+        ax.text(
+            i,
+            heat_seg[i] / 2,
+            f"{heat_seg[i]:,.0f}",
+            ha="center",
+            va="center",
+            fontsize=8,
+            color="white",
+        )
+        ax.text(
+            i,
+            heat_seg[i] + trav_seg[i] / 2,
+            f"{trav_seg[i]:,.0f}",
+            ha="center",
+            va="center",
+            fontsize=8,
+            color="white",
+        )
     ax.set_xticks(x, _TYPES)
-    ax.set_ylabel("Energy spent (kWh / household / year)")
+    ax.set_ylabel("Energy spent (kWh / dwelling / year)")
     ax.legend(loc="upper left", fontsize=8.5)
     ax.margins(y=0.18)
     fs.deck(
@@ -346,6 +373,7 @@ def decomposition(cf: pd.DataFrame, confounds: list[str]) -> None:
     ratios = []
     for _, xcols in steps:
         m = _comp_ols(cf, "_lh", xcols, "total_hh")
+        assert m is not None, "decomposition fit failed"
         ratios.append(float(np.exp(m.params["s_detached"] - m.params["s_flat"])))
     labels = [s[0] for s in steps]
 
@@ -491,7 +519,7 @@ def doorstep(cf: pd.DataFrame) -> None:
 
 
 def access_curve(cf: pd.DataFrame, income: list[str], dists: list[int]) -> None:
-    """F6: amenities vs network distance, one slate line per type (~24× on foot)."""
+    """F6: amenities vs network distance, one slate line per type (~27× on foot)."""
     cf = cf.copy()
     series: dict[str, list[float]] = {t: [] for t in _TYPES}
     for dd in dists:
@@ -543,6 +571,8 @@ def access_curve(cf: pd.DataFrame, income: list[str], dists: list[int]) -> None:
         color=fs.INK_SECONDARY,
         fontweight="bold",
     )
+    # White halo boxes: both multiples sit in the band the middle curves cross.
+    _halo = dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.85)
     ax.annotate(
         f"{foot:.0f}×",
         (1.6, np.sqrt(curves["Flat"][0] * curves["Detached"][0])),
@@ -552,6 +582,8 @@ def access_curve(cf: pd.DataFrame, income: list[str], dists: list[int]) -> None:
         fontweight="bold",
         color=fs.INK,
         va="center",
+        bbox=_halo,
+        zorder=6,
     )
     ax.annotate(
         f"{far:.0f}×",
@@ -563,10 +595,14 @@ def access_curve(cf: pd.DataFrame, income: list[str], dists: list[int]) -> None:
         fontweight="bold",
         color=fs.INK,
         va="center",
+        bbox=_halo,
+        zorder=6,
     )
     ax.set_xlabel("Network distance reachable (km)")
     ax.set_ylabel("Everyday amenities reachable")
     ax.set_xlim(km[0] - 0.5, km[-1] + 5)
+    # Keep the x-axis label clear of the figure-level source footer.
+    fig.subplots_adjust(bottom=0.15)
     fs.deck(
         ax,
         "Reach and distance",
@@ -584,7 +620,7 @@ def access_curve(cf: pd.DataFrame, income: list[str], dists: list[int]) -> None:
 
 
 def rate(cf: pd.DataFrame, income: list[str], confounds: list[str]) -> None:
-    """F7: amenities reachable per kWh of car travel, by type (flat ≈3.6×)."""
+    """F7: amenities reachable per kWh of car travel, by type (flat ≈3.9×)."""
     cf = cf.copy()
     cf["_amen"] = _num(cf["net_amen"])
     amen = _pure_preds(
@@ -687,6 +723,7 @@ def scenario_ladder(cf: pd.DataFrame, confounds: list[str]) -> None:
     # The frozen access gap: on-foot amenities, compositional flat:detached.
     cf["_amen"] = _num(cf["net_total_1600"])
     ma = _comp_poisson(cf, "_amen", _SHARE_FRACS + _imd_income_col(cf), "total_hh")
+    assert ma is not None, "access fit failed"
     access_ratio = float(np.exp(ma.params["s_flat"] - ma.params["s_detached"]))
 
     fig, (ax_e, ax_a) = plt.subplots(
@@ -719,6 +756,7 @@ def scenario_ladder(cf: pd.DataFrame, confounds: list[str]) -> None:
         )
     ax_e.set_yticks(y, labels)
     ax_e.set_xlim(1.0, max(ratios) + 0.5)
+    ax_e.set_ylim(-0.6, len(labels) - 1 + 1.05)
     ax_e.set_xlabel("Detached : Flat energy per dwelling")
     ax_e.set_title(
         "Energy gap: narrows a little",
@@ -728,17 +766,20 @@ def scenario_ladder(cf: pd.DataFrame, confounds: list[str]) -> None:
         fontweight="bold",
         pad=8,
     )
+    # "today" rides the top of the dashed status-quo line, inside the axes,
+    # where it cannot collide with the x-tick labels.
     ax_e.text(
         status_quo,
-        -0.9,
+        len(labels) - 1 + 0.62,
         "today",
         ha="center",
-        va="top",
+        va="bottom",
         fontsize=7.5,
         color=fs.INK_SECONDARY,
     )
 
-    # Right: the access gap, identical in every scenario (frozen).
+    # Right: the access gap, identical in every scenario (frozen). Each bar
+    # carries its value so the panel reads as data, not decoration.
     ax_a.barh(
         y,
         [access_ratio - 1.0] * len(y),
@@ -747,7 +788,20 @@ def scenario_ladder(cf: pd.DataFrame, confounds: list[str]) -> None:
         color=fs.DWELLING["Semi"],
         zorder=2,
     )
+    for yi in y:
+        ax_a.text(
+            access_ratio * 0.985,
+            yi,
+            f"{access_ratio:.0f}×",
+            ha="right",
+            va="center",
+            fontsize=8.2,
+            fontweight="bold",
+            color="white",
+            zorder=3,
+        )
     ax_a.set_xlim(1.0, access_ratio * 1.08)
+    ax_a.set_ylim(-0.6, len(labels) - 1 + 1.05)
     ax_a.set_xticks([])
     ax_a.set_title(
         f"Access gap: {access_ratio:.0f}×, frozen",
@@ -787,6 +841,128 @@ def scenario_ladder(cf: pd.DataFrame, confounds: list[str]) -> None:
     fs.save(fig, "fig8_scenarios")
 
 
+def forest(cf: pd.DataFrame, confounds: list[str], income: list[str]) -> None:
+    """F11: every headline compositional ratio with its clustered 95% CI.
+
+    One log ruler for the whole evidence base: the energy gaps (Detached:Flat,
+    log-OLS) above, the access gaps (Flat:Detached, Poisson) below. Each interval
+    is the single-model delta-method CI with LAD-clustered covariance — the same
+    numbers as the text tables. The access-per-kWh rate is deliberately absent:
+    it is the product of the catchment-amenity and car-travel rows and carries a
+    cluster-bootstrap interval, reported in the text.
+    """
+    cf = cf.copy()
+    heat_kwh = _num(cf["building_kwh_per_hh"])
+    trav_kwh = _num(cf["transport_kwh_per_hh_total_est"])
+    cf["_lh"] = np.log(heat_kwh.clip(lower=1))
+    cf["_le"] = np.log(trav_kwh.clip(lower=1))
+    cf["_lt"] = np.log((heat_kwh + trav_kwh).clip(lower=1))
+    cf["log_hh_size"] = np.log(_num(cf["avg_hh_size"]).clip(lower=1))
+    cf["log_floor"] = np.log(_num(cf["oa_median_floor_area_m2"]).clip(lower=1))
+
+    def _ols_ci(y_col: str, x_cols: list[str]) -> tuple | None:
+        m = _comp_ols(cf, y_col, x_cols, "total_hh", cluster_col=CLUSTER_COL)
+        return None if m is None else log_contrast_ci(m, "s_detached", "s_flat")
+
+    def _pois_ci(col: str) -> tuple | None:
+        cf["_y"] = _num(cf[col])
+        m = _comp_poisson(
+            cf, "_y", _SHARE_FRACS + income, "total_hh", cluster_col=CLUSTER_COL
+        )
+        return None if m is None else log_contrast_ci(m, "s_flat", "s_detached")
+
+    base = _SHARE_FRACS + confounds
+    groups: list[tuple[str, str, list[tuple[str, tuple | None]]]] = [
+        (
+            "ENERGY — Detached : Flat, per dwelling",
+            fs.HEAT,
+            [
+                ("Total energy", _ols_ci("_lt", base)),
+                ("Car travel", _ols_ci("_le", base)),
+                ("Heat", _ols_ci("_lh", base)),
+                ("Heat, same family size", _ols_ci("_lh", base + ["log_hh_size"])),
+                (
+                    "Heat, same floor area",
+                    _ols_ci("_lh", base + ["log_hh_size", "log_floor"]),
+                ),
+            ],
+        ),
+        (
+            "ACCESS — Flat : Detached, within reach",
+            fs.ACCESS,
+            [
+                ("Amenities on foot", _pois_ci("net_total_1600")),
+                ("Jobs on foot", _pois_ci("net_jobs_1600")),
+                ("People on foot", _pois_ci("net_pop_1600")),
+                ("Amenities, own catchment", _pois_ci("net_amen")),
+                ("Amenities, 25.6 km drive", _pois_ci("net_total_25600")),
+            ],
+        ),
+    ]
+
+    fig, ax = plt.subplots(figsize=(fs.COL2, 6.2))
+    fig.subplots_adjust(left=0.30, right=0.82, top=0.80, bottom=0.10)
+    ypos = 0.0
+    yticks: list[float] = []
+    ylabels: list[str] = []
+    for header, colour, rows in groups:
+        ax.annotate(
+            header,
+            xy=(-0.34, ypos),
+            xycoords=("axes fraction", "data"),
+            fontsize=8,
+            fontweight="bold",
+            color=colour,
+            va="center",
+            ha="left",
+        )
+        ypos -= 1.0
+        for label, ci in rows:
+            if ci is None:
+                continue
+            point, lo, hi = ci[0], ci[1], ci[2]
+            ax.plot([lo, hi], [ypos, ypos], color=colour, lw=1.8, zorder=2)
+            ax.plot(
+                [lo, lo], [ypos - 0.14, ypos + 0.14], color=colour, lw=1.4, zorder=2
+            )
+            ax.plot(
+                [hi, hi], [ypos - 0.14, ypos + 0.14], color=colour, lw=1.4, zorder=2
+            )
+            ax.scatter(point, ypos, s=42, color=colour, zorder=3)
+            ax.annotate(
+                f"{point:.2f}× [{lo:.2f}, {hi:.2f}]",
+                xy=(1.02, ypos),
+                xycoords=("axes fraction", "data"),
+                fontsize=8,
+                color=fs.INK_SECONDARY,
+                va="center",
+                ha="left",
+            )
+            yticks.append(ypos)
+            ylabels.append(label)
+            ypos -= 1.0
+        ypos -= 0.6  # gap between groups
+    ax.axvline(1.0, color=fs.INK, lw=1.1, zorder=1)
+    ax.set_xscale("log")
+    ax.set_xticks([1, 2, 3, 5, 10, 20, 30, 50])
+    ax.set_xticklabels(["1×", "2×", "3×", "5×", "10×", "20×", "30×", "50×"])
+    ax.set_yticks(yticks, ylabels)
+    ax.set_ylim(ypos + 0.4, 0.8)
+    ax.set_xlabel("Flat-to-detached gap (log scale; 1× = no difference)")
+    ax.tick_params(left=False)
+    ax.spines["left"].set_visible(False)
+    fs.deck(
+        ax,
+        "The evidence in one view",
+        "Every headline gap, with its uncertainty",
+        "Compositional pure-type ratios; 95% CIs clustered by local authority "
+        "(309 districts)",
+    )
+    fs.footer(fig)
+    print(f"  F11 forest: {len(yticks)} intervals drawn")
+    fs.save(fig, "fig11_forest")
+
+
 def main() -> None:
     """Build the argument chart figures into paper/figures/ (method-D basis)."""
     fs.apply_style()
@@ -810,6 +986,7 @@ def main() -> None:
     access_curve(cf, income, dists)
     rate(cf, income, confounds)
     scenario_ladder(cf, confounds)
+    forest(cf, confounds, income)
     print(f"\n  → {fs.FIG_DIR}")
 
 

@@ -1,29 +1,58 @@
 # Roadmap
 
 Single source of truth for status, open work, and methodology decisions.
-Updated 2026-06-15 (two-axis reframe; paper + Atlas deferred).
+Updated 2026-07-10 (publication sequence locked; manuscript drafted for Nature Cities).
 
-> **⏸ Current focus.** The live work is the **[argument](paper/summary.md)** and the
-> **data + analysis pipeline**. The **paper ([PAPER.md](PAPER.md))** is drafted on the two-axis frame (finalisation pending); the **Atlas is
-> pending** — its place-scoring and XGBoost planning models are to be reevaluated for the
-> two-axis frame (that code lives in git history).
+> **Current focus: Phase 0 — submit the paper.** The manuscript is drafted at
+> [paper/latex/main.tex](paper/latex/main.tex) (access-first framing, compiles clean).
+> The Atlas and the NEPI score are deliberately sequenced AFTER submission — see below.
 
-## Deliverables & priority
+## The publication sequence
 
-### Current focus
+The plan is three self-contained stages. Each stands alone: if a later stage slips,
+the earlier ones are unharmed. Do not pull later-stage work forward.
 
-1. **The argument** — canonical two-axis statement in
-   [paper/summary.md](paper/summary.md). Single source of truth.
-2. **The data + analysis pipeline** — `oa_data` + `oa_access` → `travel_energy`,
-   `access_profile`, `lock_in`, `form_size` (assembled in the stats layer, no network run).
+### Phase 0 — submit (now; ~1 week)
 
-### ⏸ Pending (next phase)
+The paper stays pure: the empirical finding (two axes, the rate, lock-in), no index
+proposal, no tool promises. NEPI is coined in one Discussion sentence only.
 
-1. **The paper** ([PAPER.md](PAPER.md)): drafted on the two-axis frame and matching the canonical
-   `summary.md` numbers; finalisation and submission pending. The old three-surface draft is archived
-   at [paper/archive/PAPER_three_surface_deferred.md](paper/archive/PAPER_three_surface_deferred.md).
-2. **The NEPI Atlas + planning tool** — pending: reevaluate the place-scoring and the XGBoost
-   planning models for the two-axis frame (code in git history).
+1. Commit the current working tree.
+2. Mint DOIs: Zenodo code release + deposit of the built per-OA artefacts.
+3. Assemble the Extended Data pack (country hexbin, decomposition, doorstep, both
+   maps, source/filter table, scenario-CI table, Oster table).
+4. Affiliation + acknowledgements in `main.tex`; cover letter (names the parked
+   items: mover-panel test, MAUP zonation half, spatial error/lag check,
+   out-of-sample validation).
+5. Submit to **Nature Cities** (fallbacks, in order: npj Urban Sustainability →
+   Environment & Planning B → Energy Policy).
+
+### Phase 1 — NEPI score + Atlas v1 (during review; months 1–3)
+
+The score is *measured, not modelled*: the compositional regression is for inference,
+the score is descriptive of the place as-lived.
+
+- **Score spec** (one page) + `stats/nepi_score.py`: per-OA scores and A–G bands.
+  Headline letter from the **rate** (access per kWh — a ratio, so no composite
+  weights to defend); the two axes shown beneath, EPC-style. Bands from the 2021
+  national distribution (log-scale for access), then **frozen**, so re-scores show
+  real movement.
+- **Current vs potential label**: score each OA twice — as-lived, and under full
+  technology deployment (deterministic, from the `scenarios.py` levers). The gap
+  between the two labels is the lock-in result made visible per neighbourhood.
+- **Atlas v1**: map + label card + the three deterministic technology toggles
+  (fabric / heat pump / EV). **No XGBoost in v1** — the levers are deterministic.
+  Soft-launch with the preprint; full launch on acceptance.
+
+### Phase 2 — the NEPI paper (after acceptance)
+
+- Paper 2: "NEPI: an energy performance certificate for neighbourhoods" — the score
+  design, banding rationale, current-vs-potential label, the Atlas as artefact.
+  Venue: EPB or Cities (planning/policy audience), citing paper 1 as evidence base.
+- **XGBoost enters here only if wanted**, for form-change what-ifs (densification):
+  predicting access under hypothetical form requires imagining new destinations and
+  streets, so it is a research project with heavy caveats, not an Atlas feature.
+  Drop it entirely if the demand never materialises.
 
 ## Scope decisions (consumption audit)
 
@@ -98,13 +127,14 @@ These are the contestable scientific choices; none gate acquisition.
   a cross-check.
 
 ### Forward work (out of current scope)
-- **Atlas (pending):** reevaluate the place-scoring and the XGBoost planning models for the
-  two-axis frame (old code in git history).
+- **Atlas + NEPI score:** Phase 1 of the publication sequence above (during review,
+  not before submission). Old scoring/XGBoost code in git history; the new score is
+  measured-not-modelled and the v1 toggles are deterministic.
 - Bettencourt scaling analysis (BRES + GVA) — source archived; revive if pursued.
 - Morphology features (LiDAR/momepy network centrality) — only if a future Atlas needs them.
   (The network-distance access measure is now done — `stats/oa_network_access.py`, summary.md §3.)
 
 ### Paper / repo
-- Finalise `paper/references.bib`.
-- (Re)establish the pytest suite: none currently (the earlier form-bias tests were removed); pipeline and stats coverage pending.
+- Finalise `paper/references.bib` (data-source entries; NEED/EHS added).
+- Extend the pytest suite (37 tests: compositional model, travel constraint, inference, aggregation, EPC bands, postcode); scenario-ladder and access-ratio coverage still pending.
 - Pre-submission cover-letter framing for the target journal.

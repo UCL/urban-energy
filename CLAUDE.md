@@ -29,17 +29,21 @@ urban-energy/
 ├── data/                      # Raw data acquisition + OA aggregation scripts
 ├── stats/                     # Two-axis analysis (energy spent vs access gained)
 │   ├── oa_data.py             # Core OA loader — assembles from primary artefacts + OLS helpers
+│   ├── oa_network_access.py   # Network access (cityseer over OS Open Roads) → cached curve per OA
 │   ├── oa_access.py           # Straight-line KD-tree access (counts within 1,600 m) — cached
+│   ├── inference.py           # Delta-method CIs + LAD-cluster bootstrap (999 reps)
 │   ├── travel_energy.py       # NTS-anchored car-travel energy (constrained disaggregation)
 │   ├── access_profile.py      # Per-service access counts + ×/kWh (incl. grocery, jobs)
 │   ├── lock_in.py             # Residual energy gap after best fabric + full EV (fabric+EV bound, 1.51×)
 │   ├── scenarios.py           # Decarbonisation scenario ladder: fabric/heat-pump/EV as separate levers, CCC pathway
 │   ├── maup_scale.py          # MAUP scale check: the energy gap re-fit at OA/LSOA/MSOA
 │   ├── form_size_decomposition.py # Heat vs dwelling/household-size decomposition
-│   ├── argument_figures.py    # The paper/summary.md figures (energy, access curve, rate, scenario ladder)
+│   ├── figstyle.py            # Shared figure style (palette, rcParams, deck/footer)
+│   ├── argument_figures.py    # F1–F8 + F11 chart figures for paper/summary.md
+│   ├── map_figures.py         # F9 England + F10 city choropleths
 │   ├── figures/{oa,nepi}/     # Legacy three-surface PNGs (not referenced by the current two-axis PAPER)
 │   └── archive/               # Archived LSOA analysis scripts
-├── tests/                     # pytest suite (26 tests: inference, aggregation, EPC bands, postcode)
+├── tests/                     # pytest suite (37 tests: compositional model, travel constraint, inference, aggregation, EPC bands, postcode)
 ├── temp/                      # Default $URBAN_ENERGY_DATA_DIR (gitignored)
 └── .claude/settings.local.json # Claude Code permissions
 ```
@@ -71,7 +75,9 @@ $URBAN_ENERGY_DATA_DIR/
 │   ├── lsoa_imd2025.parquet                  ← IoD25 income (deprivation control)
 │   ├── lsoa_vehicles.parquet                 ← DVLA vehicle licensing (bev_share)
 │   ├── nts_mileage_by_ruc.parquet            ← NTS9904 car miles/person by 2021 RUC (travel anchor)
-│   └── oa21_ruc21.parquet                    ← OA → 2021 rural-urban class
+│   ├── oa21_ruc21.parquet                    ← OA → 2021 rural-urban class
+│   ├── oa_network_access.parquet             ← network amenity/jobs/people curves per OA (cityseer, ~15 min)
+│   └── oa_hdd.parquet                        ← annual heating-degree-days per OA (HadUK-Grid; climate confound)
 ├── epc/epc_domestic_spatial.parquet
 ├── fsa/fsa_establishments.gpkg               ← food service + grocery retail
 ├── transport/naptan_england.gpkg
@@ -142,8 +148,8 @@ Two layers — acquire, then analyse (no heavy processing pipeline):
 as origins — sets every OA's nearest node live and computes the **full amenity-vs-distance curve**
 in one pass: counts at each ladder rung from **1,600 m to 25,600 m**. From that one curve per OA,
 the access numbers are read (`access_profile.py`): the **on-foot** gap (1,600 m — a flat reaches
-~**24×** the amenities of a detached area, jobs ~52×, people ~12×), the count at each OA's own NTS
-**catchment**, and the **25 km drive** (~**10–14×**). The access-per-kWh **rate** divides catchment
+~**27×** the amenities of a detached area, jobs ~52×, people ~12×), the count at each OA's own NTS
+**catchment**, and the **25 km drive** (**11–14×**). The access-per-kWh **rate** divides catchment
 amenities by car-travel energy: a flat returns **~3.9× access per kWh**. Caches to
 `statistics/oa_network_access.parquet` (~15 min total).
 
@@ -153,7 +159,7 @@ Cached to `statistics/oa_access.parquet` in ~6 s.
 
 > The earlier *straight-line-only* simplification (cityseer removed) was reverted: scoping access
 > to the real network is the rigorous measure. On foot a flat reaches **~27×** the amenities of a
-> detached area; at a 25 km drive still **~10–14×**. The detached area only matches the count by
+> detached area; at a 25 km drive still **11–14×**. The detached area only matches the count by
 > driving out to its own larger catchment, for which the flat returns **~3.9× access per kWh**.
 
 ### Two-axis analysis layer (`stats/`)
@@ -216,7 +222,8 @@ uv run python stats/scenarios.py                 # scenario ladder: fabric/heat-
 uv run python stats/maup_scale.py                # MAUP: gap re-fit at OA/LSOA/MSOA (2.12/1.88/1.72×)
 uv run python stats/access_profile.py            # rate ~3.9× access/kWh + on-foot gap ~27×
 uv run python stats/form_size_decomposition.py   # heat 1.60× → 1.17× size-held (family size a free control, γ≈0.5)
-uv run python stats/argument_figures.py          # regenerate the four summary.md figures (needs the network cache)
+uv run python stats/argument_figures.py          # regenerate F1–F8 + F11 (needs the network cache)
+uv run python stats/map_figures.py               # regenerate the F9/F10 maps
 ```
 
 The analysis assembles the frame in-process from the acquired artefacts. The straight-line
@@ -282,7 +289,7 @@ Network access: **cityseer** (≥4.25.0b24; the road-network accessibility engin
 fiona/networkx/rasterio). Requires **Python <3.14** (no cityseer wheel for 3.14 yet).
 Analysis: **numpy, pandas, scipy** (KD-tree walkable access), **statsmodels** (the form/size OLS ladder)
 Visualisation: **matplotlib** (the two argument figures)
-I/O: **requests / aiohttp**, **openpyxl** (DESNZ XLSX), **odfpy** (NTS ODS), **pyarrow** (parquet)
+I/O: **requests**, **odfpy** (NTS ODS), **pyarrow** (parquet)
 Dev: **ruff, ty, pytest**
 
 Full pin list in `uv.lock`. **cityseer is back** (network access, §4). Still pruned (two-axis

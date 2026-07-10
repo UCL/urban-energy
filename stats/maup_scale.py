@@ -50,7 +50,8 @@ _CONFOUNDS = [
     "imd_income_score",
     "pct_social_rented",
     "pct_private_rented",
-    "hdd",
+    # "hdd" is appended at runtime only when the climate build has run (see
+    # maup_ladder); hardcoding it here would KeyError on a frame without it.
 ]
 
 
@@ -119,9 +120,13 @@ def maup_ladder(oa: pd.DataFrame) -> None:
     ).drop_duplicates("OA21CD")
     oa = oa.merge(msoa, on="OA21CD", how="left", validate="m:1")
 
+    # The climate confound joins the carried-up columns only when present (it is
+    # built by data/process_climate.py; _hdd_cols downstream handles absence).
+    confound_cols = _CONFOUNDS + (["hdd"] if "hdd" in oa.columns else [])
+
     scales: list[tuple[str, pd.DataFrame]] = [("OA", _add_dvs(oa))]
     for name, key in [("LSOA", "LSOA21CD"), ("MSOA", "MSOA21CD")]:
-        coarse = _hh_weighted(oa, key, _SHARES + _ENERGY + _CONFOUNDS)
+        coarse = _hh_weighted(oa, key, _SHARES + _ENERGY + confound_cols)
         scales.append((name, _add_dvs(coarse)))
 
     print("\n" + "=" * 74)

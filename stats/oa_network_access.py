@@ -12,7 +12,7 @@ per OA we read three numbers:
    OA (pure density/connectivity, no catchment scaling);
 3. **catchment-scaled drivable** — each OA interpolated at its own car-trip catchment
    (NTS mileage ÷ trips); the catchment amenities feed the access-per-kWh rate, which
-   is the access advantage × the energy saving, ~3.6× flat:detached (see
+   is the access advantage × the energy saving, ~3.9× flat:detached (see
    ``access_profile``).
 
 Jobs and residents ride along on the same traversal: each workplace or OA point carries

@@ -130,8 +130,9 @@ def city(gdf: gpd.GeoDataFrame) -> None:
     """F10: one city, energy spent beside access on foot (the core-to-edge flip)."""
     x0, y0, x1, y1 = _CITY_BBOX
     sub = gdf.cx[x0:x1, y0:y1]
-    fig, axes = plt.subplots(1, 2, figsize=(fs.COL2 * 1.15, 5.2))
-    fig.subplots_adjust(top=0.8, bottom=0.02, left=0.02, right=0.98, wspace=0.06)
+    fig, axes = plt.subplots(1, 2, figsize=(fs.COL2 * 1.15, 5.4))
+    # bottom margin keeps the two colourbars clear of the source footer
+    fig.subplots_adjust(top=0.8, bottom=0.12, left=0.02, right=0.98, wspace=0.06)
 
     e_lo, e_hi = sub["energy"].quantile([0.05, 0.95])
     e_norm = Normalize(vmin=float(e_lo), vmax=float(e_hi))

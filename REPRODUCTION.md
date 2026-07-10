@@ -32,6 +32,12 @@ These cannot be scripted (portals / registration). `doctor` verifies each path.
 | OA 2021 boundaries | ONS Geoportal | `$DATA_DIR/` (`Output_Areas_2021_*`) |
 | GIAS `edubasealldata` CSV | Get Information About Schools | `$CACHE_DIR/gias/` |
 | NHS ODS `ets.csv` / `epraccur.csv` / `edispensary.csv` | NHS ODS | `$CACHE_DIR/nhs_ods/` |
+| HadUK-Grid `tas` 1 km 30-y normal `.nc` | CEDA Archive (**free registration**) | `$DATA_DIR/climate/` |
+
+The HadUK-Grid file (`tas_hadukgrid_uk_1km_mon-30y_199101-202012.nc`) feeds the
+`climate` stage (`data/process_climate.py` → `statistics/oa_hdd.parquet`), the
+heating-degree-day confound held by every headline model. Without it the stats
+layer warns loudly and fits a different specification.
 
 The OS Open UPRN path is matched by vintage glob in `src/urban_energy/paths.py`
 (`latest_uprn_gpkg`), so any `osopenuprn_*` vintage works.
@@ -59,6 +65,9 @@ uv run python stats/oa_network_access.py        # build network-access cache (ci
 uv run python stats/lock_in.py                  # energy per dwelling 2.12× → optimised 1.51× (equal family size 1.71× → 1.18×)
 uv run python stats/access_profile.py           # network 3.9× access per kWh + on-foot gap ~27×
 uv run python stats/form_size_decomposition.py  # heat vs dwelling/household size
+uv run python stats/scenarios.py                # decarbonisation-scenario ladder
+uv run python stats/maup_scale.py               # MAUP scale check (OA/LSOA/MSOA)
+uv run python stats/travel_energy.py            # travel marginals + allocator sensitivities
 ```
 
 The loader (`stats/oa_data.py`) assembles the per-OA frame from the acquired artefacts
