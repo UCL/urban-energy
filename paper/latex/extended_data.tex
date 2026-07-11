@@ -1,7 +1,7 @@
 %% Extended Data for "The energy productivity of neighbourhood form".
 %% Standalone document; compiles to extended_data.pdf and accompanies
-%% main.tex at submission. Numbers match paper/results_snapshot.txt
-%% (regenerated 2026-07-10). Figures built by stats/argument_figures.py
+%% main.tex at submission. Every result number is a \nepi macro from
+%% numbers.tex (stats/ledger.py). Figures built by stats/argument_figures.py
 %% and stats/map_figures.py.
 
 \documentclass[pdflatex,sn-nature]{sn-jnl}
@@ -22,6 +22,10 @@
 \title[Extended Data]{Extended Data: The energy productivity of neighbourhood form}
 
 \author*[1]{\fnm{Gareth} \sur{Simons}}\email{gareth@benchmarkurbanism.com}
+%% Co-author surnames, emails and any second affiliations to be supplied.
+\author[1]{\fnm{Steve} \sur{TODO}}
+\author[1]{\fnm{Daniel} \sur{TODO}}
+\author[1]{\fnm{Matteo} \sur{TODO}}
 \affil*[1]{\orgdiv{Building Stock Lab, UCL Energy Institute}, \orgname{University College London}, \orgaddress{\city{London}, \country{United Kingdom}}}
 
 \maketitle
@@ -35,13 +39,6 @@
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=\textwidth]{fig4_decomposition}
-\caption{\textbf{Decomposition of the home-energy gap.} The compositional detached:flat home-energy contrast falls from \nepiheatGap$\times$ (95\% CI \nepiheatGapCI) to \nepiheatFamGap$\times$ (\nepiheatFamGapCI) at equal household size and to \nepiheatSizeGap$\times$ (\nepiheatSizeGapCI) at equal floor area; on the log scale, size and occupancy account for \nepimedShare\% (\nepimedShareCI\%) of the gap. The decomposition is a covariate adjustment on cross-sectional data, not an identified mediation.}
-\label{edfig:decomposition}
-\end{figure}
-
-\begin{figure}[p]
-\centering
 \includegraphics[width=\textwidth]{fig5_doorstep}
 \caption{\textbf{Per-service counts at walking distance.} Median counts within a 1.6\,km network walk are shown by service for flat-dominant and detached-dominant areas. The median detached-dominant area has no general practitioner within the 1.6\,km walk.}
 \label{edfig:doorstep}
@@ -50,8 +47,15 @@
 \begin{figure}[p]
 \centering
 \includegraphics[width=\textwidth]{fig10_city.png}
-\caption{\textbf{The two axes within a single city.} Sheffield is mapped by energy per dwelling (left) and amenities within a 1.6\,km walk (right). The high-energy ring around the compact core coincides with the areas of lowest walkable access. Colour scales are clipped at the 5th--95th percentiles.}
+\caption{\textbf{The two axes within a single city.} Sheffield is mapped by energy per dwelling (left, quantile colour classes) and amenities within a 1.6\,km walk (right, logarithmic colour scale). The high-energy ring around the compact core coincides with the areas of lowest walkable access, reproducing outside London the core-to-edge pattern the main-text insets show for the capital.}
 \label{edfig:city}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig12_equity}
+\caption{\textbf{The deprivation gradient of walkable access.} Left: median everyday amenities within a 1.6\,km walk by income-deprivation decile of the Indices of Deprivation 2025; nationally, the most deprived decile holds about \nepiimdAccessRatio$\times$ the walkable access of the least deprived. Right: the rank correlation between walkable access and income deprivation by stratum. The national gradient (\nepiimdRhoNat) flattens in inner London (\nepiimdRhoInner) and inverts in Manchester (\nepiimdRhoManchester) and Bristol (\nepiimdRhoBristol), where the least deprived areas hold the highest-access cores.}
+\label{edfig:equity}
 \end{figure}
 
 \begin{table}[p]

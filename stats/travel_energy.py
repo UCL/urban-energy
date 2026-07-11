@@ -272,11 +272,13 @@ def _demo() -> None:
 
     ledger.table(
         "axesenergy",
-        "\\multicolumn{6}{l}{\\textit{Energy (kWh per dwelling per year)}} \\\\\n"
-        f"Home (metered gas + electricity){_cells('heat')} & "
-        "\\nepiheatGap$\\times$ \\\\\n"
-        f"Car travel (NTS-anchored){_cells('car')} & \\nepitravelGap$\\times$ \\\\\n"
-        f"Total{_cells('tot')} & \\nepitotalGap$\\times$ \\\\\n",
+        "\\multicolumn{7}{l}{\\textit{Energy (kWh per dwelling per year)}} \\\\\n"
+        f"Home (gas + electricity){_cells('heat')} & "
+        "\\nepiheatGap$\\times$ & \\nepiheatFamGap$\\times$ \\\\\n"
+        f"Car travel (NTS-anchored){_cells('car')} & \\nepitravelGap$\\times$ & "
+        "\\nepitravelFamGap$\\times$ \\\\\n"
+        f"Total{_cells('tot')} & \\nepitotalGap$\\times$ & "
+        "\\nepifamNowGap$\\times$ \\\\\n",
     )
     ledger.record(
         travelIce=ledger.pt(KWH_PER_MILE_ICE),

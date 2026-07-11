@@ -40,9 +40,9 @@ ACCESS = "#3d8a5f"  # amenities / jobs / people reached (green)
 
 # --- Dwelling-type ordinal ramp (slate): compact → dispersed ---
 DWELLING: dict[str, str] = {
-    "Flat": "#93a1b0",
-    "Terraced": "#63758a",
-    "Semi": "#41505f",
+    "Flat": "#7d92a8",
+    "Terraced": "#5d7189",
+    "Semi": "#3f4f61",
     "Detached": "#232f3d",
 }
 DWELLING_ORDER = ["Flat", "Terraced", "Semi", "Detached"]
@@ -142,8 +142,8 @@ def save(fig: Figure, name: str, pdf: bool = True) -> Path:
 ACCENT = "#2f6b49"  # deep green brand accent, distinct from the data hues
 SOURCE = (
     "178,353 English Census 2021 Output Areas.  Metered DESNZ energy, "
-    "NTS-anchored car travel, cityseer network access.  Compositional pure-type "
-    "estimates unless noted."
+    "NTS-anchored car travel, cityseer network access.\n"
+    "Compositional pure-type estimates unless noted."
 )
 
 
@@ -207,10 +207,14 @@ def deck(ax, kicker: str, title: str, subtitle: str | None = None) -> None:
 
 
 def footer(fig: Figure, text: str = SOURCE) -> None:
-    """Add a small muted source line at the bottom-left of the figure."""
+    """Add a small muted source line below the figure canvas.
+
+    Anchored beneath y=0 so the tight save box grows to include it: the
+    footer can never collide with an axis title, whatever the margins.
+    """
     if os.environ.get("NEPI_PLAIN_FIGS") == "1":
         return
-    fig.text(0.02, 0.005, text, ha="left", va="bottom", fontsize=7, color=MUTED)
+    fig.text(0.02, -0.015, text, ha="left", va="top", fontsize=7, color=MUTED)
 
 
 def comma(ax, which: str = "both") -> None:

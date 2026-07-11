@@ -53,6 +53,12 @@ from urban_energy.paths import DATA_DIR
 
 NET_CACHE = DATA_DIR / "statistics" / "oa_network_access.parquet"
 TYPES = ["Flat", "Terraced", "Semi", "Detached"]
+#: The 14 statutory inner-London boroughs (ONS LAD codes, incl. the City).
+_INNER_LONDON = {
+    "E09000001", "E09000007", "E09000012", "E09000013", "E09000014",
+    "E09000019", "E09000020", "E09000022", "E09000023", "E09000025",
+    "E09000028", "E09000030", "E09000032", "E09000033",
+}  # fmt: skip
 LABELS = {
     "gp": "GP",
     "pharmacy": "Pharmacy",
@@ -249,6 +255,75 @@ def compositional_access(d: pd.DataFrame) -> None:
             f"= {dom_ratio:.1f}×"
             f"\n    support-restricted (≥50% share) medians = {sup_ratio:.1f}×  "
             f"(n≥50%-flat {len(hi_flat):,}, n≥50%-det {len(hi_det):,})"
+        )
+
+    # Public-transport stops (NaPTAN bus + rail) within 1,600 m, straight-line —
+    # the network cache carries no transit layer, and the KD-tree count is the
+    # conservative floor (it can only over-credit sparse areas). Reported beside
+    # the basket, never inside it: transit is a means of reach, not a destination.
+    # Same estimator and conditioning as the amenity rows above.
+    cf["_transit"] = _num(cf["bus_n"]) + _num(cf["rail_n"])
+    mt = _comp_poisson(
+        cf, "_transit", _SHARE_FRACS + income, "total_hh", cluster_col=CLUSTER_COL
+    )
+    if mt is not None:
+        ci = log_contrast_ci(mt, "s_flat", "s_detached")
+        ledger.record(
+            transitAdv=ledger.pt(ci[0], 1),
+            transitAdvCI=ledger.ci(ci[1], ci[2], 1),
+        )
+        print(
+            f"\n  public-transport stops within 1,600 m (straight-line, bus + rail):"
+            f"\n    pure-type Flat:Det = {fmt_ci(ci)}"
+        )
+
+    # Deprivation gradient (Discussion equity passage): the most income-deprived
+    # decile currently holds the MOST walkable access and uses the least energy,
+    # because deprived households concentrate in compact form. Compact access is
+    # not a premium good at national scale; the distributional risk is
+    # prospective (capitalisation as proximity is revalued).
+    if income:
+        inc_score = _num(cf[income[0]])
+        dec = pd.qcut(inc_score, 10, labels=False)
+        amen = _num(cf["net_total_1600"])
+        tot = _num(cf["building_kwh_per_hh"]) + _num(
+            cf["transport_kwh_per_hh_total_est"]
+        )
+        a_lo = float(amen[dec == 0].median())
+        a_hi = float(amen[dec == 9].median())
+        e_lo = float(tot[dec == 0].median())
+        e_hi = float(tot[dec == 9].median())
+        ledger.record(
+            imdAccessRatio=ledger.pt(a_hi / a_lo, 1),
+            imdEnergyRatio=ledger.pt(e_lo / e_hi, 1),
+        )
+        print(
+            f"\n  IMD income deciles (least -> most deprived):"
+            f"\n    amenities on foot {a_lo:.0f} -> {a_hi:.0f}"
+            f"  ({a_hi / a_lo:.1f}x, most-deprived leads)"
+            f"\n    total energy {e_lo:,.0f} -> {e_hi:,.0f} kWh"
+            f"  ({e_lo / e_hi:.1f}x, least-deprived leads)"
+        )
+
+        # Stratified: in the strongest housing markets the national gradient
+        # flattens or inverts — the affluent hold the highest-access cores
+        # where proximity is priced (inner London, Manchester, Bristol).
+        lad = cf[CLUSTER_COL].astype(str)
+        inner_london = lad.isin(_INNER_LONDON)
+        strata = {
+            "imdRhoNat": pd.Series(True, index=cf.index),
+            "imdRhoInner": inner_london,
+            "imdRhoManchester": lad == "E08000003",
+            "imdRhoBristol": lad == "E06000023",
+        }
+        rhos = {}
+        for key, mask in strata.items():
+            sub = pd.DataFrame({"a": amen[mask], "i": inc_score[mask]}).dropna()
+            rhos[key] = ledger.pt(float(sub["a"].corr(sub["i"], "spearman")), 2)
+        ledger.record(**rhos)
+        print(
+            "  rank corr (amenities vs income deprivation): "
+            + "  ".join(f"{k[6:] or 'Nat'} {v}" for k, v in rhos.items())
         )
 
     # The access-per-kWh RATE is a ratio of two divisions (access ÷ energy): for a
@@ -573,11 +648,13 @@ def main() -> None:
     def _table_row(label: str, col: str, macro: str) -> str:
         m = _med(d, col)
         cells = "".join(f" & {m[t]:,.0f}" for t in TYPES)
-        return f"{label}{cells} & \\nepi{macro}$\\times$ \\\\\n"
+        # Access is a property of the location, so an equal-household-size
+        # variant does not apply: the final column carries a dash.
+        return f"{label}{cells} & \\nepi{macro}$\\times$ & --- \\\\\n"
 
     ledger.table(
         "axesaccess",
-        "\\multicolumn{6}{l}{\\textit{Access: opportunities within reach "
+        "\\multicolumn{7}{l}{\\textit{Access: opportunities within reach "
         "(median count)}} \\\\\n"
         + _table_row("Amenities, on foot", "net_total_1600", "walkAmen")
         + _table_row("Amenities, own catchment", "net_amen", "catchAmen")

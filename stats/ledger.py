@@ -74,8 +74,9 @@ def record(**kv: str | float | int) -> None:
 #: or more recorded parts so multi-script tables stay single-sourced.
 _TABLES: dict[str, dict[str, object]] = {
     "axes": {
-        "cols": "lrrrrr",
-        "header": " & Flat & Terraced & Semi-detached & Detached & Ratio \\\\",
+        "cols": "lrrrrrr",
+        "header": " & Flat & Terraced & Semi-detached & Detached & Ratio & "
+        "Equal household size \\\\",
         "parts": ["axesaccess", "axesenergy"],
     },
     "scenarios": {
@@ -124,6 +125,14 @@ def table(name: str, body: str) -> None:
             + f"\\midrule\n{rows}\\botrule\n\\end{{tabular}}\n"
         )
         (LATEX_DIR / f"tab_{out}.tex").write_text(tex)
+
+
+def value(key: str, default: str = "") -> str:
+    """Read a recorded value back from the ledger (for figures that display
+    quantities computed elsewhere, e.g. the rate's cluster-bootstrap CI)."""
+    if not _JSON.exists():
+        return default
+    return json.loads(_JSON.read_text()).get(key, default)
 
 
 def pt(x: float, nd: int = 2) -> str:

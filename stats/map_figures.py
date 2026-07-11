@@ -27,9 +27,14 @@ import figstyle as fs  # noqa: E402
 import geopandas as gpd  # noqa: E402
 import matplotlib.patheffects as pe  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from matplotlib.cm import ScalarMappable  # noqa: E402
-from matplotlib.colors import LinearSegmentedColormap, LogNorm, Normalize  # noqa: E402
+from matplotlib.colors import (  # noqa: E402
+    BoundaryNorm,
+    LinearSegmentedColormap,
+    LogNorm,
+)
 from oa_data import load_and_aggregate  # noqa: E402
 
 from urban_energy.paths import DATA_DIR  # noqa: E402
@@ -79,13 +84,23 @@ def _measures() -> pd.DataFrame:
     return df[["OA21CD", "energy", "access"]]
 
 
-def _colourbar(fig, ax, cmap, norm, label: str) -> None:
+def _colourbar(fig, ax, cmap, norm, label: str, compact: bool = False) -> None:
     """Add a slim horizontal colourbar under a map axis."""
     sm = ScalarMappable(cmap=cmap, norm=norm)
     cb = fig.colorbar(sm, ax=ax, orientation="horizontal", fraction=0.035, pad=0.02)
     cb.outline.set_visible(False)
     cb.ax.tick_params(length=0, labelsize=8, colors=fs.INK_SECONDARY)
+    if compact:  # thousands as "18k" so the ticks cannot crowd each other
+        cb.ax.xaxis.set_major_formatter(lambda v, _p: f"{v / 1000:.0f}k")
     cb.set_label(label, fontsize=8.5, color=fs.INK_SECONDARY)
+
+
+def _quantile_norm(values: pd.Series, n_classes: int = 5) -> BoundaryNorm:
+    """Class the ramp on quantiles so within-country structure is visible
+    (a linear ramp compresses most areas into one mid tone)."""
+    qs = np.linspace(0.05, 0.95, n_classes + 1)
+    bounds = np.unique(_num(values).quantile(qs).to_numpy())
+    return BoundaryNorm(bounds, ncolors=256)
 
 
 def _scale_bar(ax, x0: float, y0: float, length_m: float, label: str) -> None:
@@ -100,7 +115,7 @@ def _scale_bar(ax, x0: float, y0: float, length_m: float, label: str) -> None:
     )
     ax.text(
         x0 + length_m / 2,
-        y0 + length_m * 0.05,
+        y0 + length_m * 0.14,
         label,
         ha="center",
         va="bottom",
@@ -124,8 +139,7 @@ def national(gdf: gpd.GeoDataFrame) -> None:
     fig, axes = plt.subplots(1, 2, figsize=(6.85, 5.6))
     fig.subplots_adjust(top=0.80, bottom=0.10, left=0.01, right=0.99, wspace=0.02)
 
-    e_lo, e_hi = gdf["energy"].quantile([0.05, 0.95])
-    e_norm = Normalize(vmin=float(e_lo), vmax=float(e_hi))
+    e_norm = _quantile_norm(gdf["energy"])
     gdf.plot(
         column="energy",
         ax=axes[0],
@@ -137,7 +151,14 @@ def national(gdf: gpd.GeoDataFrame) -> None:
     axes[0].set_title(
         "Energy spent", fontsize=11, color=fs.HEAT, fontweight="bold", loc="left"
     )
-    _colourbar(fig, axes[0], _WARM, e_norm, "kWh / dwelling / yr  (darker = more)")
+    _colourbar(
+        fig,
+        axes[0],
+        _WARM,
+        e_norm,
+        "kWh / dwelling / yr, quantile classes  (darker = more)",
+        compact=True,
+    )
 
     # Walkable access spans orders of magnitude (0 in deep rural, thousands in
     # inner cities): a log ramp keeps both ends legible. Zeros clip to the floor.
@@ -179,6 +200,45 @@ def national(gdf: gpd.GeoDataFrame) -> None:
             )
     _scale_bar(axes[0], 90_000, 25_000, 100_000, "100 km")
 
+    # Greater London inset on each panel: at national scale the compact cores
+    # compress to a few pixels, so the sharpest contrast is unreadable. The
+    # inset repeats the same colour scale, placed over the Irish Sea corner.
+    lon = (503_000, 155_000, 563_000, 200_000)
+    panels = [
+        (axes[0], gdf, "energy", _WARM, e_norm),
+        (axes[1], gdf.assign(_acc=acc), "_acc", _GREEN, a_norm),
+    ]
+    for ax, frame, col, cmap, norm in panels:
+        axins = ax.inset_axes([0.01, 0.63, 0.34, 0.33])
+        clip = frame.cx[lon[0] : lon[2], lon[1] : lon[3]]
+        clip.plot(
+            column=col, ax=axins, cmap=cmap, norm=norm, linewidth=0, antialiased=False
+        )
+        axins.set_xlim(lon[0], lon[2])
+        axins.set_ylim(lon[1], lon[3])
+        axins.set_aspect("equal")
+        axins.set_xticks([])
+        axins.set_yticks([])
+        axins.set_facecolor("#f3f3f1")
+        for spine in axins.spines.values():
+            spine.set_edgecolor(fs.INK)
+            spine.set_linewidth(0.7)
+        axins.annotate(
+            "London",
+            (0.05, 0.86),
+            xycoords="axes fraction",
+            fontsize=7,
+            fontweight="bold",
+            color=fs.INK,
+            path_effects=halo,
+        )
+        ax.indicate_inset(
+            bounds=(lon[0], lon[1], lon[2] - lon[0], lon[3] - lon[1]),
+            inset_ax=None,
+            edgecolor=fs.INK,
+            linewidth=0.8,
+        )
+
     fig.text(
         0.02,
         0.955,
@@ -190,18 +250,10 @@ def national(gdf: gpd.GeoDataFrame) -> None:
     fig.text(
         0.02,
         0.91,
-        "Where energy runs high, access runs low, across the whole of England",
+        "Where energy runs high, access runs low",
         fontsize=13,
         fontweight="bold",
         color=fs.INK,
-    )
-    fig.text(
-        0.02,
-        0.87,
-        "Every Output Area: energy spent per dwelling (left) and everyday amenities "
-        "within a 1.6 km walk (right); the compact cities are the green islands",
-        fontsize=9.5,
-        color=fs.INK_SECONDARY,
     )
     fs.footer(fig)
     print(f"  F9 england (two-axis): {len(gdf):,} OAs")
@@ -216,23 +268,61 @@ def city(gdf: gpd.GeoDataFrame) -> None:
     # bottom margin keeps the two colourbars clear of the source footer
     fig.subplots_adjust(top=0.8, bottom=0.12, left=0.02, right=0.98, wspace=0.06)
 
-    e_lo, e_hi = sub["energy"].quantile([0.05, 0.95])
-    e_norm = Normalize(vmin=float(e_lo), vmax=float(e_hi))
-    sub.plot(column="energy", ax=axes[0], cmap=_WARM, norm=e_norm, linewidth=0)
+    e_norm = _quantile_norm(sub["energy"])
+    sub.plot(
+        column="energy",
+        ax=axes[0],
+        cmap=_WARM,
+        norm=e_norm,
+        linewidth=0,
+        antialiased=False,
+    )
     axes[0].set_title("Energy spent", fontsize=10.5, color=fs.HEAT, fontweight="bold")
-    _colourbar(fig, axes[0], _WARM, e_norm, "kWh / dwelling / yr  (darker = more)")
+    _colourbar(
+        fig,
+        axes[0],
+        _WARM,
+        e_norm,
+        "kWh / dwelling / yr, quantile classes  (darker = more)",
+        compact=True,
+    )
 
-    a_lo, a_hi = sub["access"].quantile([0.05, 0.95])
-    a_norm = Normalize(vmin=float(a_lo), vmax=float(a_hi))
-    sub.plot(column="access", ax=axes[1], cmap=_GREEN, norm=a_norm, linewidth=0)
+    # Log ramp to match the national access panel (one convention set-wide).
+    acc = _num(sub["access"]).fillna(0).clip(lower=1)
+    a_lo = max(float(acc.quantile(0.05)), 1.0)
+    a_norm = LogNorm(vmin=a_lo, vmax=float(acc.quantile(0.95)))
+    sub.assign(_acc=acc).plot(
+        column="_acc",
+        ax=axes[1],
+        cmap=_GREEN,
+        norm=a_norm,
+        linewidth=0,
+        antialiased=False,
+    )
     axes[1].set_title(
         "Access on foot", fontsize=10.5, color=fs.ACCESS, fontweight="bold"
     )
-    _colourbar(fig, axes[1], _GREEN, a_norm, "amenities ≤1.6 km  (darker = more)")
+    _colourbar(
+        fig, axes[1], _GREEN, a_norm, "amenities ≤1.6 km, log scale  (darker = more)"
+    )
 
+    halo = [pe.withStroke(linewidth=2, foreground="white")]
+    centre = ((x0 + x1) / 2, (y0 + y1) / 2 + 500)
     for ax in axes:
         ax.set_axis_off()
         ax.set_aspect("equal")
+        ax.scatter(*centre, s=8, color=fs.INK, zorder=5)
+        ax.annotate(
+            "city centre",
+            centre,
+            textcoords="offset points",
+            xytext=(4, 3),
+            fontsize=7,
+            color=fs.INK,
+            fontweight="bold",
+            zorder=6,
+            path_effects=halo,
+        )
     _scale_bar(axes[0], x0 + 500, y0 + 500, 5_000, "5 km")
     fig.text(
         0.02, 0.95, "INSIDE ONE CITY", fontsize=8.5, fontweight="bold", color=fs.ACCENT
@@ -244,14 +334,6 @@ def city(gdf: gpd.GeoDataFrame) -> None:
         fontsize=12.5,
         fontweight="bold",
         color=fs.INK,
-    )
-    fig.text(
-        0.02,
-        0.86,
-        "The high-energy ring (dark red, left) is the low-access edge "
-        "(pale green, right)",
-        fontsize=9,
-        color=fs.INK_SECONDARY,
     )
     fs.footer(fig)
     print(f"  F10 city: {len(sub):,} OAs in {_CITY_NAME}")
