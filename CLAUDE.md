@@ -1,8 +1,10 @@
 # Urban Energy — Technical Brief
 
 Codebase reference and Claude Code briefing. For the project pitch, headline result,
-theory synopsis, and current status read [README.md](README.md). For the paper itself
-read [PAPER.md](PAPER.md).
+theory synopsis, and current status read [README.md](README.md). The manuscript is
+[paper/latex/main.tex](paper/latex/main.tex) (Nature Cities; every result number is a
+`\nepi` macro written by the stats scripts through `stats/ledger.py` — see
+[paper/submission_checklist.md](paper/submission_checklist.md) for the regeneration recipe).
 
 **Rebuilding the data?** The pipeline is driven by an executable orchestrator:
 `uv run python -m urban_energy.pipeline {doctor,status,list,run}`. The step-by-step
@@ -19,10 +21,12 @@ CUT lives in [ROADMAP.md](ROADMAP.md). Prefer those over the prose command lists
 urban-energy/
 ├── README.md                  # Project pitch + theory + status (read this first)
 ├── CLAUDE.md                  # This file — technical brief
-├── PAPER.md                   # Canonical paper (IMRaD draft, NEPI case)
 ├── paper/
+│   ├── latex/main.tex         # The manuscript (Nature Cities; ledger-wired numbers)
+│   ├── latex/extended_data.tex # Extended Data (4 figures + 4 tables)
+│   ├── summary.md             # Narrative two-axis statement (companion)
 │   ├── literature_review.md   # Thematic literature review
-│   └── references.bib         # BibTeX (partial)
+│   └── references.bib         # BibTeX bibliography
 ├── src/urban_energy/
 │   ├── paths.py               # Centralised storage paths (loads URBAN_ENERGY_DATA_DIR from .env)
 │   └── pipeline.py            # Acquisition orchestrator: doctor / status / list / run
@@ -103,17 +107,17 @@ rebuild recipe are in [REPRODUCTION.md](REPRODUCTION.md). The load-bearing (KEEP
 | OS Open Greenspace | (manual) | `opgrsp_gpkg_gb/` | Greenspace access (straight-line) |
 | OS Open UPRN | (manual) | `osopenuprn_*/` | EPC geocoding |
 | OS Code-Point Open | (manual) | `codepo_gpkg_gb/` | Postcode→OA lookup |
-| FSA establishments | `download_fsa.py` | `fsa_establishments.gpkg` | Food + grocery access (~299k) |
+| FSA establishments | `download_fsa.py` | `fsa_establishments.gpkg` | Food + grocery access (~283k in the basket) |
 | NaPTAN stops | `download_naptan.py` | `naptan_england.gpkg` | Bus/rail access (~434k) |
-| GIAS schools | `prepare_gias.py` | `gias_schools.gpkg` | Education access (~25k) |
-| NHS ODS | `prepare_nhs.py` | `nhs_facilities.gpkg` | Health access (GPs/pharmacies/hospitals) |
+| GIAS schools | `prepare_gias.py` | `gias_schools.gpkg` | Education access (~51k) |
+| NHS ODS | `prepare_nhs.py` | `nhs_facilities.gpkg` | Health access (GPs/pharmacies) |
 | Census WP101EW jobs | `download_workplace.py` | `workplace_jobs.gpkg` | Employment access (jobs reachable per OA) |
 | IoD 2025 | `download_imd.py` | `lsoa_imd2025.parquet` | Deprivation control (income domain) |
 | DVLA vehicles | `download_vehicles.py` | `lsoa_vehicles.parquet` | Fleet composition (`bev_share` → travel-energy fleet intensity) |
 | NTS9904 mileage | `download_nts_mileage.py` | `nts_mileage_by_ruc.parquet` | **Travel-energy anchor**: measured car miles/person by 2021 RUC class |
 | ONS RUC 2021 | `download_ons_ruc.py` | `oa21_ruc21.parquet` | OA→rural-urban class (travel-energy disaggregation) |
 
-For the per-variable derivation table see [PAPER.md §3.2](PAPER.md).
+For the per-variable derivation, see the Methods of [paper/latex/main.tex](paper/latex/main.tex).
 
 The manual-download checklist (exact target paths, EPC registration) and the deferred
 sources (OS Map Local, EA LiDAR) are in [REPRODUCTION.md](REPRODUCTION.md).
@@ -184,8 +188,8 @@ are run on demand rather than wired as pipeline stages.
 > **⏸ Pending.** The earlier three-surface / A–G scorecard, the empirical access-penalty model,
 > and the Atlas (XGBoost planning models + static site) were removed from the tree in the
 > two-axis migration (git history holds them). The Atlas scoring + models are **pending
-> reevaluation** for the two-axis frame; the paper ([PAPER.md](PAPER.md)) is now drafted on that
-> frame, with the old three-surface draft archived at
+> reevaluation** for the two-axis frame; the manuscript ([paper/latex/main.tex](paper/latex/main.tex))
+> is written on that frame, with the old three-surface draft archived at
 > [`paper/archive/PAPER_three_surface_deferred.md`](paper/archive/PAPER_three_surface_deferred.md). See
 > [`paper/summary.md`](paper/summary.md) and [ROADMAP.md](ROADMAP.md).
 

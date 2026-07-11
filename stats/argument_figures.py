@@ -113,8 +113,8 @@ def inversion(cf: pd.DataFrame, confounds: list[str], income: list[str]) -> None
         return 0.16 + 0.66 * (np.log(v) - np.log(amin)) / (np.log(amax) - np.log(amin))
 
     fig, ax = plt.subplots(figsize=(fs.COL2, 4.6))
-    ax.axvline(0, color=fs.BASELINE, lw=1.0)
-    ax.axvline(1, color=fs.BASELINE, lw=1.0)
+    ax.axvline(0, color=fs.BASELINE, lw=1.0, ymax=0.92)
+    ax.axvline(1, color=fs.BASELINE, lw=1.0, ymax=0.92)
     for t in poles:
         c = fs.DWELLING[t]
         ye, ya = y_e(energy[t]), y_a(access[t])
@@ -125,7 +125,7 @@ def inversion(cf: pd.DataFrame, confounds: list[str], income: list[str]) -> None
             f"{t}\n{energy[t]:,.0f} kWh",
             ha="right",
             va="center",
-            color=c,
+            color=fs.INK,
             fontsize=9.5,
             fontweight="bold",
             linespacing=1.4,
@@ -136,7 +136,7 @@ def inversion(cf: pd.DataFrame, confounds: list[str], income: list[str]) -> None
             f"{access[t]:,.0f}\namenities",
             ha="left",
             va="center",
-            color=c,
+            color=fs.INK,
             fontsize=9.5,
             fontweight="bold",
             linespacing=1.4,
@@ -212,8 +212,7 @@ def national_scatter(cf: pd.DataFrame) -> None:
     ax.plot(mids, meds, color=fs.INK, lw=2.6, zorder=6, solid_capstyle="round")
     # Label above the line, anchored at the last binned point INSIDE the x-limit
     # (the top quantile bin's midpoint falls beyond it and would clip).
-    in_view = [i for i, m in enumerate(mids) if m <= 40_000]
-    anchor = in_view[-1] if in_view else len(mids) - 1
+    anchor = len(mids) // 2  # mid-curve: clear of the Detached label at right
     ax.annotate(
         "median neighbourhood",
         xy=(mids[anchor], meds[anchor]),
@@ -258,6 +257,7 @@ def national_scatter(cf: pd.DataFrame) -> None:
     ax.set_ylim(0, ycap)
     ax.set_xlabel("Energy spent (kWh / dwelling / year)")
     ax.set_ylabel("Amenities reachable on foot")
+    fs.comma(ax, "x")
     cb = fig.colorbar(hb, ax=ax, fraction=0.045, pad=0.02)
     cb.outline.set_visible(False)
     cb.ax.tick_params(length=0, labelsize=7.5, colors=fs.INK_SECONDARY)
@@ -266,7 +266,8 @@ def national_scatter(cf: pd.DataFrame) -> None:
         ax,
         "At national scale",
         "More energy, less access, in 178,353 neighbourhoods",
-        "Each point is one Output Area; the median line falls as spending rises",
+        "Hexagonal bins over every Output Area; "
+        "the median line falls as spending rises",
     )
     fs.footer(fig)
     print(f"  F2 country: {int(ok.sum()):,} OAs plotted")
@@ -343,6 +344,7 @@ def energy_gradient(cf: pd.DataFrame, confounds: list[str]) -> None:
         )
     ax.set_xticks(x, _TYPES)
     ax.set_ylabel("Energy spent (kWh / dwelling / year)")
+    fs.comma(ax, "y")
     ax.legend(loc="upper left", fontsize=8.5)
     ax.margins(y=0.18)
     fs.deck(
@@ -422,8 +424,8 @@ def decomposition(cf: pd.DataFrame, confounds: list[str]) -> None:
     fs.deck(
         ax,
         "Form versus family",
-        "About a sixth of the heat gap is the building's form",
-        "The rest is bigger homes and larger families, held equal step by step",
+        f"At equal size and occupancy the heat gap falls to {ratios[-1]:.2f}\u00d7",
+        "Bigger homes and larger households account for two-thirds of the log gap",
     )
     fs.footer(fig)
     print(f"  F4 decomposition: {ratios[0]:.2f}× → {ratios[-1]:.2f}×")
@@ -447,7 +449,7 @@ def doorstep(cf: pd.DataFrame) -> None:
     rows.sort(key=lambda r: r[1])  # ascending, so the biggest gap sits at the top
 
     def _dx(v: float) -> float:
-        return max(v, 0.55)  # place a zero-count detached just left of 1 on symlog
+        return v  # symlog (linthresh=1) renders zero exactly at the axis origin
 
     fig, ax = plt.subplots(figsize=(fs.COL2, 4.7))
     fig.subplots_adjust(left=0.19, right=0.9, top=0.7, bottom=0.13)
@@ -499,9 +501,7 @@ def doorstep(cf: pd.DataFrame) -> None:
         fontweight="bold",
     )
     # Context: the share of detached areas that reach no GP at all on foot.
-    gp_idx = next(
-        (i for i, r in enumerate(rows) if r[0] == "GP surgeries"), None
-    )
+    gp_idx = next((i for i, r in enumerate(rows) if r[0] == "GP surgeries"), None)
     if gp_idx is not None:
         z = (
             _num(d.loc[d["dominant_type"] == "Detached", "net_gp_1600"]).fillna(0) == 0
@@ -567,29 +567,19 @@ def access_curve(cf: pd.DataFrame, income: list[str], dists: list[int]) -> None:
     ax.set_yscale("log")
     ax.axvline(1.6, color=fs.MUTED, lw=0.9, ls=":", zorder=1)
     ax.axvline(km[-1], color=fs.MUTED, lw=0.9, ls=":", zorder=1)
-    ymax = curves["Flat"].max()
-    ax.text(
-        1.6,
-        ymax * 1.5,
-        "on foot\n(a 20-minute walk)",
+    _thr = dict(
         ha="center",
-        va="bottom",
+        va="top",
         fontsize=8,
         color=fs.INK_SECONDARY,
         fontweight="bold",
         linespacing=1.3,
+        transform=ax.get_xaxis_transform(),
+        bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.85),
+        zorder=6,
     )
-    ax.text(
-        km[-1],
-        ymax * 1.5,
-        "25 km drive\n(a typical rural commute)",
-        ha="center",
-        va="bottom",
-        fontsize=8,
-        color=fs.INK_SECONDARY,
-        fontweight="bold",
-        linespacing=1.3,
-    )
+    ax.text(1.6, 0.98, "on foot\n(a 20-minute walk)", **_thr)
+    ax.text(km[-1], 0.98, "25.6 km drive\n(a typical rural commute)", **_thr)
     # White halo boxes: both multiples sit in the band the middle curves cross.
     _halo = dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.85)
     ax.annotate(
@@ -604,28 +594,37 @@ def access_curve(cf: pd.DataFrame, income: list[str], dists: list[int]) -> None:
         bbox=_halo,
         zorder=6,
     )
+    xb = km[-1] + 3.6
+    ax.plot(
+        [xb, xb],
+        [curves["Detached"][-1], curves["Flat"][-1]],
+        color=fs.INK_SECONDARY,
+        lw=1.0,
+        zorder=5,
+        clip_on=False,
+    )
     ax.annotate(
         f"{far:.0f}×",
-        (km[-1], np.sqrt(curves["Flat"][-1] * curves["Detached"][-1])),
+        (xb, np.sqrt(curves["Flat"][-1] * curves["Detached"][-1])),
         textcoords="offset points",
-        xytext=(-8, 0),
-        ha="right",
+        xytext=(5, 0),
+        ha="left",
         fontsize=10.5,
         fontweight="bold",
         color=fs.INK,
         va="center",
-        bbox=_halo,
         zorder=6,
+        annotation_clip=False,
     )
     ax.set_xlabel("Network distance reachable (km)")
     ax.set_ylabel("Everyday amenities reachable")
-    ax.set_xlim(km[0] - 0.5, km[-1] + 5)
+    ax.set_xlim(km[0] - 0.5, km[-1] + 5.6)
     # Keep the x-axis label clear of the figure-level source footer.
     fig.subplots_adjust(bottom=0.15)
     fs.deck(
         ax,
         "Reach and distance",
-        f"A flat reaches ≈{foot:.0f}× more on foot, ≈{far:.0f}× at a 25 km drive",
+        f"A flat reaches ≈{foot:.0f}× more on foot, ≈{far:.0f}× at a 25.6 km drive",
         "The gap is widest at the doorstep and never closes",
     )
     fs.footer(fig)
@@ -673,7 +672,7 @@ def rate(cf: pd.DataFrame, income: list[str], confounds: list[str]) -> None:
     top = max(vals[0], vals[-1]) * 1.28
     ax.plot(
         [0, 0, 3, 3],
-        [vals[0] * 1.05, top, top, vals[-1] * 1.05],
+        [vals[0] * 1.05, top, top, vals[-1] * 1.45],
         color=fs.INK_SECONDARY,
         lw=1.0,
         zorder=3,
@@ -934,6 +933,8 @@ def forest(cf: pd.DataFrame, confounds: list[str], income: list[str]) -> None:
             color=colour,
             va="center",
             ha="left",
+            bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none"),
+            zorder=5,
         )
         ypos -= 1.0
         for label, ci in rows:
@@ -963,11 +964,11 @@ def forest(cf: pd.DataFrame, confounds: list[str], income: list[str]) -> None:
         ypos -= 0.6  # gap between groups
     ax.axvline(1.0, color=fs.INK, lw=1.1, zorder=1)
     ax.set_xscale("log")
-    ax.set_xticks([1, 2, 3, 5, 10, 20, 30, 50])
-    ax.set_xticklabels(["1×", "2×", "3×", "5×", "10×", "20×", "30×", "50×"])
+    ax.set_xticks([1, 2, 3, 5, 10, 20, 30, 50, 100])
+    ax.set_xticklabels(["1×", "2×", "3×", "5×", "10×", "20×", "30×", "50×", "100×"])
     ax.set_yticks(yticks, ylabels)
     ax.set_ylim(ypos + 0.4, 0.8)
-    ax.set_xlabel("Flat-to-detached gap (log scale; 1× = no difference)")
+    ax.set_xlabel("Pure-type ratio (log scale; 1× = no difference)")
     ax.tick_params(left=False)
     ax.spines["left"].set_visible(False)
     fs.deck(

@@ -280,6 +280,9 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
     ].copy()
 
     print(f"  {len(oa):,} OAs")
+    import ledger
+
+    ledger.record(sampleN=f"{len(oa):,}")
     print(f"    heat   median {oa['building_kwh_per_hh'].median():>8,.0f} kWh/hh")
     print(
         f"    travel median {oa['transport_kwh_per_hh_total_est'].median():>8,.0f} "

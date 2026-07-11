@@ -49,12 +49,12 @@ Run:
 
 from __future__ import annotations
 
+# Reuse the canonical loader and OLS plumbing (data construction is already
+# correct: genuine per-household energy, EPC floor-area merge, dominant_type).
+import ledger
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
-
-# Reuse the canonical loader and OLS plumbing (data construction is already
-# correct: genuine per-household energy, EPC floor-area merge, dominant_type).
 from inference import CLUSTER_COL, cluster_bootstrap, fmt_ci, log_contrast_ci
 from oa_data import _run_ols, load_and_aggregate
 
@@ -154,6 +154,7 @@ def bivariate_floor_area_elasticity(lsoa: pd.DataFrame) -> None:
         print("  insufficient data")
         return
     e = float(m.params["log_floor_area"])
+    ledger.record(floorElast=ledger.pt(e))
     print(f"\n  d log(kWh/hh) / d log(m²) = {e:.3f}  (N = {int(m.nobs):,})")
     print(f"  → energy scales as floor_area^{e:.2f}")
     if e < 1:
@@ -543,6 +544,7 @@ def compositional_ladder(lsoa: pd.DataFrame) -> None:
     )
     print("  " + "-" * 82)
     ratios: list[float] = []
+    cis: list[tuple[float, float, float, float]] = []
     hh_elasticity = float("nan")
     m0 = None
     for label, xcols in steps:
@@ -553,11 +555,23 @@ def compositional_ladder(lsoa: pd.DataFrame) -> None:
         ci = log_contrast_ci(m, "s_detached", "s_flat")
         hc1 = log_contrast_ci(getattr(m, "_hc1", m), "s_detached", "s_flat")
         ratios.append(ci[0])
+        cis.append(ci)
         if "log_hh_size" in m.params and np.isnan(hh_elasticity):
             hh_elasticity = float(m.params["log_hh_size"])
         if m0 is None:
             m0 = m
         print(f"  {label:<32s} {fmt_ci(ci):>32s}   [{hc1[1]:.2f}, {hc1[2]:.2f}]")
+    if len(cis) == 3:
+        ledger.record(
+            heatGap=ledger.pt(cis[0][0]),
+            heatGapCI=ledger.ci(cis[0][1], cis[0][2]),
+            heatFamGap=ledger.pt(cis[1][0]),
+            heatFamGapCI=ledger.ci(cis[1][1], cis[1][2]),
+            heatSizeGap=ledger.pt(cis[2][0]),
+            heatSizeGapCI=ledger.ci(cis[2][1], cis[2][2]),
+        )
+    if not np.isnan(hh_elasticity):
+        ledger.record(hhElast=ledger.pt(hh_elasticity, 1))
 
     if not np.isnan(hh_elasticity):
         print(
@@ -585,6 +599,10 @@ def compositional_ladder(lsoa: pd.DataFrame) -> None:
             return float((la - np.log(r_b)) / la) if la else float("nan")
 
         med = cluster_bootstrap(sample, _mediated_stat)
+        ledger.record(
+            medShare=f"{mediated * 100:.0f}",
+            medShareCI=f"{med[1] * 100:.0f}--{med[2] * 100:.0f}",
+        )
         print(
             f"\n  Total form gap: {ratios[0]:.2f}×  →  family-size-held "
             f"{ratios[1]:.2f}×  →  size-held direct {ratios[-1]:.2f}×"
@@ -613,7 +631,26 @@ def compositional_ladder(lsoa: pd.DataFrame) -> None:
         )
         if m is not None:
             ci = log_contrast_ci(m, "s_detached", "s_flat")
+            if label == "total":
+                ledger.record(
+                    totalGap=ledger.pt(ci[0]), totalGapCI=ledger.ci(ci[1], ci[2])
+                )
             print(f"    {label:<7s} Det:Flat {fmt_ci(ci)}")
+    # Equal-family-size travel gap: holds household size as a free control, so
+    # the travel contrast is not carried by larger detached households alone.
+    m = _comp_ols(
+        sample,
+        "_log_travel",
+        _SHARE_FRACS + confounds + occupancy,
+        "total_hh",
+        cluster_col=CLUSTER_COL,
+    )
+    if m is not None:
+        ci = log_contrast_ci(m, "s_detached", "s_flat")
+        ledger.record(
+            travelFamGap=ledger.pt(ci[0]), travelFamGapCI=ledger.ci(ci[1], ci[2])
+        )
+        print(f"    travel, equal family size: Det:Flat {fmt_ci(ci)}")
     print(
         "    (fitted on this ladder's common-support sample; access_profile fits "
         "travel on the\n     full frame, so its 3.07× interval differs marginally.)"
@@ -712,6 +749,7 @@ def selection_robustness(lsoa: pd.DataFrame) -> None:
         f"{'Oster δ*':>10}{'adj δ=1':>9}"
     )
     print("  " + "-" * 55)
+    oster_rows: dict[str, str] = {}
     for label, dv in [("heat", _DV), ("total", "_log_total")]:
         cc = df.dropna(subset=[dv, "det_share", *confounds, *nssec])
         ms = _run_ols(cc, dv, ["det_share"], "short")
@@ -741,6 +779,23 @@ def selection_robustness(lsoa: pd.DataFrame) -> None:
             f"  {label:<7}{np.exp(b0):>8.2f}×{np.exp(b1):>10.2f}×{nstr}"
             f"{dstar_str:>10s}{np.exp(beta_adj):>8.2f}×"
         )
+        pretty = "Total energy" if label == "total" else "Home energy"
+        n_cell = (
+            f"{np.exp(float(mn.params['det_share'])):.2f}$\\times$" if mn else "---"
+        )
+        oster_rows[label] = (
+            f"{pretty} & {np.exp(b0):.2f}$\\times$ & {np.exp(b1):.2f}$\\times$ & "
+            f"{n_cell} & {dstar:.2f} & {np.exp(beta_adj):.2f}$\\times$ \\\\\n"
+        )
+        if label == "total":
+            ledger.record(
+                osterDeltaTotal=ledger.pt(dstar, 1),
+                osterBetaAdjTotal=ledger.pt(float(np.exp(beta_adj))),
+            )
+        else:
+            ledger.record(osterDeltaHeat=ledger.pt(dstar, 1))
+    if {"heat", "total"} <= oster_rows.keys():
+        ledger.table("oster", oster_rows["total"] + oster_rows["heat"])
 
     print(
         "\n  δ* = how strong unobserved selection must be (vs observed confounds) to\n"
@@ -784,13 +839,19 @@ def heat_dv_robustness(lsoa: pd.DataFrame) -> None:
         em = pd.to_numeric(sub["elec_meter_ratio"], errors="coerce")
         gm = pd.to_numeric(sub["gas_meter_ratio"], errors="coerce")
         off = (~em.between(0.5, 1.5)).mean() * 100
+        if t == "Flat":
+            ledger.record(meterFlat=ledger.pt(float(gm.median())))
+        if t == "Detached":
+            ledger.record(meterDet=ledger.pt(float(gm.median())))
         print(f"  {t:<10s}{em.median():>13.2f}{gm.median():>12.2f}{off:>21.0f}%")
 
     confounds = (
         ["median_build_year"] + _deprivation_cols(df) + _tenure_cols(df) + _hdd_cols(df)
     )
 
-    def _heat_total(frame: pd.DataFrame, label: str) -> None:
+    def _heat_total(
+        frame: pd.DataFrame, label: str
+    ) -> tuple[float | None, float | None]:
         cf = _compositional_frame(frame)
         cf["_log_total"] = np.log(
             (
@@ -808,30 +869,28 @@ def heat_dv_robustness(lsoa: pd.DataFrame) -> None:
             "total_hh",
             cluster_col=CLUSTER_COL,
         )
-        h = (
-            fmt_ci(log_contrast_ci(mh, "s_detached", "s_flat"))
-            if mh is not None
-            else "n/a"
-        )
-        tr = (
-            fmt_ci(log_contrast_ci(mt, "s_detached", "s_flat"))
-            if mt is not None
-            else "n/a"
-        )
+        h_ci = log_contrast_ci(mh, "s_detached", "s_flat") if mh is not None else None
+        t_ci = log_contrast_ci(mt, "s_detached", "s_flat") if mt is not None else None
+        h = fmt_ci(h_ci) if h_ci is not None else "n/a"
+        tr = fmt_ci(t_ci) if t_ci is not None else "n/a"
         print(f"  {label:<34s} N={len(cf):>7,}  heat {h}   total {tr}")
+        return (
+            h_ci[0] if h_ci is not None else None,
+            t_ci[0] if t_ci is not None else None,
+        )
 
     print(
         "\n  Det:Flat gaps under denominator/outlier sensitivities (LAD-clustered CIs):"
     )
     _heat_total(df, "all OAs (headline)")
     keep = df["elec_meter_ratio"].between(0.5, 1.5)
-    _heat_total(df[keep].copy(), "electricity meters ≈ households")
+    elec_h, _elec_t = _heat_total(df[keep].copy(), "electricity meters ≈ households")
     # Gas-coverage restriction: the gas series omits communal/electrically-heated
     # dwellings (commoner among flats), so restricting to well-gas-measured OAs
     # (gas meters ≥ 0.9 of households) checks the metered heat gap is not an
     # artefact of that under-coverage.
     gas_ok = df["gas_meter_ratio"] >= 0.9
-    _heat_total(df[gas_ok].copy(), "gas-meter coverage ≥ 0.9")
+    gas_h, gas_t = _heat_total(df[gas_ok].copy(), "gas-meter coverage ≥ 0.9")
 
     # Winsorise the top of the per-household energy distribution (no upper bound
     # exists in the loader filter; a handful of miscoded meters could enter).
@@ -844,7 +903,16 @@ def heat_dv_robustness(lsoa: pd.DataFrame) -> None:
         dfw["building_kwh_per_hh"], errors="coerce"
     ).clip(upper=cap)
     dfw["log_building_kwh_per_hh"] = np.log(dfw["building_kwh_per_hh"].clip(lower=1))
-    _heat_total(dfw, f"winsorised at p99.5 ({cap:,.0f} kWh; {n_over:,} capped)")
+    wins_h, _wins_t = _heat_total(
+        dfw, f"winsorised at p99.5 ({cap:,.0f} kWh; {n_over:,} capped)"
+    )
+    if None not in (elec_h, gas_h, gas_t, wins_h):
+        ledger.record(
+            elecHeat=ledger.pt(elec_h),
+            gasCovHeat=ledger.pt(gas_h),
+            gasCovTotal=ledger.pt(gas_t),
+            winsorHeat=ledger.pt(wins_h),
+        )
 
 
 def main() -> None:

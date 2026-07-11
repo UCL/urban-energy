@@ -1,0 +1,21 @@
+{
+  "title": "urban-energy: the energy productivity of neighbourhood form",
+  "description": "Pipeline and analysis code for 'The energy productivity of neighbourhood form: everyday access per unit of energy across England'. Measures household energy (metered gas and electricity plus NTS-anchored car travel) against network-based everyday access for 178,353 English Census 2021 Output Areas, with the access-per-kilowatt-hour rate between them and decarbonisation-scenario analysis.",
+  "creators": [
+    {
+      "name": "Simons, Gareth",
+      "affiliation": "Building Stock Lab, UCL Energy Institute, University College London"
+    }
+  ],
+  "license": "GPL-3.0-only",
+  "upload_type": "software",
+  "access_right": "open",
+  "keywords": [
+    "urban form",
+    "accessibility",
+    "energy",
+    "decarbonisation",
+    "neighbourhood",
+    "compact city"
+  ]
+}

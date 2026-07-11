@@ -107,6 +107,7 @@ def _scale_bar(ax, x0: float, y0: float, length_m: float, label: str) -> None:
         fontsize=7,
         color=fs.INK_SECONDARY,
         zorder=9,
+        path_effects=[pe.withStroke(linewidth=2, foreground="white")],
     )
 
 
@@ -119,8 +120,9 @@ def national(gdf: gpd.GeoDataFrame) -> None:
     ramp — walkable access spans orders of magnitude).
     """
     halo = [pe.withStroke(linewidth=2.4, foreground="white")]
-    fig, axes = plt.subplots(1, 2, figsize=(10.4, 7.8))
-    fig.subplots_adjust(top=0.82, bottom=0.09, left=0.01, right=0.99, wspace=0.02)
+    # Built at print width so fonts render at their designed sizes.
+    fig, axes = plt.subplots(1, 2, figsize=(6.85, 5.6))
+    fig.subplots_adjust(top=0.80, bottom=0.10, left=0.01, right=0.99, wspace=0.02)
 
     e_lo, e_hi = gdf["energy"].quantile([0.05, 0.95])
     e_norm = Normalize(vmin=float(e_lo), vmax=float(e_hi))
@@ -178,7 +180,11 @@ def national(gdf: gpd.GeoDataFrame) -> None:
     _scale_bar(axes[0], 90_000, 25_000, 100_000, "100 km")
 
     fig.text(
-        0.02, 0.955, "THE TWO AXES, MAPPED", fontsize=8.5, fontweight="bold",
+        0.02,
+        0.955,
+        "THE TWO AXES, MAPPED",
+        fontsize=8.5,
+        fontweight="bold",
         color=fs.ACCENT,
     )
     fig.text(

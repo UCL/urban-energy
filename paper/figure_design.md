@@ -85,7 +85,7 @@ as PNG (300 dpi) + PDF.
 | F2 country | scatter of 178k OAs (+ 2-D density) | x energy/dwelling, y amenities on foot (log), hue = dominant type | dwelling ramp | new `fig_scatter` |
 | F3 energy | stacked bar | x type, stack heat/travel | heat + travel hues | `argument_figures.py` |
 | F4 form/family | horizontal waterfall | 1.60→1.27→1.17×, each control's bite | heat hue + neutral steps | new, from `form_size` |
-| F5 doorstep | paired dumbbell per service | Flat vs Detached count within 1.6 km, seven services | access green vs slate | new, from network cache |
+| F5 doorstep | paired dumbbell per service | Flat vs Detached count within 1.6 km, six services | access green vs slate | new, from network cache |
 | F6 reach | multi-line, log y | x distance, y amenities, one line per type | dwelling ramp | `argument_figures.py` |
 | F7 rate | bar + catchment annotation | amenities per kWh by type, trip distance labelled | access green | `argument_figures.py` |
 | F8 scenarios | horizontal ladder | Det:Flat gap per lever vs parity + status quo | status pair | `argument_figures.py` |

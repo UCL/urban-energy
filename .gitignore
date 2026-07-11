@@ -73,6 +73,12 @@ dmypy.json
 !*.config.json
 # data-source manifest (tracked; verified by src/urban_energy/fetch.py)
 !data/manifest.json
+# Zenodo release metadata (must be tracked for the archived release)
+!.zenodo.json
+# manuscript number ledger (accumulators; without them a partial stats run
+# would regenerate numbers.tex/tab_*.tex with missing macros)
+!paper/latex/numbers.json
+!paper/latex/tables.json
 *.kml
 *.kmz
 *.gml
@@ -133,3 +139,5 @@ _minted-*/
 *.md5
 *.dpth
 *.pdf
+# vector chart figures are manuscript inputs (\includegraphics), not build outputs
+!paper/figures/*.pdf

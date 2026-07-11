@@ -56,7 +56,10 @@ CACHE = DATA_DIR / "statistics" / "oa_network_access.parquet"
 STEP = 1600  # ladder resolution (m)
 WALK = 1600  # walkable band / ladder start
 MAX_M = 25600  # ladder maximum (≈ p97 of OA catchments)
-TRIPS_PER_YEAR = 370  # NTS car/van-driver trips per person per year
+# ≈ NTS0303 car-driver trips/person/yr (363 in 2023; ~380 pre-pandemic).
+# Swept 300–440 in access_profile (no cache rebuild needed: only the
+# catchment interpolation point depends on it).
+TRIPS_PER_YEAR = 370
 _M_PER_MILE = 1609.34
 LADDER = list(range(WALK, MAX_M + 1, STEP))  # 1600, 3200, … 25600
 

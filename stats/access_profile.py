@@ -25,6 +25,7 @@ Run:
 
 from __future__ import annotations
 
+import ledger
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
@@ -180,6 +181,18 @@ def compositional_access(d: pd.DataFrame) -> None:
         ("jobs, drive 25.6 km", "net_jobs_25600"),
         ("people, drive 25.6 km", "net_pop_25600"),
     ]
+    # Manuscript ledger keys and decimal places per measure (stats/ledger.py).
+    ledger_keys = {
+        "net_total_1600": ("walkAmen", 1),
+        "net_jobs_1600": ("walkJobs", 1),
+        "net_pop_1600": ("walkPeople", 1),
+        "net_amen": ("catchAmen", 2),
+        "net_jobs_catch": ("catchJobs", 2),
+        "net_pop_catch": ("catchPeople", 2),
+        "net_total_25600": ("driveAmen", 1),
+        "net_jobs_25600": ("driveJobs", 1),
+        "net_pop_25600": ("drivePeople", 1),
+    }
     print("\n  [4] COMPOSITIONAL (option D) — pure all-flat vs all-detached area")
     print(
         "      Poisson log-link · hh-weighted (var_weights) · income-only · NOT density"
@@ -202,6 +215,10 @@ def compositional_access(d: pd.DataFrame) -> None:
         if col == "net_amen":
             access_ratio = ci[0]  # catchment-amenity advantage, flat:det
             access_ratio_ci = ci
+        key, nd = ledger_keys[col]
+        ledger.record(
+            **{key: ledger.pt(ci[0], nd), key + "CI": ledger.ci(ci[1], ci[2], nd)}
+        )
         print(f"  {label:<26s}{pf:>14,.1f}{pdet:>14,.1f}{fmt_ci(ci):>26s}")
 
     # Common-support companions for the on-foot gaps. The Poisson rows above are
@@ -221,6 +238,11 @@ def compositional_access(d: pd.DataFrame) -> None:
             if len(hi_det) and hi_det.median()
             else float("nan")
         )
+        if m_col == "net_total_1600":
+            ledger.record(
+                walkAmenDomMed=ledger.pt(dom_ratio, 1),
+                walkAmenSupport=ledger.pt(sup_ratio, 1),
+            )
         print(
             f"\n  on-foot {m_label} gap companions (vs the pure-type Poisson above):"
             f"\n    dominant-type medians   Flat {med_flat:,.0f} / Det {med_det:,.0f} "
@@ -316,6 +338,18 @@ def compositional_access(d: pd.DataFrame) -> None:
         }
 
     rc = cluster_bootstrap_multi(cf, _rates_stat)
+    ledger.record(
+        travelGap=ledger.pt(er_full[0]),
+        travelGapCI=ledger.ci(er_full[1], er_full[2]),
+        rate=ledger.pt(rc["headline"][0], 1),
+        rateCI=ledger.ci(rc["headline"][1], rc["headline"][2], 1),
+        rateHarm=ledger.pt(rc["harmonised"][0], 1),
+        rateHarmCI=ledger.ci(rc["harmonised"][1], rc["harmonised"][2], 1),
+        rateCirc=ledger.pt(rc["circularity"][0], 1),
+        rateCircCI=ledger.ci(rc["circularity"][1], rc["circularity"][2], 1),
+    )
+    if me_full is not None and getattr(me_full, "_n_clusters", None):
+        ledger.record(clusters=f"{me_full._n_clusters:,}")
     print(
         f"\n  access-per-kWh RATE (headline) = access advantage × energy saving"
         f"\n    = {access_ratio:.2f} × {er_full[0]:.2f} = {rc['headline'][0]:.2f}×  "
@@ -339,6 +373,42 @@ def compositional_access(d: pd.DataFrame) -> None:
         "  non-parametric companion: dominant-type median access/kWh — see the "
         "'access / kWh' row in section [3] above."
     )
+
+    # Trip-rate sensitivity: the 370 trips/yr constant sets each area's catchment
+    # radius. The cached distance curves are trip-rate independent, so the sweep
+    # only re-interpolates them at alternative rates and refits the access
+    # advantage; the rate is the advantage times the (unchanged) energy saving.
+    from oa_network_access import _M_PER_MILE, _at_catchment
+
+    ladder_cols = [c for c in cf.columns if c.startswith("net_total_")]
+    ladder = sorted(int(c.rsplit("_", 1)[1]) for c in ladder_cols)
+    curves = cf[[f"net_total_{d}" for d in ladder]].to_numpy(float)
+    miles = _num(cf["car_miles_per_person"]).to_numpy(float)
+    print(
+        "\n  trip-rate sensitivity — catchment radius = miles/person ÷ trips/yr "
+        "(headline 370):"
+    )
+    trip_keys = {300: "tripLow", 370: "tripMid", 440: "tripHigh"}
+    for trips in (300, 370, 440):
+        trip_m = np.clip(miles / trips * _M_PER_MILE, ladder[0], ladder[-1])
+        cf["_amen_t"] = _at_catchment(curves, ladder, trip_m)
+        mt = _comp_poisson(
+            cf, "_amen_t", _SHARE_FRACS + income, "total_hh", cluster_col=CLUSTER_COL
+        )
+        if mt is None:
+            continue
+        adv = float(np.exp(mt.params["s_flat"] - mt.params["s_detached"]))
+        rate_t = adv * er_full[0]
+        ledger.record(
+            **{
+                trip_keys[trips] + "Adv": ledger.pt(adv),
+                trip_keys[trips] + "Rate": ledger.pt(rate_t, 1),
+            }
+        )
+        print(
+            f"    {trips} trips/yr:  access advantage {adv:.2f}x  ->  "
+            f"rate {rate_t:.1f}x"
+        )
 
 
 def main() -> None:
@@ -397,6 +467,12 @@ def main() -> None:
         ("pop /ha", "pop_density", "{:>10.1f}"),
     ]:
         m = _med(d, col)
+        if col == "pop_density":
+            ledger.record(
+                popDensityFlat=f"{m['Flat']:.0f}",
+                popDensityDet=f"{m['Detached']:.0f}",
+                popDensityRatio=ledger.pt(_ratio(m), 1),
+            )
         print(
             f"  {label:<16s}"
             + "".join(fmt.format(m[t]) for t in TYPES)
@@ -466,6 +542,8 @@ def main() -> None:
         ("access / kWh", "rate"),
     ]:
         m = _med(d, col)
+        if col == "rate":
+            ledger.record(rateDomMedian=ledger.pt(_ratio(m), 1))
         print(
             f"  {label:<14s}"
             + "".join(f"{m[t]:>10.1f}" for t in TYPES)
@@ -488,6 +566,26 @@ def main() -> None:
         )
 
     compositional_access(d)
+
+    # The access panel of the manuscript's two-axis table (macros supply the
+    # compositional ratio column, so the fragment stays consistent even if
+    # only one script is re-run).
+    def _table_row(label: str, col: str, macro: str) -> str:
+        m = _med(d, col)
+        cells = "".join(f" & {m[t]:,.0f}" for t in TYPES)
+        return f"{label}{cells} & \\nepi{macro}$\\times$ \\\\\n"
+
+    ledger.table(
+        "axesaccess",
+        "\\multicolumn{6}{l}{\\textit{Access: opportunities within reach "
+        "(median count)}} \\\\\n"
+        + _table_row("Amenities, on foot", "net_total_1600", "walkAmen")
+        + _table_row("Amenities, own catchment", "net_amen", "catchAmen")
+        + _table_row("Amenities, 25.6\\,km drive", "net_total_25600", "driveAmen")
+        + _table_row("Jobs, on foot", "net_jobs_1600", "walkJobs")
+        + _table_row("Jobs, 25.6\\,km drive", "net_jobs_25600", "driveJobs")
+        + _table_row("People, on foot", "net_pop_1600", "walkPeople"),
+    )
 
 
 if __name__ == "__main__":

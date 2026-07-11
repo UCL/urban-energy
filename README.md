@@ -8,11 +8,11 @@ computed from open data.
 **Live tool:** <https://UCL.github.io/urban-energy/> *(the old A–G Atlas; its source has been
 removed pending a fresh two-axis rebuild — see below).*
 
-> **⏸ Current focus.** The live work is the **[argument](paper/summary.md)** (the canonical
-> two-axis statement) and the **data + analysis pipeline**. The **paper ([PAPER.md](PAPER.md))** is now
-> drafted on the two-axis frame (finalisation pending), and the **Atlas is pending** — its scoring and the XGBoost planning models are to
-> be reevaluated for the two-axis frame (that code lives in git history). The theory + headline
-> below are the current two-axis frame.
+> **⏸ Current focus.** The live work is the **manuscript ([paper/latex/main.tex](paper/latex/main.tex))**,
+> written on the two-axis frame and prepared for Nature Cities submission, and the
+> **data + analysis pipeline**. The **Atlas is pending** — its scoring and the XGBoost planning
+> models are to be reevaluated for the two-axis frame (that code lives in git history). The
+> theory + headline below are the current two-axis frame.
 
 ---
 
@@ -97,18 +97,20 @@ without heat pumps is the conventional bound, **2.12× → 1.51×**. Built form 
 
 ### Current focus
 
-1. **The argument** — the canonical two-axis statement in
-   [paper/summary.md](paper/summary.md): the hypothesis, the method, and every headline
-   number. This is the single source of truth.
+1. **The manuscript** — [paper/latex/main.tex](paper/latex/main.tex) (Nature Cities submission,
+   with [paper/latex/extended_data.tex](paper/latex/extended_data.tex)). Every result number in
+   it is a `\nepi` macro written by the stats scripts through `stats/ledger.py`, so the
+   manuscript regenerates with the analysis; see
+   [paper/submission_checklist.md](paper/submission_checklist.md) for the recipe and state.
 2. **The data + analysis pipeline** — acquisition orchestrator + the two-axis analysis layer
    (`oa_data` + `oa_access` → `travel_energy`, `access_profile`, `lock_in`, `form_size`),
    reproducible from open data with no heavy processing step.
 
 ### ⏸ Pending (next phase)
 
-1. **The paper** ([PAPER.md](PAPER.md)): drafted on the two-axis frame; finalisation and submission pending.
-2. **The NEPI Atlas + planning tool** — pending: reevaluate the place-scoring and the XGBoost
-   planning models for the two-axis frame (their code lives in git history).
+1. **The NEPI Atlas + planning tool** — pending: reevaluate the place-scoring and the XGBoost
+   planning models for the two-axis frame (their code lives in git history); sequence in
+   [ROADMAP.md](ROADMAP.md).
 
 ---
 
@@ -116,8 +118,8 @@ without heat pumps is the conventional bound, **2.12× → 1.51×**. Built form 
 
 | Path | Purpose |
 | ---- | ------- |
-| [paper/summary.md](paper/summary.md) | **The argument** — canonical two-axis statement (single source of truth) |
-| [PAPER.md](PAPER.md) | The formal IMRaD paper (current two-axis draft; finalisation pending). Old three-surface draft archived at [paper/archive/PAPER_three_surface_deferred.md](paper/archive/PAPER_three_surface_deferred.md) |
+| [paper/latex/main.tex](paper/latex/main.tex) | **The manuscript** — Nature Cities submission; result numbers ledger-wired via `stats/ledger.py` |
+| [paper/summary.md](paper/summary.md) | The argument — narrative two-axis statement (companion to the manuscript) |
 | [CLAUDE.md](CLAUDE.md) | **Technical brief** — codebase layout, data, architecture, conventions |
 | [REPRODUCTION.md](REPRODUCTION.md) | **How to rebuild** — orchestrator-driven recipe, manual downloads |
 | [ROADMAP.md](ROADMAP.md) | **Status, scope & open work** — incl. the methodology decisions |
@@ -168,7 +170,8 @@ from the tree in the migration (in git history, pending reevaluation).
 
 **Current focus:** keeping the argument + processing pipeline watertight.
 
-**⏸ Pending (next phase):** finalising the paper ([PAPER.md](PAPER.md)) (drafted on the two-axis frame); reevaluating the Atlas scoring +
+**⏸ Pending (next phase):** submitting the manuscript ([paper/latex/main.tex](paper/latex/main.tex),
+see [paper/submission_checklist.md](paper/submission_checklist.md)); reevaluating the Atlas scoring +
 planning models for the two-axis frame.
 
 ---

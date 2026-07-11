@@ -4,8 +4,8 @@ Three expert reviewers (data-visualisation, graphic design, science editing) cri
 the figure set on 2026-07-09. Most points were applied in the rebuild (commit e45d1a7);
 this file records what was done and what is still open, so the work can be resumed.
 
-The current set is ten figures in `paper/figures/`, built by `stats/argument_figures.py`
-(F1–F8) and `stats/map_figures.py` (F9–F10), styled through `stats/figstyle.py`.
+The current set is eleven figures in `paper/figures/`, built by `stats/argument_figures.py`
+(F1–F8, F11 forest) and `stats/map_figures.py` (F9–F10), styled through `stats/figstyle.py`.
 
 ## Applied (done in the rebuild)
 

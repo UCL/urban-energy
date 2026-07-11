@@ -34,6 +34,7 @@ Run:
 
 from __future__ import annotations
 
+import ledger
 import numpy as np
 import pandas as pd
 from access_profile import _comp_poisson
@@ -228,23 +229,52 @@ def main() -> None:
     print("\n  Flat→Detached TOTAL energy gap (per dwelling, compositional, method D):")
     print(f"\n  {'scenario':<30s}{'as-lived [95% CI]':>24s}{'equal family size':>24s}")
     print("  " + "-" * 76)
+    ledger.record(scenarioN=f"{len(df):,}")
+    ledger_keys = {
+        "S0 status quo": ("scenarioBase", "Status quo"),
+        "Fabric only (100%)": ("fabricGap", "Insulation only (100\\%)"),
+        "Heat pumps only (100%)": ("hpGap", "Heat pumps only (100\\%)"),
+        "EVs only (100%)": ("evGap", "Electric vehicles only (100\\%)"),
+        "CCC Balanced Pathway 2040": ("cccGap", "CCC Balanced Pathway 2040"),
+        "Full rollout (100%)": ("fullGap", "Full rollout (100\\%)"),
+    }
+    table_rows: list[str] = []
     ratios: dict[str, float] = {}
     for label, heat_transform, u_heat, u_ev in SCENARIOS:
         as_lived, equal_fam = _ratios(
             df, gas, elec, travel, heat_transform, u_heat, u_ev
         )
         ratios[label] = as_lived[0]
+        key, pretty = ledger_keys[label]
+        ledger.record(
+            **{
+                key: ledger.pt(as_lived[0]),
+                key + "CI": ledger.ci(as_lived[1], as_lived[2]),
+            }
+        )
+        table_rows.append(
+            f"{pretty} & {as_lived[0]:.2f}$\\times$ [{as_lived[1]:.2f}, "
+            f"{as_lived[2]:.2f}] & {equal_fam[0]:.2f}$\\times$ "
+            f"[{equal_fam[1]:.2f}, {equal_fam[2]:.2f}] \\\\\n"
+        )
         print(f"  {label:<30s}{fmt_ci(as_lived):>24s}{fmt_ci(equal_fam):>24s}")
+    ledger.table("scenarios", "".join(table_rows))
 
     # Transparency on each lever's direction: fabric closes the gap (detached homes
     # have more EPC headroom), a heat pump widens it (a near-uniform delivered-energy
     # cut that removes the low-gap heat component and unmasks the high-gap travel),
     # EVs close it most (they attack travel, where the gap is largest).
     r0 = ratios["S0 status quo"]
+    closed_keys = {
+        "Fabric only (100%)": "fabricClosed",
+        "Heat pumps only (100%)": "hpDelta",
+        "EVs only (100%)": "evClosed",
+    }
     for lever in ("Fabric only (100%)", "Heat pumps only (100%)", "EVs only (100%)"):
         r = ratios[lever]
         closed = 1 - np.log(r) / np.log(r0) if r0 > 1 and r > 1 else 0.0
         verb = "closes" if closed > 0 else "widens"
+        ledger.record(**{closed_keys[lever]: f"{abs(closed) * 100:.0f}"})
         print(
             f"\n  {lever}: {r:.2f}× {verb} the status-quo gap by "
             f"{abs(closed):.0%} (log scale)."
@@ -254,9 +284,20 @@ def main() -> None:
     # and the full rollout, derived from the ladder point estimates (the per-scenario
     # CIs above carry the sampling uncertainty; the composite ratio is unstable under
     # resampling, so no separate interval is quoted).
+    survive_keys = {
+        "CCC Balanced Pathway 2040": ("cccSurvives", "cccClosed"),
+        "Full rollout (100%)": ("fullSurvives", "fullClosed"),
+    }
     for label in ("CCC Balanced Pathway 2040", "Full rollout (100%)"):
         r = ratios[label]
         survives = np.log(r) / np.log(r0) if r0 > 1 and r > 1 else float("nan")
+        s_key, c_key = survive_keys[label]
+        ledger.record(
+            **{
+                s_key: f"{survives * 100:.0f}",
+                c_key: f"{(1 - survives) * 100:.0f}",
+            }
+        )
         print(
             f"\n  {label}: {survives:.0%} of the status-quo per-dwelling energy gap "
             f"survives\n  (log scale); {1 - survives:.0%} closed."
@@ -270,10 +311,12 @@ def main() -> None:
 
     # COP sensitivity on the milestone (Balanced Pathway) scenario.
     print("\n  COP sensitivity — Balanced Pathway 2040 total Det:Flat (as-lived):")
+    cop_keys = {2.4: "copLow", 2.8: "copMid", 3.2: "copHigh"}
     for cop in (2.4, 2.8, 3.2):
         r, _ = _ratios(
             df, gas, elec, travel, "fabric+hp", HEAT_UPTAKE_2040, EV_UPTAKE_2040, cop
         )
+        ledger.record(**{cop_keys[cop]: ledger.pt(r[0])})
         print(f"    COP {cop}:  {fmt_ci(r)}")
 
 

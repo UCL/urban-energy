@@ -1,13 +1,12 @@
 # Method notes & literature to incorporate
 
-A running ledger of the methodological decisions taken in the analysis, the
-literature that supports (or qualifies) them, and what must be folded into
-`PAPER.md` and `literature_review.md` when the manuscript is drafted. This is a
-checklist of decisions + citations, not paper prose. Keep it current as the
-analysis evolves.
+A running ledger of the methodological decisions taken in the analysis and the
+literature that supports (or qualifies) them. The manuscript
+(`latex/main.tex`) has incorporated these; the ledger remains the decision
+history. This is a checklist of decisions + citations, not paper prose.
 
-Canonical numbers live in [`summary.md`](summary.md); reproduce via the `stats/`
-scripts named under each decision.
+Canonical numbers are written by the stats scripts to `latex/numbers.tex` via
+`stats/ledger.py`; reproduce via the `stats/` scripts named under each decision.
 
 ---
 

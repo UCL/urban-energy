@@ -1,0 +1,94 @@
+%% Extended Data for "The energy productivity of neighbourhood form".
+%% Standalone document; compiles to extended_data.pdf and accompanies
+%% main.tex at submission. Numbers match paper/results_snapshot.txt
+%% (regenerated 2026-07-10). Figures built by stats/argument_figures.py
+%% and stats/map_figures.py.
+
+\documentclass[pdflatex,sn-nature]{sn-jnl}
+
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{booktabs}
+
+\graphicspath{{../figures/}}
+
+\input{numbers.tex}
+
+\renewcommand{\figurename}{Extended Data Fig.}
+\renewcommand{\tablename}{Extended Data Table}
+
+\begin{document}
+
+\title[Extended Data]{Extended Data: The energy productivity of neighbourhood form}
+
+\author*[1]{\fnm{Gareth} \sur{Simons}}\email{gareth@benchmarkurbanism.com}
+\affil*[1]{\orgdiv{Building Stock Lab, UCL Energy Institute}, \orgname{University College London}, \orgaddress{\city{London}, \country{United Kingdom}}}
+
+\maketitle
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig2_country}
+\caption{\textbf{The joint distribution across all areas.} Every English Output Area is plotted by total energy per dwelling against amenities reachable on foot, as a hexagonal-bin density with a binned median line. Median access falls as energy per dwelling rises; the markers locate the median flat-dominant and detached-dominant areas.}
+\label{edfig:country}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig4_decomposition}
+\caption{\textbf{Decomposition of the home-energy gap.} The compositional detached:flat home-energy contrast falls from \nepiheatGap$\times$ (95\% CI \nepiheatGapCI) to \nepiheatFamGap$\times$ (\nepiheatFamGapCI) at equal household size and to \nepiheatSizeGap$\times$ (\nepiheatSizeGapCI) at equal floor area; on the log scale, size and occupancy account for \nepimedShare\% (\nepimedShareCI\%) of the gap. The decomposition is a covariate adjustment on cross-sectional data, not an identified mediation.}
+\label{edfig:decomposition}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig5_doorstep}
+\caption{\textbf{Per-service counts at walking distance.} Median counts within a 1.6\,km network walk are shown by service for flat-dominant and detached-dominant areas. The median detached-dominant area has no general practitioner within the 1.6\,km walk.}
+\label{edfig:doorstep}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig10_city.png}
+\caption{\textbf{The two axes within a single city.} Sheffield is mapped by energy per dwelling (left) and amenities within a 1.6\,km walk (right). The high-energy ring around the compact core coincides with the areas of lowest walkable access. Colour scales are clipped at the 5th--95th percentiles.}
+\label{edfig:city}
+\end{figure}
+
+\begin{table}[p]
+\caption{Amenity destination layers: sources, record counts and filters (England; the greenspace layer is Great Britain, clipped by the Output Area extent). The six amenity types are summed into the amenity count; jobs and people are measured separately. Hospitals are excluded because the NHS trust-site register lists every site of every trust (wards, clinics, community units) rather than hospitals as such, so its count is not a credible amenity measure.}
+\label{edtab:sources}
+\begin{tabular}{llrl}
+\toprule
+Destination & Source & Records & Filter \\
+\midrule
+GP surgeries & NHS ODS (\texttt{epraccur}) & 12,664 & active GP practices \\
+Pharmacies & NHS ODS & 11,268 & community pharmacies \\
+Schools & GIAS & 50,631 & open establishments \\
+Food outlets & FSA hygiene register & 190,359 & restaurants, cafes, takeaways, pubs \\
+Food shops & FSA hygiene register & 93,071 & supermarkets and convenience retail \\
+Parks and greenspace & OS Open Greenspace & 102,773 & parks, playing fields, play spaces, allotments \\
+Jobs & Census 2021 WP101EW & --- & workplace jobs, weighted by job count \\
+People & Census 2021 TS001 & --- & resident population \\
+\botrule
+\end{tabular}
+\end{table}
+
+\begin{table}[p]
+\caption{The decarbonisation-scenario ladder with 95\% confidence intervals (compositional detached:flat total energy per dwelling, clustered on local-authority districts). The equal-household-size column holds log household size as a freely estimated control. Every scenario is fitted on the common complete-case sample of \nepiscenarioN{} areas. The Balanced Pathway estimate is insensitive to the assumed heat-pump seasonal coefficient of performance (\nepicopLow$\times$ at 2.4, \nepicopMid$\times$ at 2.8, \nepicopHigh$\times$ at 3.2).}
+\label{edtab:scenarios}
+\input{tab_scenarios.tex}
+\end{table}
+
+\begin{table}[p]
+\caption{Self-selection robustness. Treatment is the continuous detached share (0$\to$100\%) in an OLS specification with an intercept, over all areas; confounds are building age, deprivation (overall index and income domain), tenure and heating-degree-days; NS-SeC (National Statistics Socio-economic Classification) adds the higher managerial and professional occupational share. $\delta^{*}$ is the Oster (2019) coefficient-stability bound with $R_{\max} = \min(1.3\tilde{R}, 1)$; the final column is the bias-adjusted gap at $\delta = 1$. The small bound for home energy indicates that the home-energy gap alone does not survive selection comparable to the observed confounds; the argument accordingly rests on access and the rate.}
+\label{edtab:oster}
+\input{tab_oster.tex}
+\end{table}
+
+\begin{table}[p]
+\caption{Scale sensitivity (modifiable areal unit problem). The identical compositional model re-fitted after household-weighted aggregation to the two coarser census geographies, with 95\% LAD-clustered confidence intervals, alongside the support-respecting dominant-type median ratios. The home-energy vertex contrast attenuates toward parity at MSOA scale, with a confidence interval spanning one, because almost no MSOA approaches a pure dwelling-type composition; the median counterpart remains above one at every scale.}
+\label{edtab:maup}
+\input{tab_maup.tex}
+\end{table}
+
+\end{document}

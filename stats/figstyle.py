@@ -21,6 +21,7 @@ a vector PDF.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import matplotlib as mpl
@@ -110,8 +111,8 @@ def apply_style() -> None:
     )
 
 
-def save(fig: Figure, name: str, pdf: bool = False) -> Path:
-    """Write ``fig`` to the output folder as a 300-dpi PNG (one format for now).
+def save(fig: Figure, name: str, pdf: bool = True) -> Path:
+    """Write ``fig`` to the output folder as a 300-dpi PNG (plus vector PDF).
 
     Parameters
     ----------
@@ -149,6 +150,9 @@ SOURCE = (
 def deck(ax, kicker: str, title: str, subtitle: str | None = None) -> None:
     """Editorial title block above the axes: kicker, finding, mechanism line.
 
+    Set the environment variable ``NEPI_PLAIN_FIGS=1`` to suppress the block
+    (journal-submission variant: captions carry the words instead).
+
     Parameters
     ----------
     ax : matplotlib.axes.Axes
@@ -160,6 +164,8 @@ def deck(ax, kicker: str, title: str, subtitle: str | None = None) -> None:
     subtitle : str or None
         A lighter second line naming the mechanism or the caveat.
     """
+    if os.environ.get("NEPI_PLAIN_FIGS") == "1":
+        return
     y_kicker = 46 if subtitle else 32
     y_title = 24 if subtitle else 10
     ax.annotate(
@@ -202,6 +208,8 @@ def deck(ax, kicker: str, title: str, subtitle: str | None = None) -> None:
 
 def footer(fig: Figure, text: str = SOURCE) -> None:
     """Add a small muted source line at the bottom-left of the figure."""
+    if os.environ.get("NEPI_PLAIN_FIGS") == "1":
+        return
     fig.text(0.02, 0.005, text, ha="left", va="bottom", fontsize=7, color=MUTED)
 
 

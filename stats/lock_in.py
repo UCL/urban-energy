@@ -128,6 +128,16 @@ def main() -> None:
     now_fam = _d_ratio_ci(cf, "_log_total_now", conf_fam)
     opt_fam = _d_ratio_ci(cf, "_log_total_opt", conf_fam)
 
+    import ledger
+
+    ledger.record(
+        lockinGap=ledger.pt(opt_hh[0]),
+        lockinGapCI=ledger.ci(opt_hh[1], opt_hh[2]),
+        famNowGap=ledger.pt(now_fam[0]),
+        famOptGap=ledger.pt(opt_fam[0]),
+        fabricFactorMedian=ledger.pt(float(factor.median())),
+    )
+
     print(
         f"\n  Fabric-improvement factor (EPC potential/current, median): "
         f"{factor.median():.2f}"
@@ -152,6 +162,10 @@ def main() -> None:
         return float(np.log(ro) / np.log(rn)) if rn > 1 else float("nan")
 
     surv = cluster_bootstrap(cf, _survives_stat)
+    ledger.record(
+        survivesShare=f"{survives * 100:.0f}",
+        survivesShareCI=f"{surv[1] * 100:.0f}--{surv[2] * 100:.0f}",
+    )
     print(
         f"\n  {survives:.0%} of the per-dwelling gap (log scale) survives best "
         f"insulation + a full EV fleet [95% CI {surv[1]:.0%}, {surv[2]:.0%}]."

@@ -34,11 +34,11 @@ Sources / constants
 * NTS9904, DfT National Travel Survey 2024 (OGL) — the class mileage marginals.
 * ONS 2021 Rural-Urban Classification of OAs (OGL) — the OA→class lookup.
 * Vehicle-km energy intensities: ICE car ≈ 0.58 kWh/vkm, battery electric ≈ 0.20
-  kWh/vkm (converted to per-mile below). Source family: DfT Energy Consumption in
-  the UK (ECUK) road-transport tables and the DfT TAG databook fuel-consumption
-  figures; a petrol/diesel car delivering ~0.58 kWh/vkm and a BEV ~0.20 kWh/vkm
-  are the standard fleet-average values. (TODO: pin the exact ECUK table/year cell
-  before publication.)
+  kWh/vkm (converted to per-mile below). Provenance: 0.58 is fleet-average
+  combustion consumption of ~6.5 l/100 km at 8.9 kWh per litre of petrol; 0.20 is
+  the real-world consumption of current BEVs (~3.5–4.5 miles/kWh). Both are
+  consistent with the DfT ECUK road-transport and TAG appraisal tables; the
+  manuscript states the derivation (Methods, "The energy axis").
 * Commute-distance elasticity of within-class mileage = 0.30 (commute is a
   minority of total mileage but correlates with it). Reported with a
   sensitivity (0.15 / 0.30 / 0.45) in ``sensitivity_report`` below.
@@ -251,13 +251,37 @@ def _demo() -> None:
     # are not additive).
     print(f"\n  {'type':<10s}{'cars/hh':>8s}{'car kWh':>10s}{'heat':>9s}{'TOTAL':>9s}")
     print("  (TOTAL is the per-OA median of heat+travel, not the sum of the columns)")
+    med: dict[str, dict[str, float]] = {"car": {}, "heat": {}, "tot": {}}
     for t in ["Flat", "Terraced", "Semi", "Detached"]:
         s = df[df["dominant_type"] == t]
         car = pd.to_numeric(s["transport_kwh_per_hh_total_est"], errors="coerce")
         heat = pd.to_numeric(s["building_kwh_per_hh"], errors="coerce")
         cph = pd.to_numeric(s["cars_per_hh"], errors="coerce").median()
         cmed, hmed, tot = car.median(), heat.median(), (heat + car).median()
+        med["car"][t], med["heat"][t], med["tot"][t] = cmed, hmed, tot
         print(f"  {t:<10s}{cph:>8.2f}{cmed:>10.0f}{hmed:>9.0f}{tot:>9.0f}")
+
+    # The energy panel of the manuscript's two-axis table; the compositional
+    # ratio column comes from ledger macros recorded by the model scripts.
+    import ledger
+
+    def _cells(kind: str) -> str:
+        return "".join(
+            f" & {med[kind][t]:,.0f}" for t in ["Flat", "Terraced", "Semi", "Detached"]
+        )
+
+    ledger.table(
+        "axesenergy",
+        "\\multicolumn{6}{l}{\\textit{Energy (kWh per dwelling per year)}} \\\\\n"
+        f"Home (metered gas + electricity){_cells('heat')} & "
+        "\\nepiheatGap$\\times$ \\\\\n"
+        f"Car travel (NTS-anchored){_cells('car')} & \\nepitravelGap$\\times$ \\\\\n"
+        f"Total{_cells('tot')} & \\nepitotalGap$\\times$ \\\\\n",
+    )
+    ledger.record(
+        travelIce=ledger.pt(KWH_PER_MILE_ICE),
+        travelEv=ledger.pt(KWH_PER_MILE_EV),
+    )
 
 
 def sensitivity_report() -> None:
@@ -282,7 +306,7 @@ def sensitivity_report() -> None:
     from inference import CLUSTER_COL, fmt_ci, log_contrast_ci
     from oa_data import load_and_aggregate
 
-    def _comp_travel_gap(d: pd.DataFrame) -> str:
+    def _comp_travel_gap(d: pd.DataFrame) -> tuple[float, float, float, float] | None:
         """Compositional pure-type Det:Flat travel gap (LAD-clustered CI)."""
         cf = _compositional_frame(d)
         conf = (
@@ -298,8 +322,8 @@ def sensitivity_report() -> None:
             cf, "_log_travel", _SHARE_FRACS + conf, "total_hh", cluster_col=CLUSTER_COL
         )
         if m is None:
-            return "n/a"
-        return fmt_ci(log_contrast_ci(m, "s_detached", "s_flat"))
+            return None
+        return log_contrast_ci(m, "s_detached", "s_flat")
 
     def _dom_medians(d: pd.DataFrame) -> tuple[float, float]:
         med = {
@@ -324,14 +348,22 @@ def sensitivity_report() -> None:
         f"(flat class average, marginal preserved), {n_rucfail:,} rural-urban-class "
         "join failures (NaN mileage, dropped downstream)."
     )
+    import ledger
+
     print("\n  Commute-elasticity sensitivity — Det:Flat car kWh/hh:")
+    commute_ratios: list[float] = []
     for e in (0.15, 0.30, 0.45):
         d = compute_travel_energy(base, elasticity=e)
         flat_med, ratio = _dom_medians(d)
+        commute_ratios.append(ratio)
         print(
             f"    elasticity {e:.2f}:  dominant-type median {ratio:.2f}×  "
             f"(Flat median {flat_med:,.0f} kWh)"
         )
+    ledger.record(
+        commuteSweepLo=ledger.pt(min(commute_ratios)),
+        commuteSweepHi=ledger.pt(max(commute_ratios)),
+    )
     print(
         "\n  Ownership-elasticity sensitivity — within-class allocator "
         "cars_pp**alpha:\n"
@@ -341,13 +373,21 @@ def sensitivity_report() -> None:
         "   between-class gradient — the floor of the contrast. Class marginals\n"
         "   are preserved exactly at every alpha.)"
     )
+    alpha_keys = {0.8: "alphaEightGap", 0.6: "alphaSixGap", 0.0: "alphaZeroGap"}
     for a in (1.0, 0.8, 0.6, 0.0):
         d = compute_travel_energy(base, ownership_elasticity=a)
         _, ratio = _dom_medians(d)
         comp = _comp_travel_gap(d)
+        if comp is not None and a in alpha_keys:
+            ledger.record(
+                **{
+                    alpha_keys[a]: ledger.pt(comp[0]),
+                    alpha_keys[a] + "CI": ledger.ci(comp[1], comp[2]),
+                }
+            )
         print(
             f"    alpha {a:.1f}:  dominant-type median {ratio:.2f}×   "
-            f"compositional {comp}"
+            f"compositional {fmt_ci(comp) if comp is not None else 'n/a'}"
         )
     print(
         "\n  (TRIPS_PER_YEAR=370 sets the access catchment radius in "

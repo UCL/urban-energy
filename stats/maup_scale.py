@@ -139,10 +139,12 @@ def maup_ladder(oa: pd.DataFrame) -> None:
         f"{'heat Det:Flat':>22s}   {'total Det:Flat':>22s}"
     )
     print("  " + "-" * 66)
+    comp_by_scale: dict[str, tuple] = {}
     for name, frame in scales:
         n = int(pd.to_numeric(frame["total_hh"], errors="coerce").notna().sum())
         heat = _ratio(frame, "log_building_kwh_per_hh")
         total = _ratio(frame, "log_total_kwh_per_hh")
+        comp_by_scale[name] = (n, heat, total)
         print(f"  {name:<6s}{n:>10,d}   {fmt_ci(heat):>22s}   {fmt_ci(total):>22s}")
     print(
         "\n  Reading: the compositional contrast reads the gap at pure-type "
@@ -165,6 +167,9 @@ def maup_ladder(oa: pd.DataFrame) -> None:
         f"{'heat Det:Flat':>16s}   {'total Det:Flat':>16s}"
     )
     print("  " + "-" * 60)
+    import ledger
+
+    med_by_scale: dict[str, tuple[float, float]] = {}
     for name, frame in scales:
         dom = frame[_SHARES].apply(pd.to_numeric, errors="coerce").idxmax(axis=1)
         building = pd.to_numeric(frame["building_kwh_per_hh"], errors="coerce")
@@ -174,10 +179,33 @@ def maup_ladder(oa: pd.DataFrame) -> None:
         is_det = dom == "pct_detached"
         heat_r = building[is_det].median() / building[is_flat].median()
         total_r = total[is_det].median() / total[is_flat].median()
+        med_by_scale[name] = (heat_r, total_r)
         print(
             f"  {name:<6s}{int(is_flat.sum()):>9,d}{int(is_det.sum()):>9,d}   "
             f"{heat_r:>15.2f}×   {total_r:>15.2f}×"
         )
+
+    # Manuscript wiring: prose macros + the Extended Data MAUP table fragment.
+    pretty = {"OA": "Output Area", "LSOA": "LSOA", "MSOA": "MSOA"}
+    rows = []
+    for name in ("OA", "LSOA", "MSOA"):
+        n, heat, total = comp_by_scale[name]
+        heat_med, total_med = med_by_scale[name]
+        rows.append(
+            f"{pretty[name]} & {n:,} & {heat[0]:.2f}$\\times$ [{heat[1]:.2f}, "
+            f"{heat[2]:.2f}] & {total[0]:.2f}$\\times$ [{total[1]:.2f}, "
+            f"{total[2]:.2f}] & {heat_med:.2f}$\\times$ & "
+            f"{total_med:.2f}$\\times$ \\\\\n"
+        )
+    ledger.table("maup", "".join(rows))
+    ledger.record(
+        maupTotalOa=ledger.pt(comp_by_scale["OA"][2][0]),
+        maupTotalLsoa=ledger.pt(comp_by_scale["LSOA"][2][0]),
+        maupTotalMsoa=ledger.pt(comp_by_scale["MSOA"][2][0]),
+        maupMedOa=ledger.pt(med_by_scale["OA"][1]),
+        maupMedLsoa=ledger.pt(med_by_scale["LSOA"][1]),
+        maupMedMsoa=ledger.pt(med_by_scale["MSOA"][1]),
+    )
 
 
 def main() -> None:
