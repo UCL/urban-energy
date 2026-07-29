@@ -538,6 +538,14 @@ def main() -> None:
     gdf = create_geodataframe(df)
     print(f"Created {len(gdf):,} establishment points")
 
+    # Drop exact duplicate registrations (same name at the same coordinates,
+    # ~0.2% of rows — mostly mobile caterers registered more than once).
+    # Distinct businesses sharing a postcode centroid are kept.
+    before = len(gdf)
+    gdf = gdf.drop_duplicates(subset=["business_name", "latitude", "longitude"])
+    if len(gdf) < before:
+        print(f"Dropped {before - len(gdf):,} duplicate registrations")
+
     # Summary by business type
     type_counts = gdf.groupby("business_type").size().sort_values(ascending=False)
     print("\nEstablishments by type:")

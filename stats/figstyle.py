@@ -47,6 +47,14 @@ DWELLING: dict[str, str] = {
 }
 DWELLING_ORDER = ["Flat", "Terraced", "Semi", "Detached"]
 
+#: Display names for figure labels/legends (keys stay the internal names).
+DWELLING_LABEL: dict[str, str] = {
+    "Flat": "Flats",
+    "Terraced": "Terraced",
+    "Semi": "Semi-detached",
+    "Detached": "Detached",
+}
+
 # --- Status pair: scenario direction (sign also stated in the label) ---
 CLOSES = "#3d8a5f"
 WIDENS = "#c98a2e"
@@ -64,6 +72,9 @@ INK_SECONDARY = "#52514e"
 MUTED = "#8a8a8a"
 BASELINE = "#c3c2b7"
 GRID = "#e1e0d9"
+
+# Shared left edge (figure fraction) for the deck and the footer.
+LEFT_X = 0.07
 
 # Print widths (inches): single- and double-column journal sizes (~84 / 174 mm).
 COL1 = 3.30
@@ -168,11 +179,15 @@ def deck(ax, kicker: str, title: str, subtitle: str | None = None) -> None:
         return
     y_kicker = 46 if subtitle else 32
     y_title = 24 if subtitle else 10
+    # x anchors to the FIGURE margin (shared with the footer) so the deck sits
+    # on one left edge across the set, however wide a plot's y-labels are;
+    # y stays on the axes so the deck tracks the plot top.
+    deck_coords = ("figure fraction", "axes fraction")
     ax.annotate(
         kicker.upper(),
-        xy=(0, 1),
+        xy=(LEFT_X, 1),
         xytext=(0, y_kicker),
-        xycoords="axes fraction",
+        xycoords=deck_coords,
         textcoords="offset points",
         ha="left",
         va="bottom",
@@ -182,9 +197,9 @@ def deck(ax, kicker: str, title: str, subtitle: str | None = None) -> None:
     )
     ax.annotate(
         title,
-        xy=(0, 1),
+        xy=(LEFT_X, 1),
         xytext=(0, y_title),
-        xycoords="axes fraction",
+        xycoords=deck_coords,
         textcoords="offset points",
         ha="left",
         va="bottom",
@@ -195,9 +210,9 @@ def deck(ax, kicker: str, title: str, subtitle: str | None = None) -> None:
     if subtitle:
         ax.annotate(
             subtitle,
-            xy=(0, 1),
+            xy=(LEFT_X, 1),
             xytext=(0, 8),
-            xycoords="axes fraction",
+            xycoords=deck_coords,
             textcoords="offset points",
             ha="left",
             va="bottom",
@@ -214,7 +229,7 @@ def footer(fig: Figure, text: str = SOURCE) -> None:
     """
     if os.environ.get("NEPI_PLAIN_FIGS") == "1":
         return
-    fig.text(0.02, -0.015, text, ha="left", va="top", fontsize=7, color=MUTED)
+    fig.text(LEFT_X, 0.0, text, ha="left", va="top", fontsize=7, color=MUTED)
 
 
 def comma(ax, which: str = "both") -> None:

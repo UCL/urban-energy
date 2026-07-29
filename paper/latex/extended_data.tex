@@ -33,7 +33,7 @@
 \begin{figure}[p]
 \centering
 \includegraphics[width=\textwidth]{fig2_country}
-\caption{\textbf{The joint distribution across all areas.} Every English Output Area is plotted by total energy per dwelling against amenities reachable on foot, as a hexagonal-bin density with a binned median line. Median access falls as energy per dwelling rises; the markers locate the median flat-dominant and detached-dominant areas.}
+\caption{\textbf{The joint distribution across all areas.} Every English Output Area is plotted by total energy per dwelling against amenities reachable on foot (grey points). Contours are kernel-density estimates (fitted on log access) for the two extreme dominant-type classes, drawn at 8--92\% of each class's peak density: flat-dominant areas concentrate at low energy and high access, detached-dominant areas at high energy and low access.}
 \label{edfig:country}
 \end{figure}
 
@@ -47,7 +47,7 @@
 \begin{figure}[p]
 \centering
 \includegraphics[width=\textwidth]{fig10_city.png}
-\caption{\textbf{The two axes within a single city.} Sheffield is mapped by energy per dwelling (left, quantile colour classes) and amenities within a 1.6\,km walk (right, logarithmic colour scale). The high-energy ring around the compact core coincides with the areas of lowest walkable access, reproducing outside London the core-to-edge pattern the main-text insets show for the capital.}
+\caption{\textbf{The two axes within a single city.} Sheffield is mapped at Lower-layer Super Output Area aggregation by energy per dwelling (left, continuous power-scaled colour ramp) and amenities within a 1.6\,km walk (right, logarithmic colour scale). The high-energy ring around the compact core coincides with the areas of lowest walkable access, reproducing outside London the core-to-edge pattern the main-text insets show for the capital.}
 \label{edfig:city}
 \end{figure}
 
@@ -61,15 +61,15 @@
 \begin{table}[p]
 \caption{Amenity destination layers: sources, record counts and filters (England; the greenspace layer is Great Britain, clipped by the Output Area extent). The six amenity types are summed into the amenity count; jobs and people are measured separately. Hospitals are excluded because the NHS trust-site register lists every site of every trust (wards, clinics, community units) rather than hospitals as such, so its count is not a credible amenity measure.}
 \label{edtab:sources}
-\begin{tabular}{llrl}
+\begin{tabular}{llrp{0.30\textwidth}}
 \toprule
 Destination & Source & Records & Filter \\
 \midrule
 GP surgeries & NHS ODS (\texttt{epraccur}) & 12,664 & active GP practices \\
 Pharmacies & NHS ODS & 11,268 & community pharmacies \\
 Schools & GIAS & 50,631 & open establishments \\
-Food outlets & FSA hygiene register & 190,359 & restaurants, cafes, takeaways, pubs \\
-Food shops & FSA hygiene register & 93,071 & supermarkets and convenience retail \\
+Eat \& drink & FSA hygiene register & 190,359 & restaurants, cafes, takeaways, pubs \\
+Grocery \& convenience & FSA hygiene register & 93,071 & supermarkets and other food retail \\
 Parks and greenspace & OS Open Greenspace & 102,773 & parks, playing fields, play spaces, allotments \\
 Jobs & Census 2021 WP101EW & --- & workplace jobs, weighted by job count \\
 People & Census 2021 TS001 & --- & resident population \\
@@ -92,6 +92,7 @@ People & Census 2021 TS001 & --- & resident population \\
 \begin{table}[p]
 \caption{Scale sensitivity (modifiable areal unit problem). The identical compositional model re-fitted after household-weighted aggregation to the two coarser census geographies, with 95\% LAD-clustered confidence intervals, alongside the support-respecting dominant-type median ratios. The home-energy vertex contrast attenuates toward parity at MSOA scale, with a confidence interval spanning one, because almost no MSOA approaches a pure dwelling-type composition; the median counterpart remains above one at every scale.}
 \label{edtab:maup}
+\setlength{\tabcolsep}{3pt}
 \input{tab_maup.tex}
 \end{table}
 

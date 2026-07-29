@@ -16,7 +16,7 @@ A "perfectly optimised" scenario, recomputing the energy axis:
   unchanged (technology cuts kWh/mile, never the miles).
 
 The residual Flat→Detached gradient is the **lock-in**, reported as the
-compositional (method-D) per-dwelling ratio — both as-lived and at equal family
+compositional (method-D) per-dwelling ratio — both unadjusted and at equal family
 size (household size held as a free regressor, never as a per-person denominator).
 The access axis is unchanged by construction (no technology moves destinations
 closer).
@@ -144,7 +144,7 @@ def main() -> None:
     )
     print("\n  Flat→Detached TOTAL energy gap (per dwelling, compositional, method D):")
     print("  (ratios with LAD-clustered 95% CIs)")
-    print(f"    as-lived:            now {fmt_ci(now_hh)} → opt {fmt_ci(opt_hh)}")
+    print(f"    unadjusted:          now {fmt_ci(now_hh)} → opt {fmt_ci(opt_hh)}")
     print(f"    equal family size:   now {fmt_ci(now_fam)} → opt {fmt_ci(opt_fam)}")
 
     # Surviving share on the model-native log scale: log(optimised) / log(now).

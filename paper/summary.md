@@ -56,7 +56,7 @@ Separating shape from size:
 
 *Reproduce: `stats/form_size_decomposition.py` (the shape-versus-size ladder and the gas-coverage checks).*
 
-![The heat gap decomposed: 1.60× as-is falls to 1.27× at equal family size and 1.17× at equal floor area, so about a sixth of the gap is the building's form and the rest is bigger homes and larger families.](figures/fig4_decomposition.png)
+![The heat gap decomposed: 1.60× unadjusted falls to 1.27× at equal household size and 1.17× at equal floor area, so about a sixth of the gap is the building's form and the rest is bigger homes and larger households.](figures/fig4_decomposition.png)
 
 ## Car travel
 
@@ -90,13 +90,13 @@ In each table the dwelling-type columns are observed medians; the ratio is the c
 
 ## Access
 
-Access is the count of things reachable from a neighbourhood, measured as network distance along the road (OS Open Roads, via cityseer) rather than straight-line. Because it is a property of the location, it is the same however the household is counted: per home or per person makes no difference to what is within reach. Three kinds of thing are counted, each in its own unit: amenities (everyday destinations: GPs, pharmacies, schools, food outlets, supermarkets, greenspace), jobs (the total number of jobs reachable, summing the job count at each workplace), and people (the total resident population reachable). Each is read at three points on one ruler: a short walk (1.6 km), the area's own car catchment (how far its residents typically drive), and a long drive (25.6 km). What is reachable on foot is a subset of the catchment, which is a subset of the long drive.
+Access is the count of things reachable from a neighbourhood, measured as network distance along the road (OS Open Roads, via cityseer) rather than straight-line. Because it is a property of the location, it is the same however the household is counted: per home or per person makes no difference to what is within reach. Three kinds of thing are counted, each in its own unit: amenities (everyday destinations: GPs, pharmacies, schools, places to eat and drink, grocery shops, greenspace), jobs (the total number of jobs reachable, summing the job count at each workplace), and people (the total resident population reachable). Each is read at three points on one ruler: a short walk (1.6 km), the area's own car catchment (how far its residents typically drive), and a long drive (25.6 km). What is reachable on foot is a subset of the catchment, which is a subset of the long drive.
 
 How access is measured:
 
 - Every count is measured as network distance over Ordnance Survey Open Roads, using the cityseer routing engine. The England street network is built once (about 3.6 million junctions), and reach is measured outward from each neighbourhood along it.
 - From each Output Area, the reachable count is read at every step from a short walk (1,600 m) out to a long drive (25,600 m). The on-foot figure is a subset of the drivable one, the same ruler read closer in.
-- Amenities are a count of six everyday destination types (GPs and pharmacies from the NHS; schools from GIAS; food outlets and supermarkets from the FSA; greenspace from Ordnance Survey). Jobs are the total jobs reachable: each workplace contributes the number of jobs it holds (Census WP101EW), so a large employer counts for more than a small one, rather than each workplace counting as one. People are likewise the total residents reachable.
+- Amenities are a count of six everyday destination types (GPs and pharmacies from the NHS; schools from GIAS; places to eat and drink and grocery shops from the FSA; greenspace from Ordnance Survey). Jobs are the total jobs reachable: each workplace contributes the number of jobs it holds (Census WP101EW), so a large employer counts for more than a small one, rather than each workplace counting as one. People are likewise the total residents reachable.
 - The access ratios come from the same compositional model, holding income equal but not density. Density is the mechanism by which compact form delivers access, so controlling for it would remove the effect under study. Access counts are non-negative with frequent zeros (many detached areas have no GP within a walk), so the model uses a Poisson count form, whose fitted values are constrained to be positive.
 
 Where the counted destinations come from, and how each layer is filtered (England; the greenspace layer is Great Britain, clipped to England by the Output Area extent):
@@ -106,8 +106,8 @@ Where the counted destinations come from, and how each layer is filtered (Englan
 | GP surgeries | NHS ODS (`epraccur`) | 12,664 | active GP practices |
 | Pharmacies | NHS ODS | 11,268 | community pharmacies |
 | Schools | GIAS | 50,631 | open establishments (status Open, or Open-but-proposed-to-close) |
-| Food outlets | FSA food-hygiene register | 190,359 | restaurants and cafes, takeaways, pubs |
-| Food shops | FSA food-hygiene register | 93,071 | supermarkets and hypermarkets, plus other food retailers (convenience) |
+| Eat and drink | FSA food-hygiene register | 190,359 | restaurants and cafes, takeaways, pubs |
+| Grocery and convenience | FSA food-hygiene register | 93,071 | supermarkets and hypermarkets, plus other food retailers (convenience) |
 | Parks and greenspace | OS Open Greenspace | 102,773 | public parks and gardens, playing fields, play spaces, allotments |
 | Jobs | Census 2021 WP101EW | — | workplace jobs, each site weighted by its job count |
 | People | Census 2021 TS001 | — | resident population |
@@ -131,7 +131,7 @@ The dwelling-type columns are observed medians; the flat:det ratio is the compos
 
 *Reproduce: `stats/access_profile.py` (network access and the rate).*
 
-![On the doorstep, within a 1.6 km walk, a flat neighbourhood reaches 93 food outlets, 48 food shops, 14 schools and 5 GP surgeries; a detached reaches 6, 3, 2 and 0.](figures/fig5_doorstep.png)
+![On the doorstep, within a 1.6 km walk, a flat neighbourhood reaches 93 places to eat and drink, 48 grocery shops, 14 schools and 5 GP surgeries; a detached reaches 6, 3, 2 and 0.](figures/fig5_doorstep.png)
 
 ![Amenities reachable against network distance by dwelling type (compositional pure-type predictions): a flat reaches about 27× a detached on foot, about 11× at a 25 km drive.](figures/fig6_access_curve.png)
 
@@ -151,9 +151,9 @@ For the wider picture: on foot a flat reaches roughly 27 times the amenities, 52
 
 ![Amenities reachable per kWh of car travel by dwelling type: a flat returns about 3.9× a detached home (access advantage 1.26× × energy saving 3.1×).](figures/fig7_rate.png)
 
-The pattern is not a matter of a few pure-type extremes: it holds across every neighbourhood in the country. Plotting all 178,353 Output Areas by energy spent against amenities reached, the median falls as spending rises, and the flat and detached areas sit at opposite corners.
+The pattern is not a matter of a few pure-type extremes: it holds across every neighbourhood in the country. Plotting all 178,353 Output Areas by energy spent against amenities reached, the flat-dominant and detached-dominant areas occupy opposite corners of the joint distribution.
 
-![Every English Output Area by energy spent against amenities reachable on foot: the median line falls as energy rises, with flat areas top-left and detached areas bottom-right.](figures/fig2_country.png)
+![Every English Output Area by energy spent against amenities reachable on foot, with kernel-density contours for the two extremes: flat-dominant areas concentrate at low energy and high access, detached-dominant areas at high energy and low access.](figures/fig2_country.png)
 
 ## The pattern in space
 
@@ -175,7 +175,7 @@ The three levers act differently, and reporting them separately is what shows wh
 - **Heat pumps** deliver the heat as electricity instead of gas, at the pump's efficiency (boiler efficiency over a seasonal coefficient of performance of about 2.8, so roughly a third of the delivered energy). This cuts the smaller-gap heat sharply and leaves the larger-gap car travel, so heat pumps do not close the form gap; fully deployed they leave it marginally wider, at 2.16×. They are essential on the carbon axis, since the electricity that drives them is increasingly clean, but they do not fix the neighbourhood gap.
 - **Electric vehicles** re-price car energy at the electric fleet's energy per mile, miles unchanged. This attacks travel, where the gap is largest, and closes the most of any single lever, to 1.85×, about a fifth.
 
-| total energy gap (per dwelling, as-lived, compositional) | Det:Flat | closed |
+| total energy gap (per dwelling, unadjusted, compositional) | Det:Flat | closed |
 | --- | --: | --: |
 | status quo | 2.12× | — |
 | insulation only (100%) | 1.83× | 20% |

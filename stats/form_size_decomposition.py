@@ -199,11 +199,15 @@ def descriptive_panel(lsoa: pd.DataFrame) -> None:
     # Flat→Detached gradient under each unit
     if "Flat" in medians and "Detached" in medians:
         print(f"\n  {'Flat→Detached gradient:':<24s}", end="")
+        ratios: dict[str, float] = {}
         for _lbl, col, _fmt in have:
             f = medians["Flat"].get(col)
             d = medians["Detached"].get(col)
             ratio = d / f if (f and d) else float("nan")
+            ratios[col] = ratio
             print(f"  {col.split('_')[-1]}={ratio:.2f}×", end="")
+        if np.isfinite(ratios.get("building_kwh_per_m2", float("nan"))):
+            ledger.record(mSqGap=ledger.pt(ratios["building_kwh_per_m2"]))
         print(
             "\n  (DESCRIPTIVE ONLY. per-hh rises toward detached; per-person"
             " compresses\n  toward parity because detached house more people"

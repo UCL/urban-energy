@@ -151,7 +151,7 @@ def _ratios(
     u_ev: float,
     cop: float = COP,
 ) -> tuple[tuple[float, float, float, float], tuple[float, float, float, float]]:
-    """Compositional Detached:Flat total-energy ratio: as-lived and equal-family."""
+    """Compositional Detached:Flat total-energy ratio: unadjusted and equal-family."""
     heat, travel_s = scenario_energy(
         df, gas, elec, travel, heat_transform, u_heat, u_ev, cop
     )
@@ -227,7 +227,9 @@ def main() -> None:
     )
     print("  Pathway uptakes: CCC 7CB Balanced Pathway 2040 (heat pumps 50%, EVs 75%).")
     print("\n  Flat→Detached TOTAL energy gap (per dwelling, compositional, method D):")
-    print(f"\n  {'scenario':<30s}{'as-lived [95% CI]':>24s}{'equal family size':>24s}")
+    print(
+        f"\n  {'scenario':<30s}{'unadjusted [95% CI]':>24s}{'equal family size':>24s}"
+    )
     print("  " + "-" * 76)
     ledger.record(scenarioN=f"{len(df):,}")
     ledger_keys = {
@@ -310,7 +312,7 @@ def main() -> None:
     )
 
     # COP sensitivity on the milestone (Balanced Pathway) scenario.
-    print("\n  COP sensitivity — Balanced Pathway 2040 total Det:Flat (as-lived):")
+    print("\n  COP sensitivity — Balanced Pathway 2040 total Det:Flat (unadjusted):")
     cop_keys = {2.4: "copLow", 2.8: "copMid", 3.2: "copHigh"}
     for cop in (2.4, 2.8, 3.2):
         r, _ = _ratios(

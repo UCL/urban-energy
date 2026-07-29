@@ -62,6 +62,7 @@
  "imdRhoNat": "0.40",
  "lockinGap": "1.51",
  "lockinGapCI": "1.43--1.59",
+ "mSqGap": "0.92",
  "maupMedLsoa": "1.59",
  "maupMedMsoa": "1.47",
  "maupMedOa": "1.74",

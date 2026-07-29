@@ -7,10 +7,10 @@ Map figures for the NEPI paper: the pattern is national and structural.
   F10 one city — the same city mapped twice, energy spent beside access on foot,
      so the core-to-edge flip is visible over a few kilometres.
 
-Output Areas are equal-population, so rural areas are large on the map: the visual
-weight of the high-energy dispersed form is itself part of the point. Colours come
-from ``figstyle`` (the validated sequential ramp). Figures write to
-``paper/figures/`` as PNG + PDF.
+Output Areas are equal-population, so rural areas are large on the map. The energy
+panels use a light local red ramp with a power-scaled continuous norm (dark ink
+reserved for the top few percent); access uses the ``figstyle`` green ramp on a
+log norm. Figures write to ``paper/figures/`` as PNG + PDF.
 
 Reproduce:
     uv run python stats/oa_network_access.py   # for the access panel
@@ -27,14 +27,14 @@ import figstyle as fs  # noqa: E402
 import geopandas as gpd  # noqa: E402
 import matplotlib.patheffects as pe  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
-import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from matplotlib.cm import ScalarMappable  # noqa: E402
 from matplotlib.colors import (  # noqa: E402
-    BoundaryNorm,
     LinearSegmentedColormap,
     LogNorm,
+    PowerNorm,
 )
+from matplotlib.ticker import NullFormatter  # noqa: E402
 from oa_data import load_and_aggregate  # noqa: E402
 
 from urban_energy.paths import DATA_DIR  # noqa: E402
@@ -44,13 +44,61 @@ _BOUND = _STATS / "oa_boundaries.gpkg"
 _NET = _STATS / "oa_network_access.parquet"
 # Energy uses the warm ramp, access the green ramp, so the two panels never read
 # as one flipped blue scale (both run normally: darker = more of that quantity).
-_WARM = LinearSegmentedColormap.from_list("warm", fs.WARM_SEQ)
+# A light clean red for the energy panels: paired with the continuous
+# power-scaled norm below, the deep end only touches the top few percent, so
+# the panel carries the same visual weight as the green access panel.
+_WARM = LinearSegmentedColormap.from_list(
+    "warm", ["#fdf5f3", "#f8d6cf", "#f0ab9e", "#df7261", "#8f2318"]
+)
 _GREEN = LinearSegmentedColormap.from_list("green", fs.GREEN_SEQ)
 
 # A city with a compact core and a clear sprawling edge (Sheffield), as a British
 # National Grid bounding box (easting/northing metres), ~14 km across.
 _CITY_NAME = "Sheffield"
 _CITY_BBOX = (428_000, 380_000, 446_000, 396_000)
+
+# London-inset LSOA delineation. 0 disables outlines (central-London LSOAs
+# are a few pixels at inset scale, so borders can wash the fill out).
+INSET_LW = 0.0
+INSET_EDGE = "white"
+
+# City-map delineation. CITY_LSOA draws the city at LSOA aggregation with
+# uniform white borders; CITY_BORDER_MIN_AREA (m^2) instead outlines only OAs
+# large enough to carry a border, leaving the packed core borderless.
+CITY_LSOA = True
+CITY_LSOA_LW = 0.15
+CITY_LSOA_EDGE: str | tuple = (1.0, 1.0, 1.0, 0.45)
+CITY_BORDER_MIN_AREA: float | None = None
+
+
+def _plot_city_units(frame, col: str, ax, cmap, norm) -> None:
+    """Draw one city panel under the delineation mode set by the constants."""
+    if CITY_LSOA:
+        agg = frame[["LSOA21CD", col, "geometry"]].dissolve(
+            by="LSOA21CD", aggfunc="median"
+        )
+        agg.plot(
+            column=col,
+            ax=ax,
+            cmap=cmap,
+            norm=norm,
+            linewidth=CITY_LSOA_LW,
+            edgecolor=CITY_LSOA_EDGE,
+        )
+        return
+    if CITY_BORDER_MIN_AREA:
+        area = frame.geometry.area
+        small, big = frame[area < CITY_BORDER_MIN_AREA], frame[
+            area >= CITY_BORDER_MIN_AREA
+        ]
+        small.plot(
+            column=col, ax=ax, cmap=cmap, norm=norm, linewidth=0, antialiased=False
+        )
+        big.plot(
+            column=col, ax=ax, cmap=cmap, norm=norm, linewidth=0.3, edgecolor="white"
+        )
+        return
+    frame.plot(column=col, ax=ax, cmap=cmap, norm=norm, linewidth=0, antialiased=False)
 
 # Cities to label on the national map (name, easting, northing).
 _CITIES = [
@@ -81,10 +129,18 @@ def _measures() -> pd.DataFrame:
         how="left",
         validate="m:1",
     )
-    return df[["OA21CD", "energy", "access"]]
+    return df[["OA21CD", "LSOA21CD", "energy", "access"]]
 
 
-def _colourbar(fig, ax, cmap, norm, label: str, compact: bool = False) -> None:
+def _colourbar(
+    fig,
+    ax,
+    cmap,
+    norm,
+    label: str,
+    compact: bool = False,
+    ticks: list[float] | None = None,
+) -> None:
     """Add a slim horizontal colourbar under a map axis."""
     sm = ScalarMappable(cmap=cmap, norm=norm)
     cb = fig.colorbar(sm, ax=ax, orientation="horizontal", fraction=0.035, pad=0.02)
@@ -92,15 +148,26 @@ def _colourbar(fig, ax, cmap, norm, label: str, compact: bool = False) -> None:
     cb.ax.tick_params(length=0, labelsize=8, colors=fs.INK_SECONDARY)
     if compact:  # thousands as "18k" so the ticks cannot crowd each other
         cb.ax.xaxis.set_major_formatter(lambda v, _p: f"{v / 1000:.0f}k")
+    if ticks is not None:
+        # Explicit plain ticks: a narrow log range otherwise crowds the bar
+        # with overlapping 2x10^1-style minor labels.
+        cb.set_ticks(ticks)
+        cb.ax.xaxis.set_minor_formatter(NullFormatter())
+        cb.ax.xaxis.set_major_formatter(lambda v, _p: f"{v:g}")
     cb.set_label(label, fontsize=8.5, color=fs.INK_SECONDARY)
 
 
-def _quantile_norm(values: pd.Series, n_classes: int = 5) -> BoundaryNorm:
-    """Class the ramp on quantiles so within-country structure is visible
-    (a linear ramp compresses most areas into one mid tone)."""
-    qs = np.linspace(0.05, 0.95, n_classes + 1)
-    bounds = np.unique(_num(values).quantile(qs).to_numpy())
-    return BoundaryNorm(bounds, ncolors=256)
+def _energy_norm(values: pd.Series) -> PowerNorm:
+    """Continuous power-scaled energy ramp (gamma 1.5, 5th-97th percentile).
+
+    Equal-count quantile classes put 20% of all areas in the darkest tone,
+    which reads far too heavy; gamma > 1 keeps mid-range structure visible
+    while reserving the dark end for the genuine upper tail.
+    """
+    v = _num(values)
+    return PowerNorm(
+        gamma=1.5, vmin=float(v.quantile(0.05)), vmax=float(v.quantile(0.97))
+    )
 
 
 def _scale_bar(ax, x0: float, y0: float, length_m: float, label: str) -> None:
@@ -137,9 +204,9 @@ def national(gdf: gpd.GeoDataFrame) -> None:
     halo = [pe.withStroke(linewidth=2.4, foreground="white")]
     # Built at print width so fonts render at their designed sizes.
     fig, axes = plt.subplots(1, 2, figsize=(6.85, 5.6))
-    fig.subplots_adjust(top=0.80, bottom=0.10, left=0.01, right=0.99, wspace=0.02)
+    fig.subplots_adjust(top=0.85, bottom=0.10, left=0.01, right=0.99, wspace=0.02)
 
-    e_norm = _quantile_norm(gdf["energy"])
+    e_norm = _energy_norm(gdf["energy"])
     gdf.plot(
         column="energy",
         ax=axes[0],
@@ -149,14 +216,19 @@ def national(gdf: gpd.GeoDataFrame) -> None:
         antialiased=False,
     )
     axes[0].set_title(
-        "Energy spent", fontsize=11, color=fs.HEAT, fontweight="bold", loc="left"
+        "Energy spent",
+        fontsize=11,
+        color=fs.HEAT,
+        fontweight="bold",
+        loc="left",
+        pad=2,
     )
     _colourbar(
         fig,
         axes[0],
         _WARM,
         e_norm,
-        "kWh / dwelling / yr, quantile classes  (darker = more)",
+        "kWh / dwelling / yr",
         compact=True,
     )
 
@@ -175,11 +247,14 @@ def national(gdf: gpd.GeoDataFrame) -> None:
         antialiased=False,
     )
     axes[1].set_title(
-        "Access on foot", fontsize=11, color=fs.ACCESS, fontweight="bold", loc="left"
+        "Access on foot",
+        fontsize=11,
+        color=fs.ACCESS,
+        fontweight="bold",
+        loc="left",
+        pad=2,
     )
-    _colourbar(
-        fig, axes[1], _GREEN, a_norm, "amenities ≤1.6 km, log scale  (darker = more)"
-    )
+    _colourbar(fig, axes[1], _GREEN, a_norm, "amenities ≤1.6 km, log")
 
     for ax in axes:
         ax.set_facecolor("#f3f3f1")
@@ -209,10 +284,23 @@ def national(gdf: gpd.GeoDataFrame) -> None:
         (axes[1], gdf.assign(_acc=acc), "_acc", _GREEN, a_norm),
     ]
     for ax, frame, col, cmap, norm in panels:
-        axins = ax.inset_axes([0.01, 0.63, 0.34, 0.33])
+        # Over Wales, resting just above Devon: blank space low on the map,
+        # clear of the title band, the scale bar and every city label.
+        axins = ax.inset_axes([0.02, 0.22, 0.33, 0.32])
         clip = frame.cx[lon[0] : lon[2], lon[1] : lon[3]]
-        clip.plot(
-            column=col, ax=axins, cmap=cmap, norm=norm, linewidth=0, antialiased=False
+        # OA polygons blur into a mush at inset scale: aggregate to LSOAs
+        # (median) and delineate them with a faint white outline.
+        lsoa = clip[["LSOA21CD", col, "geometry"]].dissolve(
+            by="LSOA21CD", aggfunc="median"
+        )
+        lsoa.plot(
+            column=col,
+            ax=axins,
+            cmap=cmap,
+            norm=norm,
+            linewidth=INSET_LW,
+            edgecolor=INSET_EDGE if INSET_LW else None,
+            antialiased=bool(INSET_LW),
         )
         axins.set_xlim(lon[0], lon[2])
         axins.set_ylim(lon[1], lon[3])
@@ -220,9 +308,10 @@ def national(gdf: gpd.GeoDataFrame) -> None:
         axins.set_xticks([])
         axins.set_yticks([])
         axins.set_facecolor("#f3f3f1")
+        # Frameless: the "London" label and the locator rectangle on the main
+        # map identify the inset; any border reads as visual weight.
         for spine in axins.spines.values():
-            spine.set_edgecolor(fs.INK)
-            spine.set_linewidth(0.7)
+            spine.set_visible(False)
         axins.annotate(
             "London",
             (0.05, 0.86),
@@ -235,12 +324,12 @@ def national(gdf: gpd.GeoDataFrame) -> None:
         ax.indicate_inset(
             bounds=(lon[0], lon[1], lon[2] - lon[0], lon[3] - lon[1]),
             inset_ax=None,
-            edgecolor=fs.INK,
-            linewidth=0.8,
+            edgecolor=fs.INK_SECONDARY,
+            linewidth=0.7,
         )
 
     fig.text(
-        0.02,
+        fs.LEFT_X,
         0.955,
         "THE TWO AXES, MAPPED",
         fontsize=8.5,
@@ -248,9 +337,9 @@ def national(gdf: gpd.GeoDataFrame) -> None:
         color=fs.ACCENT,
     )
     fig.text(
-        0.02,
+        fs.LEFT_X,
         0.91,
-        "Where energy runs high, access runs low",
+        "High-energy neighbourhoods have low walkable access",
         fontsize=13,
         fontweight="bold",
         color=fs.INK,
@@ -268,22 +357,15 @@ def city(gdf: gpd.GeoDataFrame) -> None:
     # bottom margin keeps the two colourbars clear of the source footer
     fig.subplots_adjust(top=0.8, bottom=0.12, left=0.02, right=0.98, wspace=0.06)
 
-    e_norm = _quantile_norm(sub["energy"])
-    sub.plot(
-        column="energy",
-        ax=axes[0],
-        cmap=_WARM,
-        norm=e_norm,
-        linewidth=0,
-        antialiased=False,
-    )
+    e_norm = _energy_norm(sub["energy"])
+    _plot_city_units(sub, "energy", axes[0], _WARM, e_norm)
     axes[0].set_title("Energy spent", fontsize=10.5, color=fs.HEAT, fontweight="bold")
     _colourbar(
         fig,
         axes[0],
         _WARM,
         e_norm,
-        "kWh / dwelling / yr, quantile classes  (darker = more)",
+        "kWh / dwelling / yr",
         compact=True,
     )
 
@@ -291,19 +373,17 @@ def city(gdf: gpd.GeoDataFrame) -> None:
     acc = _num(sub["access"]).fillna(0).clip(lower=1)
     a_lo = max(float(acc.quantile(0.05)), 1.0)
     a_norm = LogNorm(vmin=a_lo, vmax=float(acc.quantile(0.95)))
-    sub.assign(_acc=acc).plot(
-        column="_acc",
-        ax=axes[1],
-        cmap=_GREEN,
-        norm=a_norm,
-        linewidth=0,
-        antialiased=False,
-    )
+    _plot_city_units(sub.assign(_acc=acc), "_acc", axes[1], _GREEN, a_norm)
     axes[1].set_title(
         "Access on foot", fontsize=10.5, color=fs.ACCESS, fontweight="bold"
     )
     _colourbar(
-        fig, axes[1], _GREEN, a_norm, "amenities ≤1.6 km, log scale  (darker = more)"
+        fig,
+        axes[1],
+        _GREEN,
+        a_norm,
+        "amenities ≤1.6 km, log",
+        ticks=[20, 50, 100, 200],
     )
 
     halo = [pe.withStroke(linewidth=2, foreground="white")]
@@ -325,12 +405,17 @@ def city(gdf: gpd.GeoDataFrame) -> None:
         )
     _scale_bar(axes[0], x0 + 500, y0 + 500, 5_000, "5 km")
     fig.text(
-        0.02, 0.95, "INSIDE ONE CITY", fontsize=8.5, fontweight="bold", color=fs.ACCENT
+        fs.LEFT_X,
+        0.95,
+        "INSIDE ONE CITY",
+        fontsize=8.5,
+        fontweight="bold",
+        color=fs.ACCENT,
     )
     fig.text(
-        0.02,
+        fs.LEFT_X,
         0.9,
-        f"{_CITY_NAME}: the compact core spends less and reaches more",
+        f"{_CITY_NAME}: the compact core uses less energy and reaches more amenities",
         fontsize=12.5,
         fontweight="bold",
         color=fs.INK,

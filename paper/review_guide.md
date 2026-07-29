@@ -1,6 +1,6 @@
 # Review guide — for Gareth, Steve, Daniel and Matteo
 
-How to read and check the manuscript before submission to Nature Cities. The documents to review are `latex/main.pdf` (about 3,400 words main text, 7 figures + 1 table) and `latex/extended_data.pdf` (4 figures + 4 tables), with `cover_letter.md`.
+How to read and check the manuscript before submission to Nature Cities. The documents to review are `latex/main.pdf` (about 3,400 words main text, 6 figures + 1 table) and `latex/extended_data.pdf` (4 figures + 4 tables), with `cover_letter.md`.
 
 ## What the paper claims
 
