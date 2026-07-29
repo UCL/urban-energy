@@ -30,7 +30,10 @@ proposal, no tool promises. NEPI is coined in one Discussion sentence only.
 ### Phase 1 — NEPI score + Atlas v1 (during review; months 1–3)
 
 The score is *measured, not modelled*: the compositional regression is for inference,
-the score is descriptive of the place as-lived.
+the score is descriptive of the place as-lived. Draft specs:
+[dissemination/score_spec.md](dissemination/score_spec.md),
+[dissemination/atlas_architecture.md](dissemination/atlas_architecture.md),
+inventory at [dissemination/README.md](dissemination/README.md).
 
 - **Score spec** (one page) + `stats/nepi_score.py`: per-OA scores and A–G bands.
   Headline letter from the **rate** (access per kWh — a ratio, so no composite
@@ -41,18 +44,20 @@ the score is descriptive of the place as-lived.
   technology deployment (deterministic, from the `scenarios.py` levers). The gap
   between the two labels is the lock-in result made visible per neighbourhood.
 - **Atlas v1**: map + label card + the three deterministic technology toggles
-  (fabric / heat pump / EV). **No XGBoost in v1** — the levers are deterministic.
+  (fabric / heat pump / EV). The levers are deterministic; no model anywhere.
   Soft-launch with the preprint; full launch on acceptance.
 
 ### Phase 2 — the NEPI paper (after acceptance)
 
 - Paper 2: "NEPI: an energy performance certificate for neighbourhoods" — the score
-  design, banding rationale, current-vs-potential label, the Atlas as artefact.
+  design, banding rationale + sensitivity, score stability across scales, the equity
+  distribution of letters, current-vs-potential label, the Atlas as artefact.
   Venue: EPB or Cities (planning/policy audience), citing paper 1 as evidence base.
-- **XGBoost enters here only if wanted**, for form-change what-ifs (densification):
-  predicting access under hypothetical form requires imagining new destinations and
-  streets, so it is a research project with heavy caveats, not an Atlas feature.
-  Drop it entirely if the demand never materialises.
+- **XGBoost is dropped from the plan** (decided 2026-07-29). Nothing in the score or
+  the Atlas needs a model, and modelled form-change what-ifs (densification) would
+  undermine the score's measured-not-modelled identity. The old code stays in git
+  history; any future densification study is a separate project that picks its own
+  method.
 
 ## Scope decisions (consumption audit)
 
@@ -108,10 +113,12 @@ The rebuild targets only what the two-axis analysis consumes:
 ### Analyse (computed in `stats/`; cheap to revise — minutes)
 These are the contestable scientific choices; none gate acquisition.
 
-- **Per-household vs per-capita unit.** Reported per household; household size varies
-  with type (flats are smaller households than detached), so per-hh understates the
-  per-capita intensity of compact types. Per-hh suits billed energy; per-capita suits
-  emissions/equity. Decide: keep per-hh canonical + a per-capita view, or publish both.
+- **Per-household vs per-capita unit.** Resolved in the manuscript: per dwelling is
+  canonical, with household size and floor area as freely estimated controls (elasticities
+  ~0.5 and <1, so fixed denominators are rejected). The paper reports the as-lived and
+  equal-household-size views side by side; per-person and per-m² appear only in the
+  Discussion as the units under which the gap narrows. The NEPI score inherits the
+  single as-lived per-dwelling mode (dissemination/score_spec.md §Units).
 - **Lock-in end-state.** Resolved. `scenarios.py` reports the full ladder (each lever alone at 100%,
   the CCC Balanced Pathway 2040 mix, and full deployment) rather than a single ceiling; `lock_in.py`
   stays as the fabric+EV bound (1.51×).

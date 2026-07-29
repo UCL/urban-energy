@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Soft-launch guard: remove at full launch (dissemination/launch_checklist.md) -->
+<meta name="robots" content="noindex">
+<title>NEPI Atlas — the energy productivity of England's neighbourhoods</title>
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
+<link rel="stylesheet" href="style.css?v=3">
+</head>
+<body>
+<header>
+  <h1>NEPI Atlas</h1>
+  <p class="tagline">Everyday access per unit of energy, for every neighbourhood in England</p>
+  <nav>
+    <input id="search" type="search" placeholder="Postcode…" autocomplete="postal-code" spellcheck="false">
+    <a href="about.html" id="nav-about">About</a>
+    <a href="sources.html">Sources</a>
+  </nav>
+</header>
+<div class="banner">Experimental demo — under development and pending review. Grades and numbers may change.</div>
+
+<main>
+  <div id="map"></div>
+
+  <aside id="panel">
+    <div id="panel-tabs">
+      <button data-mode="about">About</button>
+      <button data-mode="explore">Explore the map</button>
+    </div>
+    <section id="aboutpane" hidden></section>
+    <details id="intro" open>
+      <summary>How to read this map</summary>
+      <p>Every neighbourhood is graded from <b>A to G</b> on access per kilowatt-hour, the everyday access it provides for the energy its households use. Each band held one seventh of England's households in 2021, and the thresholds are frozen, so a grade changes only when the underlying quantities change.</p>
+      <p>Click any area to see its grade and the quantities behind it. The levers apply insulation, heat pumps and electric vehicles at any uptake and re-grade the map. They change energy use only. Access never changes, because no technology moves destinations closer.</p>
+    </details>
+    <section id="national">
+      <h2>England</h2>
+      <p id="headline"></p>
+      <div class="statrow">
+        <div class="stat"><span id="n-median"></span><small id="n-median-sub"></small><label>median grade</label></div>
+        <div class="stat"><span id="n-energy"></span><small id="n-energy-sub"></small><label>annual energy, homes + cars</label></div>
+        <div class="stat"><span id="n-saving"></span><small id="n-saving-sub"></small><label>saved per year</label></div>
+        <div class="stat" title="Energy per household in detached-dominant areas against flat-dominant areas, at the current lever settings"><span id="n-lockin"></span><small id="n-lockin-sub"></small><label>morphological penalty per household</label></div>
+      </div>
+      <p class="note">All four tiles follow the lever settings below.</p>
+      <h3>Rate letters, share of households</h3>
+      <div class="bar" id="bar-current" title="Current"></div>
+      <div class="bar" id="bar-potential" title="Full deployment"></div>
+      <p class="barnote">Top: status quo. Bottom: full deployment of insulation, heat pumps and electric vehicles. Access does not change in either case.</p>
+    </section>
+
+    <section id="controls">
+      <h3>Map view</h3>
+      <div class="metrics">
+        <button data-metric="rate" class="on">Rate</button>
+        <button data-metric="energy">Energy</button>
+        <button data-metric="access">Access</button>
+      </div>
+      <p class="note" id="viewdesc"></p>
+      <div id="legend"></div>
+      <p class="note legendnote" id="legendnote"></p>
+      <div id="levers">
+        <h3>Technology levers</h3>
+        <label>Insulation <output id="o-uf">0%</output>
+          <input type="range" id="uf" min="0" max="100" value="0"></label>
+        <label>Heat pumps <output id="o-uh">0%</output>
+          <input type="range" id="uh" min="0" max="100" value="0"></label>
+        <label>Electric vehicles <output id="o-uv">0%</output>
+          <input type="range" id="uv" min="0" max="100" value="0"></label>
+        <div class="presets">
+          <button data-preset="0,0,0">Today</button>
+          <button data-preset="50,50,75">CCC 2040</button>
+          <button data-preset="100,100,100">Full rollout</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="card" hidden></section>
+  </aside>
+</main>
+
+<footer>
+  <p>Scores are measured from open data: metered energy (DESNZ), survey-anchored car travel (NTS), network access over OS Open Roads. Bands are fixed at the 2021 national distribution. <a href="sources.html">All sources and credits</a>.</p>
+</footer>
+
+<script src="vendor/maplibre-gl.js"></script>
+<script src="vendor/pmtiles.js"></script>
+<script src="app.js?v=16"></script>
+</body>
+</html>

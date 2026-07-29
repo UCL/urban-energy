@@ -1,0 +1,332 @@
+/* NEPI Atlas — one type system, one spacing rhythm.
+ *
+ * Type scale (rem): 0.7 caption · 0.8 body-small · 0.9 body · 1.0 h2 · 1.15 h1.
+ * Section labels are 0.75 uppercase. All numbers render tabular.
+ * Letter chips share the .chip class; text colour flips dark on the pale
+ * mid-bands (C/D/E) for contrast — set in app.js alongside the background.
+ */
+
+:root {
+  --ink: #1d2733;
+  --ink-2: #5a6675;
+  --ink-3: #98a1ac;
+  --line: #e3e7ec;
+  --bg: #ffffff;
+  --panel: #fafbfc;
+  --accent: #0a6e8a;
+  --radius: 8px;
+  --fs-caption: 0.7rem;
+  --fs-small: 0.8rem;
+  --fs-body: 0.9rem;
+}
+
+* { box-sizing: border-box; margin: 0; }
+
+html { font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
+
+body {
+  color: var(--ink);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  font-size: var(--fs-body);
+  line-height: 1.5;
+}
+
+button, input, output { font: inherit; color: inherit; }
+
+h1, h2, h3 { line-height: 1.25; }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* ---------- header / footer ---------- */
+
+header {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.65rem 1.1rem;
+  border-bottom: 1px solid var(--line);
+}
+header h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: 0.01em; }
+header .tagline { color: var(--ink-2); font-size: var(--fs-small); flex: 1; }
+header nav { display: flex; gap: 0.8rem; align-items: center; font-size: var(--fs-small); }
+#search {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.35rem 0.6rem;
+  font-size: var(--fs-small);
+  width: 9.5rem;
+  background: var(--bg);
+}
+
+.banner {
+  background: #fff7e0;
+  color: #7a5200;
+  border-bottom: 1px solid #f0e0b0;
+  padding: 0.35rem 1.1rem;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+}
+
+footer {
+  border-top: 1px solid var(--line);
+  padding: 0.5rem 1.1rem;
+  font-size: var(--fs-caption);
+  color: var(--ink-2);
+}
+
+/* ---------- layout ---------- */
+
+main { flex: 1; display: flex; min-height: 0; }
+#map { flex: 1; background: #eef1f4; }
+
+aside#panel {
+  width: 42%;
+  min-width: 34rem;
+  overflow-y: auto;
+  border-left: 1px solid var(--line);
+  background: var(--panel);
+  padding: 1rem 1.1rem 2rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 1.3rem;
+  align-content: start;
+}
+#intro { grid-column: 1 / -1; }
+#national { grid-column: 1; }
+#controls { grid-column: 2; }
+#card { grid-column: 1 / -1; }
+aside section + section { margin-top: 0; }
+aside h2 { font-size: 1rem; font-weight: 700; margin-bottom: 0.3rem; }
+aside h3 {
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 1rem 0 0.4rem;
+}
+
+/* ---------- shared atoms ---------- */
+
+.chip {
+  display: inline-block;
+  min-width: 1.8rem;
+  padding: 0.16rem 0.35rem;
+  border-radius: 5px;
+  font-weight: 700;
+  font-size: var(--fs-body);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar { display: flex; height: 1.05rem; border-radius: 4px; overflow: hidden; margin: 0.3rem 0; }
+.bar div { height: 100%; }
+
+.note, .barnote, .flagnote, #card .sub {
+  font-size: var(--fs-caption);
+  color: var(--ink-2);
+  line-height: 1.45;
+}
+.flagnote { color: #a05a00; margin-top: 0.4rem; }
+.barnote { margin-top: 0.4rem; }
+
+/* ---------- panel tabs + about pane ---------- */
+
+#panel-tabs { display: flex; gap: 0.4rem; margin-bottom: 1.1rem; grid-column: 1 / -1; }
+#panel-tabs button {
+  flex: 1;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.2rem;
+  font-size: var(--fs-small);
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+#panel-tabs button:hover { border-color: var(--ink-2); }
+#panel-tabs button.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+#aboutpane { grid-column: 1 / -1; font-size: var(--fs-small); line-height: 1.55; }
+#aboutpane h1 { font-size: 1.05rem; margin-bottom: 0.5rem; }
+#aboutpane h2 { font-size: var(--fs-body); font-weight: 700; margin: 1rem 0 0.3rem; }
+#aboutpane p { margin: 0.45rem 0; }
+
+/* ---------- intro ---------- */
+
+#intro {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.55rem 0.75rem;
+  margin-bottom: 1.1rem;
+  font-size: var(--fs-small);
+  color: var(--ink-2);
+}
+#intro summary { cursor: pointer; font-weight: 650; color: var(--ink); }
+#intro p { margin: 0.45rem 0 0; }
+
+/* ---------- national panel ---------- */
+
+#headline { font-size: var(--fs-small); color: var(--ink-2); }
+
+.statrow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  margin-top: 0.7rem;
+}
+.stat {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.55rem;
+}
+.stat span {
+  font-size: 1.2rem;
+  font-weight: 650;
+  display: block;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+/* Tile anatomy, three levels: bold value, grey subscript, quiet label. */
+.stat small {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  margin-top: 0.08rem;
+  min-height: 1em;
+}
+.stat label {
+  font-size: var(--fs-caption);
+  color: var(--ink-2);
+  line-height: 1.3;
+  display: block;
+  margin-top: 0.4rem;
+}
+
+/* ---------- controls ---------- */
+
+#controls h3:first-child { margin-top: 0.15rem; }
+#controls label { display: block; font-size: var(--fs-small); margin: 0.45rem 0; }
+#controls output { float: right; color: var(--ink-2); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
+#controls input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+.presets, .metrics { display: flex; gap: 0.4rem; margin-top: 0.5rem; }
+.presets button, .metrics button {
+  flex: 1;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  border-radius: var(--radius);
+  padding: 0.32rem 0.2rem;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+.presets button:hover, .metrics button:hover { border-color: var(--ink-2); }
+.metrics button.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+.metrics button.on:hover { border-color: var(--accent); }
+#viewdesc { margin-top: 0.45rem; min-height: 1em; }
+.legendnote { margin-top: 0.25rem; }
+
+#legend { display: flex; gap: 2px; margin-top: 0.6rem; }
+#legend span {
+  flex: 1;
+  text-align: center;
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  padding: 0.18rem 0;
+  border-radius: 3px;
+}
+
+/* ---------- card ---------- */
+
+#card {
+  margin-top: 1.1rem;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.8rem 0.9rem;
+}
+#card h2 { font-size: var(--fs-body); font-weight: 700; }
+#card .sub { margin-bottom: 0.55rem; }
+
+.cardtable { width: 100%; border-collapse: collapse; margin: 0.55rem 0; }
+.cardtable th, .cardtable td {
+  text-align: center;
+  padding: 0.22rem 0.15rem;
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.cardtable th:first-child, .cardtable td:first-child {
+  text-align: left;
+  color: var(--ink);
+  font-size: var(--fs-small);
+}
+.cardtable .locked { font-size: 0.62rem; color: var(--ink-3); display: block; margin-top: 0.1rem; }
+
+.cardtable.numbers td, .cardtable.numbers th { border-bottom: 1px solid var(--line); }
+.cardtable.numbers td:not(:first-child), .cardtable.numbers th:not(:first-child) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  font-size: var(--fs-small);
+}
+.cardtable.numbers tr:last-child td { border-bottom: none; }
+.cardtable.numbers tr.total td { font-weight: 650; }
+
+.kv { font-size: var(--fs-small); line-height: 1.55; font-variant-numeric: tabular-nums; }
+.kv b { font-weight: 650; }
+
+/* ---------- about page ---------- */
+
+.prose {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 2rem 1.2rem 4rem;
+  overflow-y: auto;
+}
+.prose h1 { font-size: 1.35rem; font-weight: 700; margin-bottom: 0.8rem; }
+.prose h2 { font-size: 1rem; font-weight: 700; margin: 1.6rem 0 0.5rem; }
+.prose p { margin: 0.7rem 0; }
+
+.sourcetable { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: var(--fs-small); }
+.sourcetable th, .sourcetable td {
+  text-align: left;
+  padding: 0.4rem 0.6rem 0.4rem 0;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.sourcetable th { font-weight: 650; color: var(--ink-2); }
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 1100px) {
+  aside#panel { grid-template-columns: 1fr; width: 24rem; min-width: 0; }
+  #national, #controls, #card { grid-column: 1; }
+  aside section + section { margin-top: 1.1rem; }
+}
+
+@media (max-width: 760px) {
+  main { flex-direction: column; }
+  #map { min-height: 46vh; }
+  aside#panel { width: 100%; border-left: none; border-top: 1px solid var(--line); }
+}

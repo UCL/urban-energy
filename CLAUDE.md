@@ -105,7 +105,7 @@ rebuild recipe are in [REPRODUCTION.md](REPRODUCTION.md). The load-bearing (KEEP
 | DESNZ postcode energy | `download_energy_postcode.py` → `aggregate_energy_oa.py` | `oa_energy_consumption.parquet` | **Primary DV (Form)**: metered gas + electricity → OA |
 | EPC domestic | `process_epc.py` → `aggregate_epc_oa.py` | `epc_domestic_spatial.parquet`, `oa_epc.parquet` | Build year + dwelling floor area + current & potential (best-fabric) intensity (`epc_current_kwh_m2`, used by lock-in as the potential/current gas-scaling ratio) |
 | OS Open Greenspace | (manual) | `opgrsp_gpkg_gb/` | Greenspace access (straight-line) |
-| OS Open UPRN | (manual) | `osopenuprn_*/` | EPC geocoding |
+| OS Open UPRN | (manual) | `osopenuprn_*/` | EPC location linkage (UPRN→coordinate join; no addresses) |
 | OS Code-Point Open | (manual) | `codepo_gpkg_gb/` | Postcode→OA lookup |
 | FSA establishments | `download_fsa.py` | `fsa_establishments.gpkg` | Food + grocery access (~283k in the basket) |
 | NaPTAN stops | `download_naptan.py` | `naptan_england.gpkg` | Bus/rail access (~434k) |

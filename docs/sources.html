@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Data sources — NEPI Atlas</title>
+<link rel="stylesheet" href="style.css?v=3">
+</head>
+<body>
+<header>
+  <h1>NEPI Atlas</h1>
+  <p class="tagline">Data sources and credits</p>
+  <nav><a href="index.html">Map</a><a href="about.html">About</a></nav>
+</header>
+<div class="banner">Experimental demo — under development and pending review. Grades and numbers may change.</div>
+
+<div class="prose">
+<h1>Data sources</h1>
+
+<p>Every input is open data. The table lists each source, its role in the Atlas, and its publisher.</p>
+
+<table class="sourcetable">
+<tr><th>Source</th><th>Role</th><th>Publisher</th></tr>
+<tr><td>Census 2021 topic tables</td><td>Population, household size, dwelling types, tenure, car ownership, commute distance</td><td>Office for National Statistics</td></tr>
+<tr><td>Output Area boundaries and lookups</td><td>Neighbourhood geography (OA, LSOA, local authority)</td><td>Office for National Statistics</td></tr>
+<tr><td>Sub-national energy consumption statistics</td><td>Metered gas and electricity per postcode</td><td>Department for Energy Security and Net Zero</td></tr>
+<tr><td>Domestic Energy Performance Certificates</td><td>Floor area, build year, current and potential energy intensity</td><td>Ministry of Housing, Communities and Local Government</td></tr>
+<tr><td>OS Open Roads</td><td>Road network for all access measurement</td><td>Ordnance Survey</td></tr>
+<tr><td>OS Open Greenspace</td><td>Greenspace access points</td><td>Ordnance Survey</td></tr>
+<tr><td>OS Code-Point Open</td><td>Assigning postcode-level data to neighbourhoods: metered energy aggregation and the postcode search</td><td>Ordnance Survey</td></tr>
+<tr><td>OS Open UPRN</td><td>Locating energy certificates by property reference number in the underlying study</td><td>Ordnance Survey</td></tr>
+<tr><td>Food hygiene establishment register</td><td>Places to eat and drink, grocery and convenience shops</td><td>Food Standards Agency</td></tr>
+<tr><td>NaPTAN</td><td>Bus stops and rail stations</td><td>Department for Transport</td></tr>
+<tr><td>Get Information about Schools</td><td>Schools</td><td>Department for Education</td></tr>
+<tr><td>Organisation Data Service</td><td>GP surgeries and pharmacies</td><td>NHS England</td></tr>
+<tr><td>Census 2021 workplace population (WP101EW)</td><td>Jobs reachable per neighbourhood</td><td>Office for National Statistics</td></tr>
+<tr><td>Indices of Deprivation 2025</td><td>Deprivation control in the underlying study</td><td>Ministry of Housing, Communities and Local Government</td></tr>
+<tr><td>Vehicle licensing statistics</td><td>Battery-electric share of the local car fleet</td><td>Department for Transport and DVLA</td></tr>
+<tr><td>National Travel Survey (NTS9904)</td><td>Measured car miles per person by rural-urban class</td><td>Department for Transport</td></tr>
+<tr><td>Rural-Urban Classification 2021</td><td>Class key for the travel-energy anchor</td><td>Office for National Statistics</td></tr>
+<tr><td>HadUK-Grid</td><td>Heating degree days (climate control in the underlying study)</td><td>Met Office</td></tr>
+</table>
+
+<h2>Licences</h2>
+
+<p>Contains public sector information licensed under the <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">Open Government Licence v3.0</a>. Contains OS data © Crown copyright and database right 2026. Contains Royal Mail data © Royal Mail copyright and database right 2026 (postcodes, via OS Code-Point Open; no address data is used). Source: Office for National Statistics licensed under the Open Government Licence v3.0. Contains data derived from the Energy Performance of Buildings Register © Crown copyright. HadUK-Grid data © Met Office, used under the Open Government Licence.</p>
+
+<p>The Atlas publishes statistical-area aggregates only: neighbourhood-level medians, counts and grades, area boundaries, and a postcode-to-area index. No addresses, property records or household-level data are re-published.</p>
+
+<h2>Basemap and software</h2>
+
+<p>The basemap is © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, rendered by <a href="https://carto.com/attributions">CARTO</a>. The map runs on <a href="https://maplibre.org/">MapLibre GL JS</a> with <a href="https://github.com/protomaps/PMTiles">PMTiles</a>; tiles are built with <a href="https://github.com/felt/tippecanoe">tippecanoe</a>. Network access is computed with <a href="https://cityseer.benchmarkurbanism.com/">cityseer</a>.</p>
+</div>
+</body>
+</html>
