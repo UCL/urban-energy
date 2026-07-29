@@ -75,6 +75,12 @@ dmypy.json
 !data/manifest.json
 # Zenodo release metadata (must be tracked for the archived release)
 !.zenodo.json
+# Frozen NEPI band thresholds (the freeze depends on this file surviving)
+!dissemination/nepi_bands_2021.json
+# Atlas site data (small, regenerable, needed by docs/; heavy artefacts are
+# excluded by docs/.gitignore)
+!docs/data/aggregates.json
+!docs/data/meta.json
 # manuscript number ledger (accumulators; without them a partial stats run
 # would regenerate numbers.tex/tab_*.tex with missing macros)
 !paper/latex/numbers.json

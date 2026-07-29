@@ -1,0 +1,32 @@
+{
+  "version": "NEPI-2021 v2",
+  "n_bands": 7,
+  "weighting": "households",
+  "note": "Household-weighted septiles of the 2021 national distribution; A is the best band. Computed once and frozen (score_spec.md).",
+  "thresholds": {
+    "rate": [
+      0.04667952583547671,
+      0.07200347119685505,
+      0.09968536292962314,
+      0.1352415181893308,
+      0.1864608406381683,
+      0.26731666979145075
+    ],
+    "energy": [
+      14212.80085845604,
+      16617.139871066498,
+      18482.39304572077,
+      20331.73105418019,
+      22491.352995449473,
+      25649.535548117645
+    ],
+    "access": [
+      13.0,
+      30.0,
+      50.0,
+      78.0,
+      123.0,
+      222.0
+    ]
+  }
+}
