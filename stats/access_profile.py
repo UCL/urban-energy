@@ -306,8 +306,12 @@ def compositional_access(d: pd.DataFrame) -> None:
         )
 
         # Stratified: in the strongest housing markets the national gradient
-        # flattens or inverts — the affluent hold the highest-access cores
-        # where proximity is priced (inner London, Manchester, Bristol).
+        # flattens or inverts — the least deprived areas hold the highest-access
+        # cores where proximity is priced (inner London, Manchester, Bristol,
+        # and most steeply Cambridge and Oxford). The inversion is NOT
+        # explained by overall city affluence: across the ED Fig 4 city set
+        # the city-median income-deprivation is unrelated to the within-city
+        # correlation (Spearman +0.16, p=0.46).
         lad = cf[CLUSTER_COL].astype(str)
         inner_london = lad.isin(_INNER_LONDON)
         strata = {
@@ -315,6 +319,8 @@ def compositional_access(d: pd.DataFrame) -> None:
             "imdRhoInner": inner_london,
             "imdRhoManchester": lad == "E08000003",
             "imdRhoBristol": lad == "E06000023",
+            "imdRhoCambridge": lad == "E07000008",
+            "imdRhoOxford": lad == "E07000178",
         }
         rhos = {}
         for key, mask in strata.items():

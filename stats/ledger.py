@@ -82,7 +82,7 @@ _TABLES: dict[str, dict[str, object]] = {
     "scenarios": {
         "cols": "lcc",
         "header": "Scenario & Unadjusted [95\\% CI] & "
-        "Equal family size [95\\% CI] \\\\",
+        "Equal household size [95\\% CI] \\\\",
         "parts": ["scenarios"],
     },
     "oster": {
