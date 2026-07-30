@@ -38,6 +38,7 @@ from typing import Any  # noqa: E402
 import figstyle as fs  # noqa: E402
 import ledger  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.transforms as mtransforms  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from access_profile import _comp_poisson  # noqa: E402
@@ -543,9 +544,7 @@ def rate(cf: pd.DataFrame, income: list[str], confounds: list[str]) -> None:
     catch = amen["Flat"] / amen["Detached"]
     esave = energy["Detached"] / energy["Flat"]
     fig, axes = plt.subplots(1, 3, figsize=(fs.COL2, 3.8))
-    fig.subplots_adjust(
-        top=0.66, bottom=0.16, left=0.09, right=0.985, wspace=0.35
-    )
+    fig.subplots_adjust(top=0.66, bottom=0.16, left=0.09, right=0.985, wspace=0.35)
     x = np.arange(len(_TYPES))
     panels = [
         (
@@ -617,8 +616,7 @@ def rate(cf: pd.DataFrame, income: list[str], confounds: list[str]) -> None:
         )
     fs.footer(fig)
     print(
-        f"  F7 rate: Flat:Det {ratio:.1f}× "
-        f"(catch {catch:.2f}× · energy {esave:.1f}×)"
+        f"  F7 rate: Flat:Det {ratio:.1f}× (catch {catch:.2f}× · energy {esave:.1f}×)"
     )
     fs.save(fig, "fig7_rate")
 
@@ -743,11 +741,13 @@ def scenario_ladder(cf: pd.DataFrame, confounds: list[str]) -> None:
 def forest(cf: pd.DataFrame, confounds: list[str], income: list[str]) -> None:
     """F11: every headline compositional ratio with its clustered 95% CI.
 
-    Two panels on separate log rulers: the energy gaps (Detached:Flat, log-OLS)
-    above, the access gaps (Flat:Detached, Poisson) below. Each interval is the
-    single-model delta-method CI with LAD-clustered covariance — the same
-    numbers as the text tables. The access-per-kWh rate joins the access panel
-    from the ledger (diamond marker, cluster-bootstrap interval).
+    Two stacked panels on independent log rulers, in the stem-and-dot grammar
+    of F12: the energy gaps (detached:flat, log-OLS) above, the access gaps
+    (flat:detached, Poisson) below, each estimate a stem from 1x with the 95%
+    CI as a capped whisker over the tip. Each interval is the single-model
+    delta-method CI with LAD-clustered covariance — the same numbers as the
+    text tables. The access-per-kWh rate joins the access panel from the
+    ledger (diamond tip, cluster-bootstrap interval).
     """
     cf = cf.copy()
     heat_kwh = _num(cf["building_kwh_per_hh"])
@@ -831,79 +831,136 @@ def forest(cf: pd.DataFrame, confounds: list[str], income: list[str]) -> None:
         "Amenities, 25.6 km drive": ("driveAmen", "driveAmenCI"),
     }
 
-    # Two panels: the energy ratios sit between 1x and ~3.5x, the access ratios
-    # reach ~50x, so a shared ruler wastes most of its width on one group.
-    # Each panel gets its own log axis spanning only its data.
+    # Two stacked panels with independent log rulers, drawn in the stem-and-dot
+    # grammar of F12: each estimate is a stem from 1x to the point with the
+    # 95% CI as a thin capped whisker over the tip. The stems make distance
+    # from parity the ink itself, so no 1x reference line and no row
+    # separators are needed (a floating-dot forest was tried and read as
+    # unanchored; a shared ruler crushed the energy block into a sliver).
     fig, axes = plt.subplots(
         2,
         1,
-        figsize=(fs.COL2, 6.0),
-        gridspec_kw={"hspace": 0.4, "height_ratios": [0.62, 1.0]},
+        figsize=(fs.COL2, 6.4),
+        gridspec_kw={"hspace": 0.42, "height_ratios": [0.66, 1.0]},
     )
-    fig.subplots_adjust(left=0.30, right=0.86, top=0.88, bottom=0.09)
-    ticks = {
-        0: ([1, 1.5, 2, 3, 4], ["1×", "1.5×", "2×", "3×", "4×"]),
-        1: (
-            [1, 2, 5, 10, 20, 50, 100],
-            ["1×", "2×", "5×", "10×", "20×", "50×", "100×"],
-        ),
-    }
+    fig.subplots_adjust(left=0.30, right=0.97, top=0.84, bottom=0.09)
     drawn = 0
 
-    def _interval(ax, ci, ypos, colour, filled=True, marker="o"):
+    def _stem(ax, ci, ypos, colour, gap=0.99, face="solid", muted=False, marker="o"):
+        """One estimate: stem from 1x, then the CI band, marker at the tip.
+
+        The stem stops a small white breath short of the CI's lower bound, so
+        the hand-off from "distance from parity" to "interval" is articulated;
+        band and stem share one line weight, and the cap ticks mark the bound.
+        The ``gap`` factor is per panel: a log ruler makes a fixed multiplier
+        a fixed visual gap, so the wider access ruler uses a smaller factor.
+        """
         point, lo, hi = ci[0], ci[1], ci[2]
-        ax.plot(
-            [lo, hi],
-            [ypos, ypos],
-            color=colour,
-            lw=1.2,
-            alpha=1.0 if filled else 0.55,
-            solid_capstyle="round",
-            zorder=2,
+        alpha = 0.4 if muted else 1.0
+        if lo * gap > 1.0:
+            ax.plot(
+                [1.0, lo * gap],
+                [ypos, ypos],
+                color=colour,
+                lw=1.8,
+                alpha=alpha,
+                solid_capstyle="butt",
+                zorder=2,
+            )
+        ax.errorbar(
+            point,
+            ypos,
+            xerr=[[point - lo], [hi - point]],
+            fmt="none",
+            ecolor=colour,
+            elinewidth=1.8,
+            capsize=3.0,
+            capthick=1.2,
+            alpha=alpha,
+            zorder=3,
         )
         ax.scatter(
             point,
             ypos,
-            s=30,
-            facecolor=colour if filled else "white",
+            s=55 if face == "solid" else 52,
+            facecolor=colour if face == "solid" else "white",
             edgecolor=colour,
-            linewidths=1.1,
+            linewidths=1.5,
             marker=marker,
-            zorder=3,
+            alpha=0.8 if muted else 1.0,
+            zorder=4,
         )
         return point
 
-    def _value(ax, label_key, point, ypos, muted=False):
+    def _value(ax, label_key, point, ypos, colour, muted=False):
+        # Values are bold, series-coloured, and centred directly above the tip
+        # (the adjusted pair member goes below the tip, muted, a size smaller).
         pt = ledger.value(label_key) if label_key else ""
         ax.annotate(
             f"{pt or _fmt(point)}×",
-            xy=(1.02, ypos),
-            xycoords=("axes fraction", "data"),
-            fontsize=8,
-            color=fs.INK_SECONDARY if muted else fs.INK,
-            va="center",
-            ha="left",
+            xy=(point, ypos),
+            textcoords="offset points",
+            xytext=(0, -5 if muted else 5),
+            fontsize=7.5 if muted else 8,
+            fontweight=600 if muted else "bold",
+            color=fs.INK_SECONDARY if muted else colour,
+            va="top" if muted else "bottom",
+            ha="center",
+            zorder=5,
         )
 
-    # Energy panel: paired intervals per component row.
+    def _row_labels(ax, ys, labels):
+        # Manual row labels: tick-label vertical centring sits visibly low
+        # (measured ~2 pt below the row lines), so place them by hand with a
+        # small optical lift.
+        tf = mtransforms.blended_transform_factory(ax.transAxes, ax.transData)
+        for y_row, lab in zip(ys, labels, strict=True):
+            ax.annotate(
+                lab,
+                xy=(-0.02, y_row),
+                xycoords=tf,
+                xytext=(0, 2.0),
+                textcoords="offset points",
+                ha="right",
+                va="center_baseline",
+                fontsize=9,
+                color=fs.INK_SECONDARY,
+            )
+
+    # Energy panel: one row per component, the unadjusted and the
+    # equal-household-size estimate paired (solid vs open tip), the value
+    # above-right of the solid tip and below-right of the open one.
     ax = axes[0]
+    E_STEP = 1.35
     yticks, ylabels = [], []
     ypos = 0.0
     for label, ci_u, ci_f, (key_u, key_f) in energy_rows:
         if ci_u is None or ci_f is None:
             continue
-        p_u = _interval(ax, ci_u, ypos + 0.18, fs.HEAT, filled=True)
-        p_f = _interval(ax, ci_f, ypos - 0.18, fs.HEAT, filled=False)
-        _value(ax, key_u, p_u, ypos + 0.18)
-        _value(ax, key_f, p_f, ypos - 0.18, muted=True)
+        p_u = _stem(ax, ci_u, ypos + 0.24, fs.HEAT, gap=0.99, face="solid")
+        p_f = _stem(ax, ci_f, ypos - 0.24, fs.HEAT, gap=0.99, face="white", muted=True)
+        _value(ax, key_u, p_u, ypos + 0.24, fs.HEAT)
+        _value(ax, key_f, p_f, ypos - 0.24, fs.HEAT, muted=True)
         yticks.append(ypos)
         ylabels.append(label)
-        ypos -= 1.0
+        ypos -= E_STEP
         drawn += 2
+    _row_labels(ax, yticks, ylabels)
+    ax.set_yticks([])
+    ax.set_ylim(ypos + E_STEP - 0.9, 0.85)
+    ax.set_xscale("log")
+    ax.set_xticks([1, 1.5, 2, 3, 4], ["1×", "1.5×", "2×", "3×", "4×"])
+    ax.set_xlim(1.0, 4.2)
+    ax.set_title(
+        "ENERGY — detached to flat, per dwelling",
+        loc="left",
+        fontsize=8,
+        fontweight="bold",
+        color=fs.HEAT,
+        pad=6,
+    )
     handles = [
-        plt.Line2D(
-            [], [], marker="o", ls="-", ms=6, color=fs.HEAT, label="unadjusted"
-        ),
+        plt.Line2D([], [], marker="o", ls="-", ms=6, color=fs.HEAT, label="unadjusted"),
         plt.Line2D(
             [],
             [],
@@ -916,18 +973,20 @@ def forest(cf: pd.DataFrame, confounds: list[str], income: list[str]) -> None:
             label="equal household size",
         ),
     ]
+    # A conventional stacked legend in the panel's empty upper-right corner,
+    # text first with the symbol on the right edge.
     ax.legend(
-        handles=handles, loc="lower right", fontsize=7.5, frameon=False,
+        handles=handles,
+        loc="upper right",
+        markerfirst=False,
+        fontsize=7.5,
+        frameon=False,
         handletextpad=0.4,
-    )
-    ax.set_yticks(yticks, ylabels)
-    ax.set_ylim(ypos + 0.5, 0.7)
-    ax.set_title(
-        "ENERGY — Detached : Flat, per dwelling",
-        loc="left", fontsize=8, fontweight="bold", color=fs.HEAT, pad=6,
+        handlelength=1.4,
+        borderaxespad=0.2,
     )
 
-    # Access panel: one interval per row.
+    # Access panel: one stem per row (diamond tip for the rate).
     ax = axes[1]
     yticks, ylabels = [], []
     ypos = 0.0
@@ -935,33 +994,38 @@ def forest(cf: pd.DataFrame, confounds: list[str], income: list[str]) -> None:
         if ci is None:
             continue
         marker = "D" if "rate" in label else "o"
-        point = _interval(ax, ci, ypos, fs.ACCESS, filled=True, marker=marker)
+        point = _stem(ax, ci, ypos, fs.ACCESS, gap=0.97, face="solid", marker=marker)
         keys = _LEDGER_LABELS.get(label)
-        _value(ax, keys[0] if keys else "", point, ypos)
+        _value(ax, keys[0] if keys else "", point, ypos, fs.ACCESS)
         yticks.append(ypos)
         ylabels.append(label)
         ypos -= 1.0
         drawn += 1
-    ax.set_yticks(yticks, ylabels)
-    ax.set_ylim(ypos + 0.4, 0.6)
-    ax.set_title(
-        "ACCESS — Flat : Detached, within reach",
-        loc="left", fontsize=8, fontweight="bold", color=fs.ACCESS, pad=6,
+    _row_labels(ax, yticks, ylabels)
+    ax.set_yticks([])
+    ax.set_ylim(ypos + 1.0 - 0.6, 0.75)
+    ax.set_xscale("log")
+    ax.set_xticks(
+        [1, 2, 5, 10, 20, 50, 100],
+        ["1×", "2×", "5×", "10×", "20×", "50×", "100×"],
     )
+    ax.set_xlim(1.0, 110)
+    ax.set_title(
+        "ACCESS — flat to detached, within reach",
+        loc="left",
+        fontsize=8,
+        fontweight="bold",
+        color=fs.ACCESS,
+        pad=6,
+    )
+    ax.set_xlabel("Ratio (log; 1× = no difference)", fontsize=9)
 
-    for i, ax in enumerate(axes):
-        ax.axvline(1.0, color=fs.INK, lw=1.1, zorder=1)
-        ax.set_xscale("log")
-        ax.set_xticks(ticks[i][0])
-        ax.set_xticklabels(ticks[i][1])
+    for ax in axes:
         ax.minorticks_off()
         # Category and value text are labels, not measurement ticks.
         ax.tick_params(axis="y", left=False, labelsize=9, labelcolor=fs.INK_SECONDARY)
         ax.tick_params(axis="x", labelsize=8, labelcolor=fs.INK_SECONDARY)
         ax.spines["left"].set_visible(False)
-    axes[1].set_xlabel("Ratio (log; 1× = no difference)", fontsize=9)
-    axes[0].set_xlim(0.95, 4.2)
-    axes[1].set_xlim(0.95, 110)
     # Figure-level title block: anchored to the figure, not the top axes, so it
     # can never overprint the first panel's header.
     if os.environ.get("NEPI_PLAIN_FIGS") != "1":
@@ -976,13 +1040,13 @@ def forest(cf: pd.DataFrame, confounds: list[str], income: list[str]) -> None:
         fig.text(
             fs.LEFT_X,
             0.925,
-            "All headline ratios with their confidence intervals",
+            "All headline ratios between flats and detached neighbourhoods",
             fontsize=13,
             fontweight="bold",
             color=fs.INK,
         )
     fs.footer(fig)
-    print(f"  F11 forest: {drawn} intervals drawn")
+    print(f"  F11 summary: {drawn} stems drawn")
     fs.save(fig, "fig11_forest")
 
 
@@ -991,8 +1055,9 @@ def equity(cf: pd.DataFrame) -> None:
 
     Left panel: median on-foot amenities by IMD income-deprivation decile —
     nationally the most deprived areas hold the most access. Right panel: the
-    rank correlation by stratum, showing the flattening and inversion in the
-    strongest housing markets (inner London, Manchester, Bristol).
+    rank correlation by area — England, inner London and twenty major cities,
+    sorted by correlation — showing where the national gradient flattens and
+    inverts.
     """
     inc = _num(cf["imd_income_score"])
     amen = _num(cf["net_total_1600"])
@@ -1011,20 +1076,62 @@ def equity(cf: pd.DataFrame) -> None:
         ("Manchester", lad == "E08000003"),
         ("Bristol", lad == "E06000023"),
     ]
+    # Twenty-six further cities and large towns (single 2022 local-authority
+    # districts), spanning weak and strong housing markets so the inversion
+    # claim is tested on both tails rather than illustrated on hand-picked
+    # cases.
+    cities = [
+        ("Birmingham", "E08000025"),
+        ("Leeds", "E08000035"),
+        ("Sheffield", "E08000019"),
+        ("Liverpool", "E08000012"),
+        ("Newcastle", "E08000021"),
+        ("Bradford", "E08000032"),
+        ("Coventry", "E08000026"),
+        ("Leicester", "E06000016"),
+        ("Nottingham", "E06000018"),
+        ("Kingston upon Hull", "E06000010"),
+        ("Stoke-on-Trent", "E06000021"),
+        ("Derby", "E06000015"),
+        ("Southampton", "E06000045"),
+        ("Portsmouth", "E06000044"),
+        ("Plymouth", "E06000026"),
+        ("Brighton and Hove", "E06000043"),
+        ("Oxford", "E07000178"),
+        ("Cambridge", "E07000008"),
+        ("Norwich", "E07000148"),
+        ("York", "E06000014"),
+    ]
+    strata += [(name, lad == code) for name, code in cities]
     rhos = []
     for name, mask in strata:
         sub = pd.DataFrame({"a": amen[mask], "i": inc[mask]}).dropna()
-        rhos.append((name, float(sub["a"].corr(sub["i"], "spearman"))))
+        if len(sub) < 100:  # guard against a mis-coded or empty district
+            continue
+        rhos.append((name, float(sub["a"].corr(sub["i"], "spearman")), len(sub)))
+    # England becomes a reference line rather than a row of its own; the
+    # areas are sorted by correlation so the flatten-then-invert shape reads
+    # top-down.
+    eng_rho = rhos[0][1]
+    rows = sorted(rhos[1:], key=lambda t: t[1], reverse=True)
 
+    # One column, two rows: the decile gradient is a squat wide panel, the
+    # correlation ladder a tall one, so neither fights the other's aspect.
     fig, (ax_d, ax_r) = plt.subplots(
-        1, 2, figsize=(fs.COL2, 4.1), gridspec_kw={"width_ratios": [1.5, 1.0]}
+        2,
+        1,
+        figsize=(fs.COL2 * 0.8, 7.6),
+        gridspec_kw={"hspace": 0.52, "height_ratios": [1.0, 2.2]},
     )
-    fig.subplots_adjust(top=0.70, bottom=0.26, left=0.10, right=0.96, wspace=0.42)
+    _L, _R = 0.19, 0.96
+    fig.subplots_adjust(top=0.86, bottom=0.08, left=_L, right=_R)
 
     x = np.arange(10)
     ax_d.bar(x, med, 0.7, color=fs.ACCESS, zorder=2)
     ax_d.set_xticks([0, 4, 9], ["1\nleast\ndeprived", "5", "10\nmost\ndeprived"])
-    ax_d.tick_params(axis="x", labelsize=7.5)
+    # Words embedded in tick text are labels: style them as label ink.
+    ax_d.tick_params(axis="x", labelsize=7.5, labelcolor=fs.INK_SECONDARY)
+    ax_d.tick_params(axis="y", labelsize=8, labelcolor=fs.INK_SECONDARY)
     ax_d.set_ylabel("Median amenities within 1.6 km")
     ax_d.set_xlabel("IMD income-deprivation decile")
     ax_d.set_title(
@@ -1036,29 +1143,90 @@ def equity(cf: pd.DataFrame) -> None:
         pad=6,
     )
 
-    yr = np.arange(len(rhos))[::-1]
-    for yi, (_name, rho) in zip(yr, rhos, strict=True):
-        colour = fs.ACCESS if rho > 0.05 else fs.WIDENS
-        ax_r.plot([0, rho], [yi, yi], color=colour, lw=2.2, zorder=2)
-        ax_r.scatter(rho, yi, s=55, color=colour, zorder=3)
+    # One stem per area from zero, F11 grammar: 1.8 pt lines, values at the
+    # tips, manual row labels with the optical lift. Near-zero correlations
+    # are neutral grey so "flat" is not painted as "inverted".
+    lab_tf = mtransforms.blended_transform_factory(ax_r.transAxes, ax_r.transData)
+    yr = np.arange(len(rows))[::-1]
+    leaders: list[tuple[float, float, float]] = []  # (y, rho, value pad in pt)
+    for yi, (name, rho, n) in zip(yr, rows, strict=True):
+        if abs(rho) <= 0.05:
+            colour = fs.INK_SECONDARY
+        elif rho > 0:
+            colour = fs.ACCESS
+        else:
+            colour = fs.WIDENS
+        ax_r.plot(
+            [0, rho], [yi, yi], color=colour, lw=1.8,
+            solid_capstyle="butt", zorder=2,
+        )  # fmt: skip
+        # Marker area tracks city size (Output-Area count; OAs are
+        # equal-population); the cap keeps the largest dots inside their rows.
+        size = float(np.clip(n / 32, 12, 110))
+        ax_r.scatter(rho, yi, s=size, color=colour, zorder=3)
+        pad = float(np.sqrt(size)) / 2 + 3.5
+        leaders.append((yi, rho, pad))
         ax_r.annotate(
             f"{rho:+.2f}",
             (rho, yi),
             textcoords="offset points",
-            xytext=(6 if rho >= 0 else -6, 6),
+            xytext=(pad if rho >= 0 else -pad, 1.2),
             ha="left" if rho >= 0 else "right",
-            fontsize=8.5,
+            va="center_baseline",
+            fontsize=6.5,
             fontweight="bold",
             color=colour,
+            zorder=4,
+            # Knock out the England reference line where a value crosses it.
+            bbox={"facecolor": "white", "edgecolor": "none", "pad": 0.4},
         )
-    ax_r.axvline(0, color=fs.INK, lw=1.0, zorder=1)
-    ax_r.set_yticks(yr, [n for n, _ in rhos])
-    ax_r.tick_params(left=False, axis="y", labelcolor=fs.INK)
+        ax_r.annotate(
+            name,
+            xy=(-0.02, yi),
+            xycoords=lab_tf,
+            xytext=(0, 1.5),
+            textcoords="offset points",
+            ha="right",
+            va="center_baseline",
+            fontsize=7.5,
+            color=fs.INK_SECONDARY,
+        )
+    # England as a faint dashed reference line rather than a row of its own.
+    ax_r.axvline(
+        eng_rho, color=fs.INK_SECONDARY, lw=0.8, ls=(0, (4, 3)), alpha=0.7, zorder=1
+    )
+    ax_r.annotate(
+        f"England {eng_rho:+.2f}",
+        xy=(eng_rho, -0.6),
+        xytext=(3, 0),
+        textcoords="offset points",
+        ha="left",
+        va="center_baseline",
+        fontsize=6.5,
+        color=fs.INK_SECONDARY,
+    )
+    ax_r.axvline(0, color=fs.INK, lw=0.8, zorder=1)
+    ax_r.set_yticks([])
+    ax_r.set_ylim(-1.05, len(rows) - 0.4)
     ax_r.spines["left"].set_visible(False)
-    ax_r.set_xlim(-0.45, 0.62)
+    lo = min(r for _, r, _n in rows)
+    hi = max(r for _, r, _n in rows)
+    ax_r.set_xlim(lo - 0.17, hi + 0.12)
+    ax_r.set_xticks([-0.4, -0.2, 0, 0.2, 0.4])
+    # Almost-imperceptible leaders from the name gutter to each row's
+    # leftmost ink, so the eye tracks across the wide panel.
+    x_lo, x_hi = ax_r.get_xlim()
+    ppu = (fs.COL2 * 0.8) * (_R - _L) * 72 / (x_hi - x_lo)
+    for yi, rho, pad in leaders:
+        end = -3.0 / ppu if rho >= 0 else rho - (pad + 21.0) / ppu
+        ax_r.plot(
+            [x_lo, end], [yi, yi], color="#ebebe9", lw=0.5,
+            solid_capstyle="butt", zorder=0.4,
+        )  # fmt: skip
+    ax_r.tick_params(axis="x", labelsize=8, labelcolor=fs.INK_SECONDARY)
     ax_r.set_xlabel("Rank correlation, access vs deprivation")
     ax_r.set_title(
-        "Rank correlation by market",
+        "Rank correlation by area",
         loc="left",
         fontsize=8.5,
         fontweight="bold",
@@ -1067,17 +1235,29 @@ def equity(cf: pd.DataFrame) -> None:
     )
     if os.environ.get("NEPI_PLAIN_FIGS") != "1":
         fig.text(
-            0.10, 0.955, "WHO HOLDS THE ACCESS",
-            fontsize=8.5, fontweight="bold", color=fs.ACCENT,
+            0.10,
+            0.965,
+            "ACCESS AND DEPRIVATION",
+            fontsize=8.5,
+            fontweight="bold",
+            color=fs.ACCENT,
         )
         fig.text(
-            0.10, 0.90,
-            "Walkable access is highest in deprived areas, except in "
-            "the strongest markets",
-            fontsize=12.5, fontweight="bold", color=fs.INK,
+            0.10,
+            0.935,
+            "How walkable access relates to income deprivation",
+            fontsize=12.5,
+            fontweight="bold",
+            color=fs.INK,
         )
     fs.footer(fig)
-    print(f"  F12 equity: national ρ {rhos[0][1]:+.2f} → Bristol {rhos[-1][1]:+.2f}")
+    n_inv = sum(1 for _, r, _n in rows if r < -0.05)
+    for name, rho, n in rows:
+        print(f"    ρ {rho:+.2f}  {name} ({n:,} OAs)")
+    print(
+        f"  F12 equity: national ρ {eng_rho:+.2f} (reference line); "
+        f"{n_inv}/{len(rows)} strata inverted"
+    )
     fs.save(fig, "fig12_equity")
 
 

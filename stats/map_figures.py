@@ -88,9 +88,10 @@ def _plot_city_units(frame, col: str, ax, cmap, norm) -> None:
         return
     if CITY_BORDER_MIN_AREA:
         area = frame.geometry.area
-        small, big = frame[area < CITY_BORDER_MIN_AREA], frame[
-            area >= CITY_BORDER_MIN_AREA
-        ]
+        small, big = (
+            frame[area < CITY_BORDER_MIN_AREA],
+            frame[area >= CITY_BORDER_MIN_AREA],
+        )
         small.plot(
             column=col, ax=ax, cmap=cmap, norm=norm, linewidth=0, antialiased=False
         )
@@ -99,6 +100,7 @@ def _plot_city_units(frame, col: str, ax, cmap, norm) -> None:
         )
         return
     frame.plot(column=col, ax=ax, cmap=cmap, norm=norm, linewidth=0, antialiased=False)
+
 
 # Cities to label on the national map (name, easting, northing).
 _CITIES = [
@@ -216,7 +218,7 @@ def national(gdf: gpd.GeoDataFrame) -> None:
         antialiased=False,
     )
     axes[0].set_title(
-        "Energy spent",
+        "Energy spent for equivalent access",
         fontsize=11,
         color=fs.HEAT,
         fontweight="bold",
@@ -247,7 +249,7 @@ def national(gdf: gpd.GeoDataFrame) -> None:
         antialiased=False,
     )
     axes[1].set_title(
-        "Access on foot",
+        "Access to amenities on foot",
         fontsize=11,
         color=fs.ACCESS,
         fontweight="bold",
@@ -359,7 +361,12 @@ def city(gdf: gpd.GeoDataFrame) -> None:
 
     e_norm = _energy_norm(sub["energy"])
     _plot_city_units(sub, "energy", axes[0], _WARM, e_norm)
-    axes[0].set_title("Energy spent", fontsize=10.5, color=fs.HEAT, fontweight="bold")
+    axes[0].set_title(
+        "Energy spent for equivalent access",
+        fontsize=10.5,
+        color=fs.HEAT,
+        fontweight="bold",
+    )
     _colourbar(
         fig,
         axes[0],
@@ -375,7 +382,10 @@ def city(gdf: gpd.GeoDataFrame) -> None:
     a_norm = LogNorm(vmin=a_lo, vmax=float(acc.quantile(0.95)))
     _plot_city_units(sub.assign(_acc=acc), "_acc", axes[1], _GREEN, a_norm)
     axes[1].set_title(
-        "Access on foot", fontsize=10.5, color=fs.ACCESS, fontweight="bold"
+        "Access to amenities on foot",
+        fontsize=10.5,
+        color=fs.ACCESS,
+        fontweight="bold",
     )
     _colourbar(
         fig,
