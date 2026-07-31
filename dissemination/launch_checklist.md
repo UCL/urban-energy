@@ -28,8 +28,16 @@ The existing Cloudflare R2 bucket `nepi-atlas` (public) hosts the whole site: sy
 
 ## Short term — user actions (no preprint needed; `noindex` stays)
 
-1. Browser pass of the preview (`npx http-server docs -p 8000`): map loads, England → LAD → LSOA → OA ladder switches, levers update the panel totals, postcode search resolves, OA card renders, about/sources pages read correctly.
-2. Deploy: sync `docs/` to the `nepi-atlas` bucket; delete the stale `england_oa.pmtiles`.
+1. ~~Browser pass~~ done 2026-07-31 (fixes shipped: per-household saving tile, semantic tile borders, preset highlight, layout breakpoints, prose pass).
+2. ~~Deploy~~ done 2026-07-31. The repeatable command (also removes anything no longer in `docs/`, and keeps Finder junk out):
+
+   ```bash
+   aws s3 sync docs/ s3://nepi-atlas/ --profile r2 \
+     --endpoint-url https://2bd46b6a7eecefc011228bfc799476d8.r2.cloudflarestorage.com \
+     --exclude ".gitignore" --exclude "*.DS_Store" --delete
+   ```
+
+3. Disable the GitHub Pages deployment (repo → Settings → Pages → Source: None). It publishes `docs/` from main on every push, and since the tiles and postcode shards are gitignored it serves a broken-map copy of the site at the old `UCL.github.io/urban-energy` URL.
 
 ## Long term (deferred until the preprint exists) — user actions
 

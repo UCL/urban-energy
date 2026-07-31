@@ -5,14 +5,15 @@ access) shapes household energy consumption in England, packaged as the **Neighb
 Energy Performance Index (NEPI)** — a place-level rating analogous to a building EPC,
 computed from open data.
 
-**Live tool:** <https://UCL.github.io/urban-energy/> *(the old A–G Atlas; its source has been
-removed pending a fresh two-axis rebuild — see below).*
+**Live tool:** <https://pub-e464ff17413e4256adbd9f89496bad9c.r2.dev/index.html>
+*(experimental demo of the rebuilt two-axis Atlas — under development and pending review;
+grades and numbers may change).*
 
 > **⏸ Current focus.** The live work is the **manuscript ([paper/latex/main.tex](paper/latex/main.tex))**,
 > written on the two-axis frame and prepared for Nature Cities submission, and the
-> **data + analysis pipeline**. The **Atlas is pending** — its scoring and the XGBoost planning
-> models are to be reevaluated for the two-axis frame (that code lives in git history). The
-> theory + headline below are the current two-axis frame.
+> **data + analysis pipeline**. The **Atlas has been rebuilt** on the two-axis frame and
+> soft-launched as the demo above; the XGBoost planning models stay in git history, to be
+> reevaluated after submission. The theory + headline below are the current two-axis frame.
 
 ---
 
