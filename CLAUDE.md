@@ -289,12 +289,10 @@ Claude assists. New commits, never `--amend` after a hook failure.
 ## 7. Dependencies
 
 Core geospatial: **geopandas, shapely, pyproj**
-Network access: **cityseer** (≥5.7.2; the road-network accessibility engine — pulls
+Network access: **cityseer** (≥5.8; the road-network accessibility engine — pulls
 networkx/rasterio). Requires **Python <3.14** (no cityseer wheel for 3.14 yet).
-From 5.8 the `compute_*` methods return the network only (no gdf tuple); the call
-sites in `oa_network_access.py` already call bare, compatible with both. Raise the
-pyproject floor to `>=5.8` once it is on PyPI (checked 2026-07-31: latest is 5.7.2,
-so the floor cannot be raised yet without breaking resolution).
+Since 5.8 the `compute_*` methods return the network only (no gdf tuple); the call
+sites in `oa_network_access.py` call bare and rely on the in-place mutation.
 Analysis: **numpy, pandas, scipy** (KD-tree walkable access), **statsmodels** (the form/size OLS ladder)
 Visualisation: **matplotlib** (the two argument figures)
 I/O: **requests**, **odfpy** (NTS ODS), **pyarrow** (parquet)

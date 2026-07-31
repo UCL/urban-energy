@@ -23,7 +23,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "odfpy>=1.4.1",
     "matplotlib>=3.10.9",
-    "cityseer>=5.7.2",  # raise to >=5.8 when released (single-return compute_* API)
+    "cityseer>=5.8",
     "xarray>=2025.6.1",
     "netcdf4>=1.7.3",
 ]
