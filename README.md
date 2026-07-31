@@ -10,7 +10,7 @@ computed from open data.
 grades and numbers may change).*
 
 > **⏸ Current focus.** The live work is the **manuscript ([paper/latex/main.tex](paper/latex/main.tex))**,
-> written on the two-axis frame and prepared for Nature Cities submission, and the
+> written on the two-axis frame and prepared for journal submission, and the
 > **data + analysis pipeline**. The **Atlas has been rebuilt** on the two-axis frame and
 > soft-launched as the demo above; the XGBoost planning models stay in git history, to be
 > reevaluated after submission. The theory + headline below are the current two-axis frame.
@@ -98,7 +98,7 @@ without heat pumps is the conventional bound, **2.12× → 1.51×**. Built form 
 
 ### Current focus
 
-1. **The manuscript** — [paper/latex/main.tex](paper/latex/main.tex) (Nature Cities submission,
+1. **The manuscript** — [paper/latex/main.tex](paper/latex/main.tex) (prepared for submission,
    with [paper/latex/extended_data.tex](paper/latex/extended_data.tex)). Every result number in
    it is a `\nepi` macro written by the stats scripts through `stats/ledger.py`, so the
    manuscript regenerates with the analysis; see
@@ -119,7 +119,7 @@ without heat pumps is the conventional bound, **2.12× → 1.51×**. Built form 
 
 | Path | Purpose |
 | ---- | ------- |
-| [paper/latex/main.tex](paper/latex/main.tex) | **The manuscript** — Nature Cities submission; result numbers ledger-wired via `stats/ledger.py` |
+| [paper/latex/main.tex](paper/latex/main.tex) | **The manuscript** — prepared for submission; result numbers ledger-wired via `stats/ledger.py` |
 | [paper/summary.md](paper/summary.md) | The argument — narrative two-axis statement (companion to the manuscript) |
 | [CLAUDE.md](CLAUDE.md) | **Technical brief** — codebase layout, data, architecture, conventions |
 | [REPRODUCTION.md](REPRODUCTION.md) | **How to rebuild** — orchestrator-driven recipe, manual downloads |

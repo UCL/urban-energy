@@ -2,7 +2,7 @@
 
 Codebase reference and Claude Code briefing. For the project pitch, headline result,
 theory synopsis, and current status read [README.md](README.md). The manuscript is
-[paper/latex/main.tex](paper/latex/main.tex) (Nature Cities; every result number is a
+[paper/latex/main.tex](paper/latex/main.tex) (every result number is a
 `\nepi` macro written by the stats scripts through `stats/ledger.py` — see
 [paper/submission_checklist.md](paper/submission_checklist.md) for the regeneration recipe).
 
@@ -22,7 +22,7 @@ urban-energy/
 ├── README.md                  # Project pitch + theory + status (read this first)
 ├── CLAUDE.md                  # This file — technical brief
 ├── paper/
-│   ├── latex/main.tex         # The manuscript (Nature Cities; ledger-wired numbers)
+│   ├── latex/main.tex         # The manuscript (ledger-wired numbers)
 │   ├── latex/extended_data.tex # Extended Data (4 figures + 4 tables)
 │   ├── summary.md             # Narrative two-axis statement (companion)
 │   ├── literature_review.md   # Thematic literature review

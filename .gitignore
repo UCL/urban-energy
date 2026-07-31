@@ -85,6 +85,8 @@ dmypy.json
 # would regenerate numbers.tex/tab_*.tex with missing macros)
 !paper/latex/numbers.json
 !paper/latex/tables.json
+# submission correspondence stays local
+paper/cover_letter.md
 *.kml
 *.kmz
 *.gml

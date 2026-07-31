@@ -1,4 +1,4 @@
-# Submission checklist — Nature Cities (Phase 0)
+# Submission checklist (Phase 0)
 
 Working state as of 2026-07-11. Items marked (user) need an action only the author can take; everything else is prepared in-repo.
 
@@ -22,7 +22,7 @@ A hand-typed result number in the manuscript is a bug. Static exceptions (kept l
 
 - **Number wiring live**: every model number in both documents is a `\nepi` macro; the two-axis, scenario, Oster and MAUP tables are ledger-rendered complete tabulars (`latex/tab_*.tex`). The wiring already caught one real transcription error (family-size CI 1.16→1.15).
 - **Expert review pass applied** (2026-07-11): editor (37 findings), statistician (13 findings + referee-attack analysis), data-visualisation (25 findings). All must-fix and should-fix items applied: CCC "legislated" overclaim corrected, per-capita/per-person contradiction fixed, alpha-zero floor description made accurate, ED Oster caption corrected (attenuation, not suppression), travel Methods completed (household-size step, band midpoints, intensity provenance), catchment trip-rate rationale added, competition-for-amenities limitation added, MAUP heat attenuation surfaced in main text, plus ~20 prose and figure-craft fixes.
-- **Figures**: charts now also emit vector PDFs and the manuscript includes them; the two-panel England map is built at print width; threshold-label and bracket collisions fixed; the in-figure editorial blocks can be suppressed for submission with `NEPI_PLAIN_FIGS=1` (policy decision at submission: Nature figures conventionally carry no in-figure titles).
+- **Figures**: charts now also emit vector PDFs and the manuscript includes them; the two-panel England map is built at print width; threshold-label and bracket collisions fixed; the in-figure editorial blocks can be suppressed for submission with `NEPI_PLAIN_FIGS=1` (policy decision at submission; journal figures conventionally carry no in-figure titles).
 - **Figure-set overhaul** (2026-07-11, dataviz + editor reviews applied): Fig 1 is an X-Y plot of the four types; the England map is quantile-classed with Greater London insets; the rate figure is a three-panel construction (catchment reach, car energy, rate with bootstrap CI); the forest plot is two panels with the rate row added; the energy bars dropped from the display set (the chart remains in `paper/figures/` for summary.md); a new Extended Data equity figure shows the deprivation gradient and its inversion in the strongest markets; the scenario figure's access panel states 27x as text rather than fake bars; figure numbering matches first-citation order. Both energy views (per dwelling and equal household size) appear in Table 1, the forest plot and the scenario figure. Extended Data pruned to non-duplicative items and carries the co-author block. Main set is 6 figures + 1 table; Extended Data is 4 figures + 4 tables.
 - GIAS record count verified against the built layer (50,631).
 
@@ -41,10 +41,6 @@ A hand-typed result number in the manuscript is a bug. Static exceptions (kept l
 1. (user) Confirm affiliation wording; add acknowledgements (funding, if any) in `main.tex` §Declarations.
 2. (user) Code DOI: push a tagged release (e.g. `v1.0.0-submission`), archive it on Zenodo (`.zenodo.json` supplies the metadata), then paste the concept DOI into `main.tex` §Code availability and `CITATION.cff`.
 3. (user) Data DOI: deposit the built per-OA artefacts on Zenodo and paste the DOI into `main.tex` §Data availability. Suggested deposit set (all under `$URBAN_ENERGY_DATA_DIR/statistics/`): `oa_energy_consumption.parquet`, `oa_epc.parquet`, `oa_network_access.parquet`, `oa_access.parquet`, `oa_hdd.parquet`, `oa21_ruc21.parquet`, `nts_mileage_by_ruc.parquet`, `lsoa_imd2025.parquet`, `lsoa_vehicles.parquet`, `postcode_oa_lookup.parquet`, plus `paper/results_snapshot.txt`.
-4. (user) Suggested referees in the cover letter (2–4 names; the obvious pools are the metered-energy group behind NEED/SERL analyses, the accessibility-instruments literature, and the travel-and-built-environment meta-analysis line).
+4. (user) Suggested referees in the cover letter (2–4 names).
 5. Add the `lineno` documentclass option for the review copy if requested by the portal; rebuild both PDFs.
-6. (user) Submit `main.pdf` + `extended_data.pdf` + cover letter via the Nature Cities portal; ORCID at submission.
-
-## Fallback ladder (decided)
-
-Nature Cities → npj Urban Sustainability → Environment & Planning B → Energy Policy. The manuscript transfers to npj Urban Sustainability essentially unchanged.
+6. (user) Submit `main.pdf` + `extended_data.pdf` + cover letter via the journal portal; ORCID at submission.

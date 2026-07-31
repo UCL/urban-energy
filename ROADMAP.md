@@ -1,7 +1,7 @@
 # Roadmap
 
 Single source of truth for status, open work, and methodology decisions.
-Updated 2026-07-10 (publication sequence locked; manuscript drafted for Nature Cities).
+Updated 2026-07-10 (publication sequence locked; manuscript drafted).
 
 > **Current focus: Phase 0 — submit the paper.** The manuscript is drafted at
 > [paper/latex/main.tex](paper/latex/main.tex) (access-first framing, compiles clean).
@@ -24,8 +24,7 @@ proposal, no tool promises. NEPI is coined in one Discussion sentence only.
 4. Affiliation + acknowledgements in `main.tex`; cover letter (names the parked
    items: mover-panel test, MAUP zonation half, spatial error/lag check,
    out-of-sample validation).
-5. Submit to **Nature Cities** (fallbacks, in order: npj Urban Sustainability →
-   Environment & Planning B → Energy Policy).
+5. Submit.
 
 ### Phase 1 — NEPI score + Atlas v1 (during review; months 1–3)
 

@@ -5,7 +5,7 @@ The dissemination inventory and its sequencing. Specs in this directory; the pha
 | Item | What | When |
 | ------ | ------ | ------ |
 | Zenodo DOIs | Code release + per-OA data deposit | Phase 0 (submission checklist, user actions) |
-| Preprint | Same manuscript on a preprint server (Nature portfolio permits); the citable anchor for everything below | At submission |
+| Preprint | Same manuscript on a preprint server (the journal's preprint policy permits); the citable anchor for everything below | At submission |
 | NEPI score | Per-OA A–G label, current vs potential — [score_spec.md](score_spec.md) | Build now; publish with preprint |
 | Atlas v1 | Static map + label card + lever sliders — [atlas_architecture.md](atlas_architecture.md) | Build now; soft-launch with preprint, full launch on acceptance |
 | Landing/about page | Part of the Atlas site: the argument in one page, links to paper, data, code | With the Atlas |

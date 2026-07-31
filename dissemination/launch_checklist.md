@@ -37,7 +37,9 @@ The existing Cloudflare R2 bucket `nepi-atlas` (public) hosts the whole site: sy
      --exclude ".gitignore" --exclude "*.DS_Store" --delete
    ```
 
-3. Disable the GitHub Pages deployment (repo → Settings → Pages → Source: None). It publishes `docs/` from main on every push, and since the tiles and postcode shards are gitignored it serves a broken-map copy of the site at the old `UCL.github.io/urban-energy` URL.
+3. ~~Disable the GitHub Pages deployment~~ done 2026-07-31 (user unpublished; the old `UCL.github.io/urban-energy` URL 404s — the R2 deployment is the sole live copy).
+
+Short-term list complete 2026-07-31. The site is live under `noindex` at `https://pub-e464ff17413e4256adbd9f89496bad9c.r2.dev/index.html`.
 
 ## Long term (deferred until the preprint exists) — user actions
 
@@ -51,7 +53,7 @@ The existing Cloudflare R2 bucket `nepi-atlas` (public) hosts the whole site: sy
 1. Remove the two `noindex` meta tags; rebuild nothing else.
 2. Swap the preprint link for the published DOI.
 3. Attach a custom domain to the R2 bucket (replaces the rate-limited `r2.dev` URL).
-4. Press/posts per the dissemination inventory (UCL press office, personal post).
+4. Press/posts per the dissemination inventory.
 
 ## Basemap dependency
 
