@@ -176,14 +176,14 @@ def main(bbox: tuple | None = None) -> pd.DataFrame:
         ns.set_node_live(int(i), True)
 
     t1 = time.time()
-    cn, _ = cn.compute_accessibilities(
+    cn.compute_accessibilities(
         amen, landuse_column_label="landuse", accessibility_keys=DEST, distances=LADDER
     )
     print(f"  accessibility (1,600→{MAX_M} m): {time.time() - t1:.0f}s", flush=True)
 
     # jobs ride the same network: weighted SUM of reachable jobs over the ladder
     t2 = time.time()
-    cn, _ = cn.compute_stats(
+    cn.compute_stats(
         _jobs_points(rb),
         stats_column_labels=["jobs"],
         distances=LADDER,
@@ -193,7 +193,7 @@ def main(bbox: tuple | None = None) -> pd.DataFrame:
 
     # population rides alongside jobs: residents reachable over the network (sum)
     t2b = time.time()
-    cn, _ = cn.compute_stats(
+    cn.compute_stats(
         _pop_points(oa),
         stats_column_labels=["pop"],
         distances=LADDER,
@@ -203,15 +203,13 @@ def main(bbox: tuple | None = None) -> pd.DataFrame:
 
     # mixed-use diversity over the land-use points: Hill q0 (richness) + q1 (balance)
     t2c = time.time()
-    cn, _ = cn.compute_mixed_uses(
-        amen, landuse_column_label="landuse", distances=LADDER
-    )
+    cn.compute_mixed_uses(amen, landuse_column_label="landuse", distances=LADDER)
     print(f"  mixed-use (Hill q0 + q1): {time.time() - t2c:.0f}s", flush=True)
 
     # network structure on the same traversal: closeness + node density.
     # betweenness disabled (the expensive all-pairs measure) to save compute.
     t3 = time.time()
-    cn = cn.centrality_shortest(
+    cn.centrality_shortest(
         distances=LADDER,
         closeness={"density": "1", "harmonic": "1/c"},
         betweenness={},
