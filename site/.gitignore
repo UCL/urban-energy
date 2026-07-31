@@ -1,5 +1,5 @@
 # Regenerable heavy artefacts (rebuilt by stats/atlas_export.py); site source
-# stays tracked. Deployment publishes these via CI or a manual upload — see
+# stays tracked. Deployment syncs the whole folder to object storage; see
 # dissemination/launch_checklist.md.
 tiles/
 data/pc/

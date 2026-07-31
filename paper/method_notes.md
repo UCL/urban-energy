@@ -219,10 +219,11 @@ part of the raw form gap; it is now netted out of the direct term.
   bit. New refs added: wyatt2013, buyuklieva2023, echenique2012, ellder2022,
   cao2009, summerfield2019. (Summerfield was the old open item — now done.)
 
-## Open items still to resolve before the paper
+## Resolution (historical)
 
-1. **`PAPER.md` has been rebuilt on the two-axis basis** and now matches the
-   canonical `summary.md` numbers. The old three-surface / coverage / XGBoost draft
-   (dominant-type numbers 1.46×, 2.00×, A–G scorecard) is archived at
-   `paper/archive/PAPER_three_surface_deferred.md`. Remaining: fold the decisions and
-   citations from this ledger into the manuscript, and finalise `references.bib`.
+1. The markdown draft was rebuilt on the two-axis basis and later superseded by the
+   LaTeX manuscript (`paper/latex/main.tex`), which carries the canonical numbers via
+   the ledger. The old three-surface / coverage / XGBoost draft (dominant-type numbers
+   1.46×, 2.00×, A–G scorecard) is archived at
+   `paper/archive/PAPER_three_surface_deferred.md`. This file is a decision ledger;
+   entries above record the state at their date.

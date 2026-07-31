@@ -45,9 +45,13 @@ urban-energy/
 │   ├── figstyle.py            # Shared figure style (palette, rcParams, deck/footer)
 │   ├── argument_figures.py    # F1–F8 + F11 chart figures for paper/summary.md
 │   ├── map_figures.py         # F9 England + F10 city choropleths
-│   ├── figures/{oa,nepi}/     # Legacy three-surface PNGs (not referenced by the current two-axis PAPER)
+│   ├── nepi_score.py          # Per-OA A–G score on the rate; bands frozen (NEPI-2021 v2)
+│   ├── atlas_export.py        # Atlas artefacts: aggregates + PMTiles + postcode shards → site/
+│   ├── ledger.py              # Result-number ledger → paper/latex/numbers.tex (\nepi macros)
 │   └── archive/               # Archived LSOA analysis scripts
-├── tests/                     # pytest suite (37 tests: compositional model, travel constraint, inference, aggregation, EPC bands, postcode)
+├── site/                      # The Atlas static site (deployed to Cloudflare R2; heavy artefacts gitignored)
+├── dissemination/             # Score spec, Atlas architecture, launch checklist, frozen bands JSON
+├── tests/                     # pytest suite (49 tests: compositional model, travel constraint, inference, aggregation, EPC bands, postcode, NEPI score)
 ├── temp/                      # Default $URBAN_ENERGY_DATA_DIR (gitignored)
 └── .claude/settings.local.json # Claude Code permissions
 ```
@@ -185,11 +189,13 @@ are run on demand rather than wired as pipeline stages.
 | `maup_scale.py` | MAUP scale check — the compositional gap re-fit at OA/LSOA/MSOA (total survives: 2.12/1.88/1.72×; support-respecting median 1.74/1.59/1.47×) |
 | `form_size_decomposition.py` | Heat vs dwelling/family-size: per-dwelling DV with family size + floor area as FREE controls (γ≈0.5, never per-person); 1.60× → 1.27× (family-size-held) → 1.17× (size-held direct) |
 
-> **⏸ Pending.** The earlier three-surface / A–G scorecard, the empirical access-penalty model,
-> and the Atlas (XGBoost planning models + static site) were removed from the tree in the
-> two-axis migration (git history holds them). The Atlas scoring + models are **pending
-> reevaluation** for the two-axis frame; the manuscript ([paper/latex/main.tex](paper/latex/main.tex))
-> is written on that frame, with the old three-surface draft archived at
+> **Atlas status.** The earlier three-surface / A–G scorecard and the old Atlas (XGBoost
+> planning models + static site) were removed in the two-axis migration (git history holds
+> them). The scoring and Atlas have since been **rebuilt on the two-axis frame**:
+> `stats/nepi_score.py` (A–G on the rate, bands frozen) + `stats/atlas_export.py` → `site/`,
+> deployed to Cloudflare R2 under `noindex` (see
+> [`dissemination/launch_checklist.md`](dissemination/launch_checklist.md)). XGBoost is
+> dropped from the plan. The old three-surface draft is archived at
 > [`paper/archive/PAPER_three_surface_deferred.md`](paper/archive/PAPER_three_surface_deferred.md). See
 > [`paper/summary.md`](paper/summary.md) and [ROADMAP.md](ROADMAP.md).
 
@@ -281,8 +287,8 @@ git diff                     # Review
 git log --oneline -10        # Recent history
 ```
 
-Commits use HEREDOCs with `Co-Authored-By: Claude Opus 4.8 (1M context)` trailer when
-Claude assists. New commits, never `--amend` after a hook failure.
+Commit messages are matter-of-fact and carry no assistant attribution trailer.
+New commits, never `--amend` after a hook failure.
 
 ---
 
@@ -299,6 +305,6 @@ I/O: **requests**, **odfpy** (NTS ODS), **pyarrow** (parquet)
 Dev: **ruff, ty, pytest**
 
 Full pin list in `uv.lock`. **cityseer is back** (network access, §4). Still pruned (two-axis
-strip): xgboost, shap, streamlit, scikit-learn, seaborn, esda, fpdf2 — re-add only if the Atlas
-is rebuilt. (momepy/libpysal/rasterstats stayed out — the morphology layer is not revived; only
-cityseer accessibility is.)
+strip): xgboost, shap, streamlit, scikit-learn, seaborn, esda, fpdf2 — the Atlas was rebuilt
+without any of them (measured, not modelled) and they stay out. (momepy/libpysal/rasterstats
+stayed out too — the morphology layer is not revived; only cityseer accessibility is.)

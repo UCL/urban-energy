@@ -1,6 +1,6 @@
 # NEPI score — specification (v1 draft)
 
-Status: draft for author sign-off. The score is descriptive of the place as-lived; the compositional regression in the paper is for inference and plays no part here. Nothing below introduces a new model: every quantity is already computed per OA in the stats layer.
+Status: implemented (`stats/nepi_score.py`, signed off 2026-07-29; bands frozen at `nepi_bands_2021.json`). The score is descriptive of the place as-lived; the compositional regression in the paper is for inference and plays no part here. Nothing below introduces a new model: every quantity is already computed per OA in the stats layer.
 
 ## Headline: the rate
 

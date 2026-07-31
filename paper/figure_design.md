@@ -89,8 +89,8 @@ as PNG (300 dpi) + PDF.
 | F6 reach | multi-line, log y | x distance, y amenities, one line per type | dwelling ramp | `argument_figures.py` |
 | F7 rate | bar + catchment annotation | amenities per kWh by type, trip distance labelled | access green | `argument_figures.py` |
 | F8 scenarios | horizontal ladder | Det:Flat gap per lever vs parity + status quo | status pair | `argument_figures.py` |
-| F9 England | choropleth | OA polygons, fill = rate or energy gap | sequential / diverging | new `map_national.py` |
-| F10 city | two-panel choropleth | one city, access panel and energy panel | sequential (two hues) | new `map_city.py` |
+| F9 England | choropleth | OA polygons, fill = rate or energy gap | sequential / diverging | `map_figures.py` |
+| F10 city | two-panel choropleth | one city, access panel and energy panel | sequential (two hues) | `map_figures.py` |
 
 ---
 
@@ -126,5 +126,5 @@ as PNG (300 dpi) + PDF.
 
 One style module, `stats/figstyle.py`, holds the palette, rcParams and helpers, so
 the system cannot drift figure to figure. Each figure prints the number it encodes,
-so the caption and the plot cannot diverge. Re-run `validate_palette.js` on any hue
-change.
+so the caption and the plot cannot diverge. On any hue change, re-check contrast
+against the palette rules above (the one-off validator script was not kept).

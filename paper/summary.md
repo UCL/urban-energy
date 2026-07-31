@@ -204,8 +204,8 @@ The estimand throughout is therefore a *place-level* one, the energy and access 
 
 *Reproduce: `stats/form_size_decomposition.py` (section 6 — the Oster bound and NS-SeC control).*
 
-## The NEPI scorecard, Atlas and models
+## The NEPI score and Atlas
 
-The measure will be provided as three things: a NEPI scorecard, an EPC-style rating for neighbourhoods rather than buildings; an Atlas to explore the ratings; and XGBoost models that predict a neighbourhood's NEPI from its form, fabric and fleet, so different combinations of those inputs can be simulated. The models also carry a set of pre-defined scenarios, such as full electrification of the vehicle fleet or buildings brought to best-practice thermal efficiency, applied to a neighbourhood's inputs and re-scored so its NEPI under each can be read off.
+The measure is delivered as two things, both built. The NEPI score (`stats/nepi_score.py`) is an EPC-style A–G rating for neighbourhoods: the headline letter grades the rate (access per kilowatt-hour of total energy), with bands frozen at the 2021 household-weighted national distribution so a re-score shows real movement. Each OA is scored twice, as lived and under full technology deployment; the gap between the two labels is the lock-in result made visible per neighbourhood. The Atlas (`stats/atlas_export.py` → `site/`) maps the scores for every neighbourhood in England with deterministic insulation, heat-pump and EV levers; there is no model anywhere in the score or the Atlas. Predictive (XGBoost) models were considered and dropped: the score's identity is measured, not modelled.
 
-*Status: these three are planned outputs, not yet built. The measured findings above stand on their own; the scorecard, Atlas and models are the intended means of delivering them.*
+*Status: built and soft-launched (see `dissemination/launch_checklist.md`). The measured findings above stand on their own; the score and Atlas are the means of delivering them.*

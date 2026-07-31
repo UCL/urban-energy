@@ -12,8 +12,8 @@ grades and numbers may change).*
 > **⏸ Current focus.** The live work is the **manuscript ([paper/latex/main.tex](paper/latex/main.tex))**,
 > written on the two-axis frame and prepared for journal submission, and the
 > **data + analysis pipeline**. The **Atlas has been rebuilt** on the two-axis frame and
-> soft-launched as the demo above; the XGBoost planning models stay in git history, to be
-> reevaluated after submission. The theory + headline below are the current two-axis frame.
+> soft-launched as the demo above; the XGBoost planning models are dropped from the plan
+> (their code stays in git history). The theory + headline below are the current two-axis frame.
 
 ---
 
@@ -106,12 +106,10 @@ without heat pumps is the conventional bound, **2.12× → 1.51×**. Built form 
 2. **The data + analysis pipeline** — acquisition orchestrator + the two-axis analysis layer
    (`oa_data` + `oa_access` → `travel_energy`, `access_profile`, `lock_in`, `form_size`),
    reproducible from open data with no heavy processing step.
-
-### ⏸ Pending (next phase)
-
-1. **The NEPI Atlas + planning tool** — pending: reevaluate the place-scoring and the XGBoost
-   planning models for the two-axis frame (their code lives in git history); sequence in
-   [ROADMAP.md](ROADMAP.md).
+3. **The NEPI Atlas** — built on the two-axis frame: `stats/nepi_score.py` (A–G score,
+   bands frozen at 2021) + `stats/atlas_export.py` → the static site in `site/`,
+   soft-launched at the live-tool link above; full launch on acceptance
+   ([dissemination/launch_checklist.md](dissemination/launch_checklist.md)).
 
 ---
 
@@ -166,14 +164,13 @@ NTS-anchored car-travel energy, the lock-in quantification, the **network access
 over OS Open Roads, full per-OA curve; on-foot gap ~27×, drivable rate 3.9× access per kWh), and the
 heat-vs-size decomposition (`stats/`), all on a compositional flat-vs-detached estimator; storage centralised behind
 `URBAN_ENERGY_DATA_DIR`; and an executable rebuild
-orchestrator (`urban_energy.pipeline`). The old three-surface code and A–G Atlas were removed
-from the tree in the migration (in git history, pending reevaluation).
+orchestrator (`urban_energy.pipeline`); the NEPI score + Atlas rebuilt on the two-axis frame
+and soft-launched (`stats/nepi_score.py`, `stats/atlas_export.py`, `site/`). The old
+three-surface code and the XGBoost planning models stay in git history; XGBoost is dropped
+from the plan.
 
-**Current focus:** keeping the argument + processing pipeline watertight.
-
-**⏸ Pending (next phase):** submitting the manuscript ([paper/latex/main.tex](paper/latex/main.tex),
-see [paper/submission_checklist.md](paper/submission_checklist.md)); reevaluating the Atlas scoring +
-planning models for the two-axis frame.
+**Current focus:** the editorial revision of the manuscript, then submission
+([paper/submission_checklist.md](paper/submission_checklist.md)).
 
 ---
 

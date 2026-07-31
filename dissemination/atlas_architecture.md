@@ -1,6 +1,6 @@
 # Atlas v1 — static architecture (zero backend)
 
-Status: draft for author sign-off. Constraint: set it up once, serve it statically, no server-side compute, no database, nothing to patch. The retired Atlas (git `583ff6e^`, `stats/atlas/` + `stats/nepi_static/`) already proved this stack at national scale; v1 revives the stack, not the old scoring.
+Status: implemented (`stats/atlas_export.py` → `site/`, deployed 2026-07-31; see `launch_checklist.md`). Constraint: set it up once, serve it statically, no server-side compute, no database, nothing to patch. The retired Atlas (git `583ff6e^`, `stats/atlas/` + `stats/nepi_static/`) already proved this stack at national scale; v1 revives the stack, not the old scoring.
 
 ## Stack
 

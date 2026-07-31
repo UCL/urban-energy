@@ -87,6 +87,7 @@ dmypy.json
 !paper/latex/tables.json
 # submission correspondence stays local
 paper/cover_letter.md
+paper/review_guide.md
 *.kml
 *.kmz
 *.gml

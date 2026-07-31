@@ -10,10 +10,7 @@ uv run python stats/atlas_export.py   # aggregates + tiles + postcode shards →
 npx http-server site -p 8000          # local preview at http://localhost:8000
 ```
 
-The preview server must support HTTP `Range` requests (PMTiles fetches byte ranges); `npx http-server` does, Python's `http.server` does not. GitHub Pages and Cloudflare Pages both do.
-
-```bash
-```
+The preview server must support HTTP `Range` requests (PMTiles fetches byte ranges); `npx http-server` does, Python's `http.server` does not.
 
 Heavy outputs (`site/tiles/`, `site/data/pc/`) are gitignored and regenerable; the site source (`index.html`, `app.js`, `style.css`, `about.html`, `vendor/`) is tracked.
 
@@ -33,9 +30,11 @@ The existing Cloudflare R2 bucket `nepi-atlas` (public) hosts the whole site: sy
 
    ```bash
    aws s3 sync site/ s3://nepi-atlas/ --profile r2 \
-     --endpoint-url https://2bd46b6a7eecefc011228bfc799476d8.r2.cloudflarestorage.com \
+     --endpoint-url https://<ACCOUNT_ID>.r2.cloudflarestorage.com \
      --exclude ".gitignore" --exclude "*.DS_Store" --delete
    ```
+
+   The account ID is on the R2 overview page (it is the S3 endpoint's subdomain).
 
 3. ~~Disable the GitHub Pages deployment~~ done 2026-07-31 (user unpublished; the old `UCL.github.io/urban-energy` URL 404s — the R2 deployment is the sole live copy).
 
@@ -46,7 +45,7 @@ Short-term list complete 2026-07-31. The site is live under `noindex` at `https:
 1. Deposit code + data on Zenodo (submission checklist items 2–3) and paste the DOIs into `about.html` §The research.
 2. Post the preprint; add its link to `about.html`.
 3. Announce quietly if desired (the `noindex` tags stay).
-4. Submission front-matter, reviewed internally before submission: co-author surnames, acknowledgements, suggested referees.
+4. Submission front-matter, reviewed internally before submission.
 
 ## Full launch (on acceptance) — user actions
 
