@@ -12,6 +12,7 @@ uv run python stats/lock_in.py
 uv run python stats/access_profile.py
 uv run python stats/travel_energy.py
 uv run python stats/maup_scale.py
+uv run python stats/mixed_use.py
 uv run python stats/scenarios.py
 cd paper/latex && latexmk -pdf main.tex extended_data.tex
 ```

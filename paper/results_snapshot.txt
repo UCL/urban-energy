@@ -11,6 +11,9 @@
 # 2026-07-31: public-transport sensitivity appended to the travel_energy section
 # (bus/rail/Underground mileage from the same NTS table, TS061 commute-share
 # allocator; total gap 2.12x -> 1.99x assumed, 1.84x at the car-intensity ceiling).
+# 2026-07-31: stats/mixed_use.py added — jobs-housing balance carries no independent
+# signal on the rate at MSOA scale (x0.98), so the mixed-use half of the
+# recommendation is attributed to the literature, not to these data.
 
 ############################################################
 # stats/form_size_decomposition.py
@@ -387,6 +390,40 @@ PUBLIC-TRANSPORT SENSITIVITY (not in the headline energy axis)
 
   Every row preserves the measured NTS class marginals for both modes;
   only the intensity assumption varies.
+
+############################################################
+# stats/mixed_use.py
+############################################################
+======================================================================
+MIXED USE — jobs-housing balance alongside dwelling-type composition
+======================================================================
+Assembling OA data …
+  178,353 OAs
+    heat   median   13,248 kWh/hh
+    travel median    6,297 kWh/hh
+    dominant type: Flat 32,743  Terraced 43,946  Semi 58,318  Detached 43,346
+
+  Mix by dominant dwelling type (medians):
+    type         jobs/hh   balance    types reachable (q1)
+    Flat            0.32      0.41                    3.63
+    Terraced        0.31      0.45                    3.89
+    Semi            0.28      0.42                    4.05
+    Detached        0.43      0.55                    3.56
+
+    (balance = 1 - |jobs - households| / (jobs + households): 1 is parity,
+     0 is wholly dormitory or wholly workplace. q1 is Hill diversity over
+     the six destination types within 1,600 m, descriptive only.)
+
+  Effect of a p10 -> p90 shift in jobs-housing balance, holding
+  dwelling-type composition and the confounds:
+    scale        units      p10      p90   amenities    energy      rate
+    OA         178,353     0.16     0.87        1.15      1.07      1.07
+    MSOA         6,855     0.50     0.95        1.00      1.02      0.98
+
+  Finding: at MSOA scale the rate moves x0.98, so once dwelling-type
+  composition is held, jobs-housing balance carries no independent signal. These
+  data support the compact-form recommendation and do not support the mixed-use
+  half of it either way.
 
 ############################################################
 # stats/maup_scale.py
