@@ -31,7 +31,7 @@ All aggregates are household-weighted and computed once at export, at every leve
 
 ## Build pipeline (one command)
 
-`stats/nepi_score.py` → `oa_nepi_score.parquet` → an export script writes GeoJSON, shards the postcode index, runs tippecanoe/pmtiles, and copies the static site into `docs/` (or a `site/` branch). Rebuild only when the score changes; the site itself never needs maintenance between rebuilds.
+`stats/nepi_score.py` → `oa_nepi_score.parquet` → an export script writes GeoJSON, shards the postcode index, runs tippecanoe/pmtiles, and copies the static site into `site/` (or a `site/` branch). Rebuild only when the score changes; the site itself never needs maintenance between rebuilds.
 
 ## Launch gating
 

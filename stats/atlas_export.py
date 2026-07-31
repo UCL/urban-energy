@@ -9,18 +9,18 @@ static, no backend:
   site. Each level carries its own pre-aggregated attributes, so a click at any
   scale reads summary statistics straight from the tile. Built via
   GeoJSONSeq → tippecanoe → pmtiles (both must be on PATH).
-* **Aggregates** — ``docs/data/aggregates.json``: the England panel plus a
+* **Aggregates** — ``site/data/aggregates.json``: the England panel plus a
   lightweight LAD rank table. Slider maths needs only five linear sums per
   unit (gas, fabric-treated gas, electricity, travel, EV-treated travel), all
   in GWh/yr; letter shifts ship only for current and full deployment.
-* **Meta** — ``docs/data/meta.json``: frozen band thresholds, technology
+* **Meta** — ``site/data/meta.json``: frozen band thresholds, technology
   constants and the paper's headline numbers (read from the ledger's
   ``numbers.json``, never hand-typed).
-* **Postcode index** — ``docs/data/pc/{OUTCODE}.json`` shards mapping each
+* **Postcode index** — ``site/data/pc/{OUTCODE}.json`` shards mapping each
   postcode to its OA and centroid, for client-side search.
 
 Tile property names are compressed; the mapping is in ``_OA_PROPS`` /
-``_UNIT_PROPS`` below and mirrored in ``docs/app.js``.
+``_UNIT_PROPS`` below and mirrored in ``site/app.js``.
 
 Run (score first: ``uv run python stats/nepi_score.py``):
     uv run python stats/atlas_export.py
@@ -46,12 +46,12 @@ PCODE_PATH = _STATS / "postcode_oa_lookup.parquet"
 BANDS_PATH = PROJECT_DIR / "dissemination" / "nepi_bands_2021.json"
 NUMBERS_PATH = PROJECT_DIR / "paper" / "latex" / "numbers.json"
 
-DOCS = PROJECT_DIR / "docs"
+DOCS = PROJECT_DIR / "site"
 BUILD = PROJECT_DIR / "temp" / "atlas_build"
 
 LETTERS = "ABCDEFG"
 
-#: OA tile properties (compressed → meaning; mirrored in docs/app.js).
+#: OA tile properties (compressed → meaning; mirrored in site/app.js).
 _OA_PROPS = {
     "id": "OA21CD",
     "dt": "dominant type",
@@ -136,7 +136,7 @@ def _load_frame() -> pd.DataFrame:
 
 
 def write_aggregates(df: pd.DataFrame) -> dict:
-    """England panel + LAD rank table → ``docs/data/aggregates.json``."""
+    """England panel + LAD rank table → ``site/data/aggregates.json``."""
     england = _unit_row(df)
     england.update(_letter_counts(df["letter_energy"], df["total_hh"], "e"))
     england.update(_letter_counts(df["letter_access"], df["total_hh"], "a"))
@@ -166,7 +166,7 @@ def write_aggregates(df: pd.DataFrame) -> dict:
 
 
 def write_meta() -> None:
-    """Bands, constants and paper headlines → ``docs/data/meta.json``."""
+    """Bands, constants and paper headlines → ``site/data/meta.json``."""
     bands = json.loads(BANDS_PATH.read_text())
     numbers = json.loads(NUMBERS_PATH.read_text())
     from scenarios import BOILER_EFF, COP
@@ -196,7 +196,7 @@ def write_meta() -> None:
 
 
 def write_postcode_index(df: pd.DataFrame, centroids: pd.DataFrame) -> int:
-    """Postcode → (OA, lon, lat) shards keyed by outcode → ``docs/data/pc/``."""
+    """Postcode → (OA, lon, lat) shards keyed by outcode → ``site/data/pc/``."""
     pc = pd.read_parquet(PCODE_PATH, columns=["Postcode", "OA21CD"])
     pc = pc.merge(centroids, on="OA21CD", how="inner")
     pc = pc[pc["OA21CD"].isin(df["OA21CD"])]
@@ -220,7 +220,7 @@ def write_postcode_index(df: pd.DataFrame, centroids: pd.DataFrame) -> int:
 
 
 def _tippecanoe(src: Path, layer: str, minz: int, maxz: int) -> Path:
-    """GeoJSONSeq → MBTiles → PMTiles under ``docs/tiles/``."""
+    """GeoJSONSeq → MBTiles → PMTiles under ``site/tiles/``."""
     mb = BUILD / f"{layer}.mbtiles"
     subprocess.run(
         [

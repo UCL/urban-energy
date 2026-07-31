@@ -6,8 +6,8 @@ The Atlas builds now and launches in two stages: soft-launch with the preprint, 
 
 ```bash
 uv run python stats/nepi_score.py     # re-score (bands stay frozen)
-uv run python stats/atlas_export.py   # aggregates + tiles + postcode shards → docs/
-npx http-server docs -p 8000          # local preview at http://localhost:8000
+uv run python stats/atlas_export.py   # aggregates + tiles + postcode shards → site/
+npx http-server site -p 8000          # local preview at http://localhost:8000
 ```
 
 The preview server must support HTTP `Range` requests (PMTiles fetches byte ranges); `npx http-server` does, Python's `http.server` does not. GitHub Pages and Cloudflare Pages both do.
@@ -15,24 +15,24 @@ The preview server must support HTTP `Range` requests (PMTiles fetches byte rang
 ```bash
 ```
 
-Heavy outputs (`docs/tiles/`, `docs/data/pc/`) are gitignored and regenerable; the site source (`index.html`, `app.js`, `style.css`, `about.html`, `vendor/`) is tracked.
+Heavy outputs (`site/tiles/`, `site/data/pc/`) are gitignored and regenerable; the site source (`index.html`, `app.js`, `style.css`, `about.html`, `vendor/`) is tracked.
 
 ## Prepared
 
-- Static site in `docs/`: map (LAD/LSOA/OA zoom ladder), England panel with live lever totals, unit cards, OA label card, postcode search, about page. No backend, no CDN dependencies (MapLibre 4.7.1 and pmtiles 3.2.1 vendored).
+- Static site in `site/`: map (LAD/LSOA/OA zoom ladder), England panel with live lever totals, unit cards, OA label card, postcode search, about page. No backend, no CDN dependencies (MapLibre 4.7.1 and pmtiles 3.2.1 vendored).
 - `noindex` meta tags on both pages — the soft-launch guard.
 
 ## Hosting (decided 2026-07-31): all-R2
 
-The existing Cloudflare R2 bucket `nepi-atlas` (public) hosts the whole site: sync all of `docs/` into it. The tile URLs in `app.js` are relative, so no code change is needed. The bucket still holds the May 2026 `england_oa.pmtiles` (259.72 MB, old A–G schema) — delete it after the new upload; the new site cannot read it. GitHub Pages was rejected (would commit 153 MB of regenerable binaries per rebuild); Cloudflare Pages direct deploy is blocked by its 25 MB per-file cap (`oa.pmtiles` is 68 MB). The `r2.dev` public URL is rate-limited by Cloudflare — acceptable while the site is quiet under `noindex`; attach a custom domain to the bucket at full launch.
+The existing Cloudflare R2 bucket `nepi-atlas` (public) hosts the whole site: sync all of `site/` into it. The tile URLs in `app.js` are relative, so no code change is needed. The bucket still holds the May 2026 `england_oa.pmtiles` (259.72 MB, old A–G schema) — delete it after the new upload; the new site cannot read it. GitHub Pages was rejected (would commit 153 MB of regenerable binaries per rebuild); Cloudflare Pages direct deploy is blocked by its 25 MB per-file cap (`oa.pmtiles` is 68 MB). The `r2.dev` public URL is rate-limited by Cloudflare — acceptable while the site is quiet under `noindex`; attach a custom domain to the bucket at full launch.
 
 ## Short term — user actions (no preprint needed; `noindex` stays)
 
 1. ~~Browser pass~~ done 2026-07-31 (fixes shipped: per-household saving tile, semantic tile borders, preset highlight, layout breakpoints, prose pass).
-2. ~~Deploy~~ done 2026-07-31. The repeatable command (also removes anything no longer in `docs/`, and keeps Finder junk out):
+2. ~~Deploy~~ done 2026-07-31. The repeatable command (also removes anything no longer in `site/`, and keeps Finder junk out):
 
    ```bash
-   aws s3 sync docs/ s3://nepi-atlas/ --profile r2 \
+   aws s3 sync site/ s3://nepi-atlas/ --profile r2 \
      --endpoint-url https://2bd46b6a7eecefc011228bfc799476d8.r2.cloudflarestorage.com \
      --exclude ".gitignore" --exclude "*.DS_Store" --delete
    ```
