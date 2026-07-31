@@ -14,10 +14,14 @@ Two senses of "mix" are kept apart, because they are not the same quantity:
   workplace. Workplace jobs are a separate register from the amenity points that
   form the access numerator, so this can be used as a predictor without
   circularity.
-* **Destination-type diversity**: Hill diversity (q=1) over the six everyday
+* **Destination-type balance**: Hill diversity (q=1) over the six everyday
   destination types within 1,600 m (``net_mix1_1600``, from the network cache).
-  Reported descriptively only. It is computed from the same amenity points that
-  the access counts sum, so regressing access on it would be partly circular.
+  Reported descriptively only, for two reasons. It is computed from the same
+  amenity points that the access counts sum, so regressing access on it would be
+  partly circular; and balance is not what mixed use means, since it marks down a
+  high street holding many food outlets and one surgery. Richness and proximity
+  are the substance of mix, and the per-service walkable counts in
+  ``access_profile`` already show compact areas reaching more of every type.
 
 The test holds dwelling-type composition, so the balance coefficient answers the
 question the recommendation needs: at a given built form, does an area that mixes
@@ -267,9 +271,12 @@ def main() -> None:
         "   * Balance is one facet of mixed use. It says nothing about whether homes\n"
         "     and workplaces share a building or a street, which is what the planning\n"
         "     term usually means.\n"
-        "   * Destination-type diversity is not a compact-form gradient in these data\n"
-        "     (the table above): compact areas reach far more destinations, but not a\n"
-        "     more even spread of the six types."
+        "   * The q1 column is *balance*, the wrong construct for mixed use: it\n"
+        "     marks down a high street with many food outlets and one surgery.\n"
+        "     Mixed use is richness and proximity, which the per-service walkable\n"
+        "     counts in access_profile already carry, compact areas reaching more\n"
+        "     of every type within 1,600 m. Read q1 as a note on evenness, not as\n"
+        "     evidence about mix."
     )
 
 
