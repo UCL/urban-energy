@@ -25,6 +25,12 @@ constrained / maximum-entropy disaggregation):
   with no double-count.
 * **Energy:** × fleet intensity (DVLA `bev_share`) → kWh per household.
 
+The headline axis is car travel only. ``public_transport_report`` bounds that
+scope: bus, rail and Underground mileage from the same NTS table, disaggregated
+by the same constrained method with the Census TS061 commute share as allocator,
+added to the axis at an assumed per-passenger-mile intensity and again at the
+car-intensity ceiling. It reports to Extended Data, not to the headline.
+
 Inputs (built by `data/download_nts_mileage.py` and `data/download_ons_ruc.py`):
     - $DATA_DIR/statistics/nts_mileage_by_ruc.parquet
     - $DATA_DIR/statistics/oa21_ruc21.parquet
@@ -83,6 +89,40 @@ TS058_BAND_MIDPOINTS_KM: dict[str, float] = {
     "ts058_Distance travelled to work: 60km and over": 75.0,
 }
 
+#: Census TS061 public-transport commute categories. Their share of an OA's
+#: commuters is the within-class allocator of the public-transport sensitivity,
+#: standing in the same place as cars per person in the car allocator.
+TS061_PT_COLS: list[str] = [
+    "ts061_Method of travel to workplace: Underground, metro, light rail, tram",
+    "ts061_Method of travel to workplace: Train",
+    "ts061_Method of travel to workplace: Bus, minibus or coach",
+]
+TS061_TOTAL_COL: str = (
+    "ts061_Method of travel to workplace: Total: All usual residents aged 16 years "
+    "and over in employment the week before the census"
+)
+
+#: Floor on the public-transport commute share. An OA where nobody commutes by
+#: public transport still makes some bus and rail journeys, so a zero share would
+#: allocate it no mileage at all; the floor keeps every OA in the distribution.
+PT_SHARE_FLOOR: float = 0.01
+
+#: Public-transport energy per passenger-mile, expressed as a fraction of the
+#: petrol-car intensity so that no external emission factor enters the sweep.
+#:
+#: ``PT_INTENSITY_ASSUMED`` is the working assumption. Rail and Underground carry
+#: about three-quarters of public-transport mileage in NTS9904 and run well below
+#: a car per passenger-mile; buses run near a car. Weighting the two by that
+#: mileage mix lands near a third, and 0.35 rounds it upward. The value is an
+#: assumption, not a measurement: energy per passenger-mile depends on vehicle
+#: load factors that no Output-Area source records.
+#:
+#: ``PT_INTENSITY_CEILING`` charges every public-transport passenger-mile as
+#: though it had been driven alone in a petrol car. No bus, tram or train
+#: approaches it, so it is an upper bound requiring no external factor at all.
+PT_INTENSITY_ASSUMED: float = 0.35
+PT_INTENSITY_CEILING: float = 1.0
+
 _NTS_PATH = DATA_DIR / "statistics" / "nts_mileage_by_ruc.parquet"
 _RUC_PATH = DATA_DIR / "statistics" / "oa21_ruc21.parquet"
 
@@ -92,6 +132,7 @@ _RUC_PATH = DATA_DIR / "statistics" / "oa21_ruc21.parquet"
 _TRAVEL_COLS = [
     "RUC21NM",
     "ruc_class_miles_pp",
+    "ruc_class_pt_miles_pp",
     "commute_km",
     "car_miles_per_person",
     "travel_kwh_per_mile",
@@ -124,21 +165,26 @@ def fleet_intensity_kwh_per_mile(lsoa: pd.DataFrame) -> pd.Series:
 def _join_ruc_mileage(lsoa: pd.DataFrame) -> pd.DataFrame:
     """Merge each OA's 2021 rural-urban class and its NTS class mileage."""
     ruc = pd.read_parquet(_RUC_PATH)[["OA21CD", "RUC21NM"]]
-    nts = pd.read_parquet(_NTS_PATH)[["ruc21_name", "car_miles_per_person"]]
+    nts_cols = ["ruc21_name", "car_miles_per_person", "pt_miles_per_person"]
+    nts = pd.read_parquet(_NTS_PATH)[nts_cols]
     # Class names differ only in capitalisation between the two sources.
     ruc["_key"] = ruc["RUC21NM"].str.lower().str.strip()
     nts["_key"] = nts["ruc21_name"].str.lower().str.strip()
     # NTS has one row per rural-urban class; the RUC lookup one row per OA.
-    ruc = ruc.merge(
-        nts[["_key", "car_miles_per_person"]], on="_key", how="left", validate="m:1"
-    )
+    mileage_cols = ["car_miles_per_person", "pt_miles_per_person"]
+    ruc = ruc.merge(nts[["_key", *mileage_cols]], on="_key", how="left", validate="m:1")
     out = lsoa.merge(
-        ruc[["OA21CD", "RUC21NM", "car_miles_per_person"]],
+        ruc[["OA21CD", "RUC21NM", *mileage_cols]],
         on="OA21CD",
         how="left",
         validate="m:1",
     )
-    return out.rename(columns={"car_miles_per_person": "ruc_class_miles_pp"})
+    return out.rename(
+        columns={
+            "car_miles_per_person": "ruc_class_miles_pp",
+            "pt_miles_per_person": "ruc_class_pt_miles_pp",
+        }
+    )
 
 
 def compute_travel_energy(
@@ -227,6 +273,261 @@ def compute_travel_energy(
         df["car_miles_per_person"] * hh_size * df["travel_kwh_per_mile"]
     )
     return df
+
+
+#: Columns produced by :func:`compute_pt_energy`, dropped on re-entry so the
+#: intensity sweep can call it repeatedly on the same frame.
+_PT_COLS = ["pt_share_commute", "pt_miles_per_person", "pt_kwh_per_hh"]
+
+
+def pt_commute_share(df: pd.DataFrame) -> pd.Series:
+    """
+    Share of an OA's commuters travelling to work by public transport (TS061).
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        OA frame carrying the Census TS061 method-of-travel-to-work columns.
+
+    Returns
+    -------
+    pandas.Series
+        Bus, train, metro and tram commuters over all commuters. ``NaN`` where
+        the table records no commuters at all.
+    """
+    num = sum(
+        pd.to_numeric(df[col], errors="coerce").fillna(0.0) for col in TS061_PT_COLS
+    )
+    den = pd.to_numeric(df[TS061_TOTAL_COL], errors="coerce")
+    return num / den.replace(0, np.nan)
+
+
+def compute_pt_energy(
+    df: pd.DataFrame,
+    intensity_ratio: float = 1.0,
+    allocate: bool = True,
+) -> pd.DataFrame:
+    """
+    Add public-transport passenger mileage and its energy (kWh per household).
+
+    The construction mirrors :func:`compute_travel_energy` exactly: the measured
+    NTS class marginal for bus, rail and Underground mileage is redistributed
+    within each rural-urban class by a local allocator, normalised so the
+    population-weighted class mean is preserved. Only the allocator differs, the
+    public-transport commute share standing where cars per person stands for car
+    travel.
+
+    This does not enter the headline energy axis. It exists to bound how far the
+    reported form gradient could move if public-transport energy were charged to
+    residents (:func:`public_transport_report`).
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        OA frame that has been through :func:`compute_travel_energy`, so it
+        carries ``RUC21NM`` and ``ruc_class_pt_miles_pp``, plus the TS061 columns.
+    intensity_ratio : float, default 1.0
+        Public-transport energy per passenger-mile as a fraction of the petrol-car
+        intensity :data:`KWH_PER_MILE_ICE`. 1.0 charges every passenger-mile as
+        though it had been driven alone in a petrol car, an upper bound no mode
+        approaches.
+    allocate : bool, default True
+        Whether to redistribute the class mileage by the commute-share allocator.
+        ``False`` gives every OA in a class the class average, the neutral variant
+        that carries the measured between-class gradient and nothing else.
+
+    Returns
+    -------
+    pandas.DataFrame
+        ``df`` plus ``pt_share_commute``, ``pt_miles_per_person`` and
+        ``pt_kwh_per_hh``.
+    """
+    df = df.drop(columns=[c for c in _PT_COLS if c in df.columns])
+    hh_size = pd.to_numeric(df["avg_hh_size"], errors="coerce")
+    pop = pd.to_numeric(df["total_people"], errors="coerce")
+    class_pt = pd.to_numeric(df["ruc_class_pt_miles_pp"], errors="coerce")
+
+    share = pt_commute_share(df)
+    df["pt_share_commute"] = share
+    w = share.clip(lower=PT_SHARE_FLOOR) if allocate else pd.Series(1.0, index=df.index)
+
+    valid = w.notna() & pop.notna() & (pop > 0) & class_pt.notna()
+    tmp = pd.DataFrame(
+        {
+            "ruc": df["RUC21NM"],
+            "wp": np.where(valid, w * pop, np.nan),
+            "pv": np.where(valid, pop, np.nan),
+        }
+    )
+    wbar = tmp.groupby("ruc")["wp"].transform("sum") / tmp.groupby("ruc")[
+        "pv"
+    ].transform("sum")
+
+    allocated = valid & (wbar > 0)
+    df["pt_miles_per_person"] = np.where(allocated, class_pt * w / wbar, class_pt)
+    df["pt_kwh_per_hh"] = (
+        df["pt_miles_per_person"] * hh_size * intensity_ratio * KWH_PER_MILE_ICE
+    )
+    return df
+
+
+def public_transport_report() -> None:
+    """
+    Bound the effect of charging public-transport energy to residents.
+
+    The headline energy axis counts car travel only. Public transport is measured
+    by the same National Travel Survey table, so the same constrained
+    disaggregation can be run for it; what has no measured counterpart is the
+    energy per passenger-mile, which depends on vehicle load factors that vary by
+    mode, place and time of day.
+
+    Three rows are reported: the headline axis, the axis with public transport at
+    the assumed intensity, and the axis with every passenger-mile charged at the
+    petrol-car intensity. The last needs no external factor, so it bounds the
+    question outright. Both public-transport rows use the TS061 commute-share
+    allocator, which concentrates the mileage in the compact areas that use it and
+    is therefore the variant least favourable to the reported gap; the
+    class-average allocator is reported alongside for the table caption.
+    """
+    import ledger
+    from form_size_decomposition import (
+        _SHARE_FRACS,
+        _comp_ols,
+        _compositional_frame,
+        _deprivation_cols,
+        _hdd_cols,
+        _tenure_cols,
+    )
+    from inference import CLUSTER_COL, fmt_ci, log_contrast_ci
+    from oa_data import load_and_aggregate
+
+    def _cell(c: tuple[float, float, float, float]) -> str:
+        """One table cell: point estimate and its clustered interval."""
+        return f"{ledger.pt(c[0])}$\\times$ {ledger.ci(c[1], c[2])}"
+
+    base = load_and_aggregate()
+    cf = _compositional_frame(base)
+    confounds = (
+        ["median_build_year"] + _deprivation_cols(cf) + _tenure_cols(cf) + _hdd_cols(cf)
+    )
+    heat = pd.to_numeric(cf["building_kwh_per_hh"], errors="coerce")
+    car = pd.to_numeric(cf["transport_kwh_per_hh_total_est"], errors="coerce")
+
+    keep = [*_SHARE_FRACS, *confounds, "total_hh", "building_kwh_per_hh"]
+    cf = cf[heat.notna() & car.notna()].dropna(subset=keep).copy()
+    heat = pd.to_numeric(cf["building_kwh_per_hh"], errors="coerce")
+    car = pd.to_numeric(cf["transport_kwh_per_hh_total_est"], errors="coerce")
+
+    print("\n" + "=" * 70)
+    print("PUBLIC-TRANSPORT SENSITIVITY (not in the headline energy axis)")
+    print("=" * 70)
+    print(f"\n  Common sample: N = {len(cf):,} OAs")
+
+    nts = pd.read_parquet(_NTS_PATH)
+    print("\n  Measured NTS9904 class marginals (miles per person per year):")
+    print(f"    {'class':<48s} {'car':>7s} {'public transport':>17s} {'rail %':>7s}")
+    for _, r in nts.iterrows():
+        share = r["pt_rail_miles_per_person"] / r["pt_miles_per_person"]
+        print(
+            f"    {r['ruc21_name']:<48s} {r['car_miles_per_person']:>7.0f} "
+            f"{r['pt_miles_per_person']:>17.0f} {share:>6.0%}"
+        )
+
+    # Population-weighted rail share of public-transport mileage: the mix that
+    # justifies the assumed intensity (rail runs well below a car per
+    # passenger-mile, buses near it).
+    pop_by_class = (
+        pd.to_numeric(base["total_people"], errors="coerce")
+        .groupby(base["RUC21NM"].str.lower().str.strip())
+        .sum()
+    )
+    key = nts["ruc21_name"].str.lower().str.strip()
+    wt = key.map(pop_by_class).fillna(0.0)
+    rail_share = float(
+        (nts["pt_rail_miles_per_person"] * wt).sum()
+        / (nts["pt_miles_per_person"] * wt).sum()
+    )
+    print(f"\n  Rail and Underground are {rail_share:.0%} of public-transport mileage")
+
+    def _gap(series: pd.Series) -> tuple[float, float, float, float]:
+        """Compositional pure-type Det:Flat ratio for one energy definition."""
+        cf["_y"] = np.log(series.clip(lower=1))
+        m = _comp_ols(
+            cf, "_y", _SHARE_FRACS + confounds, "total_hh", cluster_col=CLUSTER_COL
+        )
+        if m is None:
+            msg = "compositional fit failed on the public-transport sample"
+            raise RuntimeError(msg)
+        return log_contrast_ci(m, "s_detached", "s_flat")
+
+    base_travel = _gap(car)
+    base_total = _gap(heat + car)
+    print("\n  Baseline on this sample (car travel only):")
+    print(f"    travel Det:Flat {fmt_ci(base_travel)}")
+    print(f"    total  Det:Flat {fmt_ci(base_total)}")
+
+    def _variant(
+        ratio: float, allocate: bool
+    ) -> tuple[tuple[float, float, float, float], tuple[float, float, float, float]]:
+        """Travel and total Det:Flat ratios with public transport added."""
+        d = compute_pt_energy(cf, intensity_ratio=ratio, allocate=allocate)
+        pt_kwh = pd.to_numeric(d["pt_kwh_per_hh"], errors="coerce").fillna(0.0)
+        return _gap(car + pt_kwh), _gap(heat + car + pt_kwh)
+
+    assumed_pct = f"{PT_INTENSITY_ASSUMED:.2f}"
+    labels = (
+        "Excluded (headline axis)",
+        f"Included, at {assumed_pct}$\\times$ car intensity",
+        "Included, at car intensity (ceiling)",
+    )
+    a_trav, a_tot = _variant(PT_INTENSITY_ASSUMED, allocate=True)
+    c_trav, c_tot = _variant(PT_INTENSITY_CEILING, allocate=True)
+
+    rows = [
+        f"{labels[0]} & {_cell(base_travel)} & {_cell(base_total)} \\\\",
+        f"{labels[1]} & {_cell(a_trav)} & {_cell(a_tot)} \\\\",
+        f"{labels[2]} & {_cell(c_trav)} & {_cell(c_tot)} \\\\",
+    ]
+
+    print("\n  Commute-share allocator (the variant least favourable to the gap):")
+    print(f"    {'public-transport energy':<38s}{'travel':>22s}{'total':>22s}")
+    for label, trav, tot in (
+        ("excluded (headline axis)", base_travel, base_total),
+        (f"included, {assumed_pct}× car intensity", a_trav, a_tot),
+        ("included, at car intensity", c_trav, c_tot),
+    ):
+        print(f"    {label:<38s}{fmt_ci(trav):>22s}{fmt_ci(tot):>22s}")
+
+    # Class-average allocator: the between-class gradient with no within-class
+    # signal. Recorded for the table caption rather than given its own rows.
+    _, ca_tot = _variant(PT_INTENSITY_ASSUMED, allocate=False)
+    _, cc_tot = _variant(PT_INTENSITY_CEILING, allocate=False)
+    print(
+        f"\n  Class-average allocator, total: {ledger.pt(ca_tot[0])}× at "
+        f"{assumed_pct}× car intensity, {ledger.pt(cc_tot[0])}× at car intensity"
+    )
+
+    ledger.record(
+        ptBaseTotal=ledger.pt(base_total[0]),
+        ptSampleN=f"{len(cf):,}",
+        ptIntensityAssumed=assumed_pct,
+        ptRailShare=f"{rail_share * 100:.0f}",
+        ptAssumedTravel=ledger.pt(a_trav[0]),
+        ptAssumedTravelCI=ledger.ci(a_trav[1], a_trav[2]),
+        ptAssumedTotal=ledger.pt(a_tot[0]),
+        ptAssumedTotalCI=ledger.ci(a_tot[1], a_tot[2]),
+        ptCeilingTravel=ledger.pt(c_trav[0]),
+        ptCeilingTravelCI=ledger.ci(c_trav[1], c_trav[2]),
+        ptCeilingTotal=ledger.pt(c_tot[0]),
+        ptCeilingTotalCI=ledger.ci(c_tot[1], c_tot[2]),
+        ptClassAssumedTotal=ledger.pt(ca_tot[0]),
+        ptClassCeilingTotal=ledger.pt(cc_tot[0]),
+    )
+    ledger.table("publictransport", "\n".join(rows) + "\n")
+    print(
+        "\n  Every row preserves the measured NTS class marginals for both modes;\n"
+        "  only the intensity assumption varies."
+    )
 
 
 def _demo() -> None:
@@ -401,3 +702,4 @@ def sensitivity_report() -> None:
 if __name__ == "__main__":
     _demo()
     sensitivity_report()
+    public_transport_report()

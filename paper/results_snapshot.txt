@@ -8,6 +8,9 @@
 # Amenity basket: cleaned six-service basket (2026-07-09): hospital dropped
 # (NHS ETS = all trust sites), greenspace filtered to parks/fields/play/allotments,
 # grocery = supermarkets + convenience. On-foot amenity gap 27x, rate 3.9x.
+# 2026-07-31: public-transport sensitivity appended to the travel_energy section
+# (bus/rail/Underground mileage from the same NTS table, TS061 commute-share
+# allocator; total gap 2.12x -> 1.99x assumed, 1.84x at the car-intensity ceiling).
 
 ############################################################
 # stats/form_size_decomposition.py
@@ -352,6 +355,38 @@ TRAVEL-ENERGY SENSITIVITY
     alpha 0.0:  dominant-type median 1.52×   compositional 2.50× [2.35, 2.65]
 
   (TRIPS_PER_YEAR=370 sets the access catchment radius in oa_network_access.py; a full sweep needs the network cache rebuilt and is documented there, not run here.)
+
+======================================================================
+PUBLIC-TRANSPORT SENSITIVITY (not in the headline energy axis)
+======================================================================
+
+  Common sample: N = 178,347 OAs
+
+  Measured NTS9904 class marginals (miles per person per year):
+    class                                                car  public transport  rail %
+    Urban: Nearer to a major town or city               2534              1040    73%
+    Urban: Further from a major town or city            3223              1051    76%
+    Larger Rural: Nearer to a major town or city        4279               605    71%
+    Larger Rural: Further from a major town or city     4671               945    62%
+    Smaller Rural: Nearer to a major town or city       5217               633    75%
+    Smaller Rural: Further from a major town or city    4767               958    77%
+
+  Rail and Underground are 73% of public-transport mileage
+
+  Baseline on this sample (car travel only):
+    travel Det:Flat 3.07× [2.81, 3.35]
+    total  Det:Flat 2.12× [2.01, 2.24]
+
+  Commute-share allocator (the variant least favourable to the gap):
+    public-transport energy                               travel                 total
+    excluded (headline axis)                  3.07× [2.81, 3.35]    2.12× [2.01, 2.24]
+    included, 0.35× car intensity             2.55× [2.40, 2.71]    1.99× [1.90, 2.10]
+    included, at car intensity                2.13× [2.00, 2.26]    1.84× [1.74, 1.93]
+
+  Class-average allocator, total: 2.07× at 0.35× car intensity, 1.98× at car intensity
+
+  Every row preserves the measured NTS class marginals for both modes;
+  only the intensity assumption varies.
 
 ############################################################
 # stats/maup_scale.py

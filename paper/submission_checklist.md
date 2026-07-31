@@ -27,7 +27,7 @@ A hand-typed result number in the manuscript is a bug. Static exceptions (kept l
 - GIAS record count verified against the built layer (50,631).
 
 - Manuscript: [latex/main.tex](latex/main.tex) → `main.pdf` (compiles clean, sn-nature reference style, 6 figures + 1 table, Extended Data cross-references wired).
-- Extended Data: [latex/extended_data.tex](latex/extended_data.tex) → `extended_data.pdf` (4 figures, 4 tables, numbers matched to [results_snapshot.txt](results_snapshot.txt)).
+- Extended Data: [latex/extended_data.tex](latex/extended_data.tex) → `extended_data.pdf` (4 figures, 5 tables, numbers matched to [results_snapshot.txt](results_snapshot.txt)). Table 5 is the public-transport sensitivity, written by `stats/travel_energy.py`.
 - Cover letter draft: `cover_letter.md`, kept local (gitignored submission correspondence).
 - Citation metadata: `CITATION.cff` and `.zenodo.json` at the repo root, ready for the archived release.
 - References: all cited keys resolve, and every cited entry was verified against the published record (2026-07-11). Four entries corrected (winkler2023 and summerfield2019 author lists, firth2024 authors + volume/issue/pages/year, ukgovernment2023 year/publisher); three citations added for previously unreferenced claims (patterson1996 energy productivity, sorrell2007 rebound, alonso1964 access capitalisation); miscast citations fixed (buyuklieva2023 dropped from "metered" claims, crawley2019 re-scoped to measurement error, ewing2017 meta-analysis now cited).

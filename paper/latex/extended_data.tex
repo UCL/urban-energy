@@ -96,4 +96,10 @@ People & Census 2021 TS001 & --- & resident population \\
 \input{tab_maup.tex}
 \end{table}
 
+\begin{table}[p]
+\caption{Public-transport sensitivity. The headline energy axis counts car travel only. Here bus, rail and Underground passenger mileage, measured by the same National Travel Survey table, is disaggregated to Output Areas by the same constrained method and added to the energy axis, on the common sample of \nepiptSampleN{} areas. Energy per passenger-mile has no measured counterpart, because it depends on vehicle load factors that no Output-Area source records, so it is expressed as a fraction of the petrol-car intensity. Rail and Underground carry \nepiptRailShare\% of public-transport mileage and run well below a car per passenger-mile, while buses run near one, which places the mileage-weighted blend near a third; \nepiptIntensityAssumed$\times$ rounds it upward. The final row charges every passenger-mile as though it had been driven alone in a petrol car, an upper bound no mode approaches and one that requires no external factor. Both public-transport rows allocate each class's mileage by the Census TS061 public-transport share of commuters, concentrating it in the compact areas that use it, which is the variant least favourable to the reported gap; allocating the class average to every area instead leaves the total gap at \nepiptClassAssumedTotal$\times$ and \nepiptClassCeilingTotal$\times$ respectively. Class marginals are preserved exactly in every row.}
+\label{edtab:publictransport}
+\input{tab_publictransport.tex}
+\end{table}
+
 \end{document}

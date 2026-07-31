@@ -19,8 +19,14 @@ and 2021-native.
 
 Output:
     - $DATA_DIR/statistics/nts_mileage_by_ruc.parquet
-        Columns: ruc21_name, car_miles_per_person, year
+        Columns: ruc21_name, car_miles_per_person, pt_miles_per_person,
+                 pt_rail_miles_per_person, year
         One row per 2021 rural-urban class.
+
+``pt_miles_per_person`` sums the bus, rail, Underground and other public-transport
+columns of the same table. It anchors the public-transport sensitivity in
+``stats/travel_energy.py`` and does not enter the headline energy axis, which is
+car travel only.
 """
 
 import pandas as pd
@@ -39,6 +45,24 @@ NTS9904_URL = (
 NTS9904_FILENAME = "nts9904.ods"
 SHEET = "NTS9904b_rural_urban"
 CAR_COL = "Car or van driver"
+
+# Public-transport modes, summed into one passenger-mileage figure per class for
+# the public-transport sensitivity (stats/travel_energy.py). Taxi and minicab are
+# excluded: those are car journeys, whose driver miles already sit in CAR_COL.
+PT_COLS = [
+    "Bus in London",
+    "Other local bus",
+    "Non-local bus",
+    "London Underground",
+    "Surface Rail",
+    "Other public transport [note 7]",
+]
+
+# Rail-type modes within PT_COLS. Reported separately because rail carries most
+# public-transport mileage and is far less energy-intensive per passenger-mile
+# than road modes, which is what justifies the assumed intensity in the
+# public-transport sensitivity (stats/travel_energy.py).
+PT_RAIL_COLS = ["London Underground", "Surface Rail"]
 
 # The six 2021 Rural-Urban Classification residence categories (NTS9904, 2024).
 RUC21_CLASSES = {
@@ -78,10 +102,21 @@ def main() -> None:
         latest_year = ruc21[year_col].dropna().astype(str).unique()[-1]
         latest = ruc21[ruc21[year_col].astype(str) == latest_year]
 
+    missing_pt = [c for c in PT_COLS if c not in latest.columns]
+    if missing_pt:
+        msg = f"NTS9904 sheet {SHEET} is missing public-transport columns: {missing_pt}"
+        raise KeyError(msg)
+    pt = sum(pd.to_numeric(latest[c], errors="coerce").fillna(0.0) for c in PT_COLS)
+    rail = sum(
+        pd.to_numeric(latest[c], errors="coerce").fillna(0.0) for c in PT_RAIL_COLS
+    )
+
     out = pd.DataFrame(
         {
             "ruc21_name": latest[ruc_col].astype(str).str.strip(),
             "car_miles_per_person": pd.to_numeric(latest[CAR_COL], errors="coerce"),
+            "pt_miles_per_person": pt,
+            "pt_rail_miles_per_person": rail,
             "year": latest_year,
         }
     ).reset_index(drop=True)
@@ -90,8 +125,12 @@ def main() -> None:
     out_path = OUTPUT_DIR / "nts_mileage_by_ruc.parquet"
     out.to_parquet(out_path, index=False)
     print(f"  Year: {latest_year}  ({len(out)} rural-urban classes)")
+    print(f"    {'class':<48s} {'car':>7s} {'public transport':>17s}")
     for _, r in out.iterrows():
-        print(f"    {r['ruc21_name']:<48s} {r['car_miles_per_person']:>7.0f}")
+        print(
+            f"    {r['ruc21_name']:<48s} {r['car_miles_per_person']:>7.0f} "
+            f"{r['pt_miles_per_person']:>17.0f}"
+        )
     print(f"  Saved {out_path}")
 
 

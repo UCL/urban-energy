@@ -30,7 +30,12 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 from oa_access import access_table
-from travel_energy import TS058_BAND_MIDPOINTS_KM, compute_travel_energy
+from travel_energy import (
+    TS058_BAND_MIDPOINTS_KM,
+    TS061_PT_COLS,
+    TS061_TOTAL_COL,
+    compute_travel_energy,
+)
 
 from urban_energy.paths import DATA_DIR
 
@@ -96,6 +101,8 @@ _CENSUS_COLS = [
     _TS054_PRIVATE,
     *_TS062_ALL,  # NS-SeC — self-selection robustness control
     *TS058_BAND_MIDPOINTS_KM,  # commute distance → travel disaggregation
+    *TS061_PT_COLS,  # public-transport commute share → PT sensitivity allocator
+    TS061_TOTAL_COL,
 ]
 _ENERGY_COLS = [
     "OA21CD",

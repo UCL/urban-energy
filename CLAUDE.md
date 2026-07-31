@@ -23,7 +23,7 @@ urban-energy/
 ├── CLAUDE.md                  # This file — technical brief
 ├── paper/
 │   ├── latex/main.tex         # The manuscript (ledger-wired numbers)
-│   ├── latex/extended_data.tex # Extended Data (4 figures + 4 tables)
+│   ├── latex/extended_data.tex # Extended Data (4 figures + 5 tables)
 │   ├── summary.md             # Narrative two-axis statement (companion)
 │   ├── literature_review.md   # Thematic literature review
 │   └── references.bib         # BibTeX bibliography
@@ -36,7 +36,7 @@ urban-energy/
 │   ├── oa_network_access.py   # Network access (cityseer over OS Open Roads) → cached curve per OA
 │   ├── oa_access.py           # Straight-line KD-tree access (counts within 1,600 m) — cached
 │   ├── inference.py           # Delta-method CIs + LAD-cluster bootstrap (999 reps)
-│   ├── travel_energy.py       # NTS-anchored car-travel energy (constrained disaggregation)
+│   ├── travel_energy.py       # NTS-anchored car-travel energy (constrained disaggregation) + public-transport bound
 │   ├── access_profile.py      # Per-service access counts + ×/kWh (incl. grocery, jobs)
 │   ├── lock_in.py             # Residual energy gap after best fabric + full EV (fabric+EV bound, 1.51×)
 │   ├── scenarios.py           # Decarbonisation scenario ladder: fabric/heat-pump/EV as separate levers, CCC pathway
@@ -181,7 +181,7 @@ are run on demand rather than wired as pipeline stages.
 |--------|------------------|
 | `oa_network_access.py` | **Network access** (cityseer over OS Open Roads): network built **once**, then the full amenity-vs-distance curve (1,600 m → 25.6 km) for every OA in one pass → `oa_network_access.parquet` (~15 min) |
 | `oa_access.py` | Straight-line KD-tree counts within 1,600 m — a fast cross-check, cached |
-| `travel_energy.py` | Total car-travel energy by constrained disaggregation of measured NTS9904 mileage (the `compute_travel_energy` the loader calls) |
+| `travel_energy.py` | Total car-travel energy by constrained disaggregation of measured NTS9904 mileage (the `compute_travel_energy` the loader calls). `public_transport_report` adds the **public-transport bound**: bus/rail/Underground mileage from the same NTS table, same disaggregation, TS061 commute share as allocator — total gap 2.12× → 1.99× at an assumed 0.35× car intensity, → 1.84× at the car-intensity ceiling (Extended Data Table 5) |
 | `access_profile.py` | Access gaps: on-foot (network 1,600 m) **~27×**, 25 km drive **~11–14×**, and the rate **~3.9× access/kWh** |
 | `lock_in.py` | Energy gap surviving best-fabric + full EV, the fabric+EV bound (per dwelling 2.12× → 1.51×; at equal family size 1.71× → 1.18×) |
 | `scenarios.py` | Decarbonisation scenario ladder — fabric / heat-pump / EV as **separate** levers, at CCC 7CB Balanced Pathway 2040 uptakes + full deployment. Fabric closes ~20%, heat pumps ~2% wider, EVs ~18%, full rollout leaves 69%; access unchanged in all |

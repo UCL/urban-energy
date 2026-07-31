@@ -97,6 +97,12 @@ _TABLES: dict[str, dict[str, object]] = {
         "Home (medians) & Total (medians) \\\\",
         "parts": ["maup"],
     },
+    "publictransport": {
+        "cols": "lcc",
+        "header": "Public-transport energy & Travel Det:Flat [95\\% CI] & "
+        "Total Det:Flat [95\\% CI] \\\\",
+        "parts": ["publictransport"],
+    },
 }
 
 _PARTS = LATEX_DIR / "tables.json"
