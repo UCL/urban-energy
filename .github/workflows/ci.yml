@@ -10,7 +10,8 @@ jobs:
     env:
       # The data layer is not downloaded in CI; tests use synthetic frames only.
       # A placeholder keeps urban_energy.paths importable (it requires the var).
-      URBAN_ENERGY_DATA_DIR: ${{ runner.temp }}/urban-energy-data
+      # A literal path: the runner context is not available in job-level env.
+      URBAN_ENERGY_DATA_DIR: /tmp/urban-energy-data
     steps:
       - uses: actions/checkout@v4
 
