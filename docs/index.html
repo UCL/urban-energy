@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex">
 <title>NEPI Atlas — the energy productivity of England's neighbourhoods</title>
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 <header>
@@ -33,7 +33,7 @@
     <details id="intro" open>
       <summary>How to read this map</summary>
       <p>Every neighbourhood is graded from <b>A to G</b> on access per kilowatt-hour, the everyday access it provides for the energy its households use. Each band held one seventh of England's households in 2021, and the thresholds are frozen, so a grade changes only when the underlying quantities change.</p>
-      <p>Click any area to see its grade and the quantities behind it. The levers apply insulation, heat pumps and electric vehicles at any uptake and re-grade the map. They change energy use only. Access never changes, because no technology moves destinations closer.</p>
+      <p>Click any area to see its grade and the quantities behind it. The levers apply insulation, heat pumps and electric vehicles at any uptake and re-grade the map. They change only energy use; access stays the same, because the levers do not move any destinations.</p>
     </details>
     <section id="national">
       <h2>England</h2>
@@ -41,8 +41,8 @@
       <div class="statrow">
         <div class="stat"><span id="n-median"></span><small id="n-median-sub"></small><label>median grade</label></div>
         <div class="stat"><span id="n-energy"></span><small id="n-energy-sub"></small><label>annual energy, homes + cars</label></div>
-        <div class="stat"><span id="n-saving"></span><small id="n-saving-sub"></small><label>saved per year</label></div>
-        <div class="stat" title="Energy per household in detached-dominant areas against flat-dominant areas, at the current lever settings"><span id="n-lockin"></span><small id="n-lockin-sub"></small><label>morphological penalty per household</label></div>
+        <div class="stat stat-good"><span id="n-saving"></span><small id="n-saving-sub"></small><label>annual saving per household</label></div>
+        <div class="stat stat-bad" title="Energy per household in detached-dominant areas against flat-dominant areas, at the current lever settings"><span id="n-lockin"></span><small id="n-lockin-sub"></small><label>annual morphological penalty per household</label></div>
       </div>
       <p class="note">All four tiles follow the lever settings below.</p>
       <h3>Rate letters, share of households</h3>
@@ -87,6 +87,6 @@
 
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/pmtiles.js"></script>
-<script src="app.js?v=16"></script>
+<script src="app.js?v=18"></script>
 </body>
 </html>

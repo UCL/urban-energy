@@ -22,18 +22,28 @@ Heavy outputs (`docs/tiles/`, `docs/data/pc/`) are gitignored and regenerable; t
 - Static site in `docs/`: map (LAD/LSOA/OA zoom ladder), England panel with live lever totals, unit cards, OA label card, postcode search, about page. No backend, no CDN dependencies (MapLibre 4.7.1 and pmtiles 3.2.1 vendored).
 - `noindex` meta tags on both pages — the soft-launch guard.
 
-## Soft-launch (with the preprint) — user actions
+## Hosting (decided 2026-07-31): all-R2
 
-1. Choose hosting: GitHub Pages (repo → Settings → Pages → deploy from `docs/`, requires committing the heavy artefacts or publishing via an Actions artifact step) or Cloudflare Pages (`wrangler pages deploy docs/`; note the 25 MB per-file limit — check the OA archive size first, GitHub's limit is 100 MB).
-2. Deposit code + data on Zenodo (submission checklist items 2–3) and paste the DOIs into `about.html` §The research.
-3. Post the preprint; add its link to `about.html`.
-4. Announce quietly if desired (the `noindex` tags stay).
+The existing Cloudflare R2 bucket `nepi-atlas` (public) hosts the whole site: sync all of `docs/` into it. The tile URLs in `app.js` are relative, so no code change is needed. The bucket still holds the May 2026 `england_oa.pmtiles` (259.72 MB, old A–G schema) — delete it after the new upload; the new site cannot read it. GitHub Pages was rejected (would commit 153 MB of regenerable binaries per rebuild); Cloudflare Pages direct deploy is blocked by its 25 MB per-file cap (`oa.pmtiles` is 68 MB). The `r2.dev` public URL is rate-limited by Cloudflare — acceptable while the site is quiet under `noindex`; attach a custom domain to the bucket at full launch.
+
+## Short term — user actions (no preprint needed; `noindex` stays)
+
+1. Browser pass of the preview (`npx http-server docs -p 8000`): map loads, England → LAD → LSOA → OA ladder switches, levers update the panel totals, postcode search resolves, OA card renders, about/sources pages read correctly.
+2. Deploy: sync `docs/` to the `nepi-atlas` bucket; delete the stale `england_oa.pmtiles`.
+
+## Long term (deferred until the preprint exists) — user actions
+
+1. Deposit code + data on Zenodo (submission checklist items 2–3) and paste the DOIs into `about.html` §The research.
+2. Post the preprint; add its link to `about.html`.
+3. Announce quietly if desired (the `noindex` tags stay).
+4. Submission front-matter, reviewed internally before submission: co-author surnames, acknowledgements, suggested referees.
 
 ## Full launch (on acceptance) — user actions
 
 1. Remove the two `noindex` meta tags; rebuild nothing else.
 2. Swap the preprint link for the published DOI.
-3. Press/posts per the dissemination inventory (UCL press office, personal post).
+3. Attach a custom domain to the R2 bucket (replaces the rate-limited `r2.dev` URL).
+4. Press/posts per the dissemination inventory (UCL press office, personal post).
 
 ## Basemap dependency
 

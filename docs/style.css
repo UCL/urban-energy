@@ -180,16 +180,21 @@ aside h3 {
 
 #headline { font-size: var(--fs-small); color: var(--ink-2); }
 
+#national { container-type: inline-size; }
 .statrow {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.6rem;
   margin-top: 0.7rem;
 }
+/* Two tiles abreast need ~10rem each for their labels; below that, stack them. */
+@container (max-width: 21rem) {
+  .statrow { grid-template-columns: 1fr; }
+}
 .stat {
   flex: 1;
   background: var(--bg);
-  border: 1px solid var(--line);
+  border: 1.5px solid var(--line);
   border-radius: var(--radius);
   padding: 0.5rem 0.55rem;
 }
@@ -216,6 +221,10 @@ aside h3 {
   display: block;
   margin-top: 0.4rem;
 }
+/* The saving is a gain, the morphological penalty a cost that survives the levers;
+ * EPC band hues (A green, G red) keep the semantics in the site's grade language. */
+.stat-good { border-color: #19b459; }
+.stat-bad { border-color: #e9153b; }
 
 /* ---------- controls ---------- */
 
@@ -237,12 +246,12 @@ aside h3 {
   transition: border-color 0.12s, color 0.12s;
 }
 .presets button:hover, .metrics button:hover { border-color: var(--ink-2); }
-.metrics button.on {
+.metrics button.on, .presets button.on {
   background: var(--accent);
   border-color: var(--accent);
   color: #ffffff;
 }
-.metrics button.on:hover { border-color: var(--accent); }
+.metrics button.on:hover, .presets button.on:hover { border-color: var(--accent); }
 #viewdesc { margin-top: 0.45rem; min-height: 1em; }
 .legendnote { margin-top: 0.25rem; }
 
@@ -319,7 +328,7 @@ aside h3 {
 
 /* ---------- responsive ---------- */
 
-@media (max-width: 1100px) {
+@media (max-width: 1450px) {
   aside#panel { grid-template-columns: 1fr; width: 24rem; min-width: 0; }
   #national, #controls, #card { grid-column: 1; }
   aside section + section { margin-top: 1.1rem; }

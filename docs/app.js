@@ -112,11 +112,11 @@ function updateLeverAvailability() {
       "The NEPI grade: amenities reachable per kilowatt-hour of total " +
       "energy, home plus car travel. All three levers re-grade the map.",
     energy:
-      "Status quo energy per dwelling, home plus car travel. A " +
-      "quantity, not a grade.",
+      "Status quo energy per dwelling, home plus car travel, " +
+      "shown as plain values rather than grades.",
     access:
-      "Amenities reachable on foot. A count, not a grade; reach " +
-      "by car is counted in the rate.",
+      "Amenities reachable on foot, shown as plain counts; " +
+      "reach by car is part of the rate view.",
   }[state.metric];
   renderLegend();
 }
@@ -149,8 +149,17 @@ function renderLegend() {
       : "amenities within a 1.6 km walk, from the count shown upward · scale fixed at the 2021 distribution";
 }
 
+/* Light the preset matching the current lever settings; none on custom positions. */
+function syncPresetButtons() {
+  const cur = ["uf", "uh", "uv"].map((k) => Math.round(state[k] * 100)).join(",");
+  document
+    .querySelectorAll(".presets button")
+    .forEach((b) => b.classList.toggle("on", b.dataset.preset === cur));
+}
+
 function repaint() {
   /* Panel and card first: their updates must never be blocked by map state. */
+  syncPresetButtons();
   renderNational();
   renderCard();
   if (!map || !map.getLayer("oa-fill")) return;
@@ -202,9 +211,9 @@ function renderNational() {
   $("#n-median-sub").textContent = `${mrAdj.toFixed(2)} amenities per kWh`;
   $("#n-energy").textContent = `${adj.toFixed(0)} TWh`;
   $("#n-energy-sub").textContent = `status quo ${now.toFixed(0)} TWh`;
-  $("#n-saving").textContent = `${(now - adj).toFixed(0)} TWh`;
+  $("#n-saving").textContent = `${fmt(((now - adj) * 1e9) / e.hh)} kWh`;
   $("#n-saving-sub").textContent =
-    `${(((now - adj) / now) * 100).toFixed(0)}% of status quo`;
+    `${(now - adj).toFixed(0)} TWh · ${(((now - adj) / now) * 100).toFixed(0)}% of status quo`;
   const t = agg.england.types;
   if (t) {
     const perD = groupKWhPerHH(t.Detached);
