@@ -7,7 +7,7 @@ Status: implemented (`stats/atlas_export.py` → `site/`, deployed 2026-07-31; s
 - **Tiles**: polygons + attributes → GeoJSON → tippecanoe → **PMTiles**. A single archive per level, served as a static asset over HTTP range requests. Three levels, switched by zoom: LAD (national view), LSOA (city view), OA (neighbourhood detail). Each level carries its own pre-aggregated attributes, so clicking a unit at any scale yields summary statistics without loading the level below.
 - **Map**: MapLibre GL JS with the pmtiles protocol. Vendored (not CDN-pinned at runtime) to remove the one external dependency that can rot.
 - **UI**: small vanilla JS or Alpine.js label card + lever controls. No framework build step beyond copying files.
-- **Hosting**: GitHub Pages from the repo (or Cloudflare Pages if the PMTiles archives exceed the 100 MB file cap; OA-level England fitted before with coalescing).
+- **Hosting**: decided 2026-07-31, all-Cloudflare-R2 (the whole `site/` folder synced to the public bucket); see `launch_checklist.md` for the rationale and command.
 - **Search**: postcode → OA via the existing `postcode_oa_lookup.parquet`, exported as small JSON shards keyed by outcode (~2,900 files, a few KB each). Static, no geocoding API.
 
 ## Interactivity without a model

@@ -3,7 +3,7 @@ Shared figure style for the NEPI paper figures.
 
 One module holding the validated palette, the matplotlib rcParams and small
 helpers, imported by every figure script so the visual system cannot drift figure
-to figure. The full rationale is in ``paper/figure_design.md``; both palettes below
+to figure. The full rationale is in ``paper/figure_notes.md``; both palettes below
 passed the data-visualisation validator (semantic trio: worst adjacent CVD ΔE 51;
 dwelling ramp: monotone ordinal, light end 2.57:1 on the light surface).
 

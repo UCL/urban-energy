@@ -47,8 +47,7 @@ urban-energy/
 │   ├── map_figures.py         # F9 England + F10 city choropleths
 │   ├── nepi_score.py          # Per-OA A–G score on the rate; bands frozen (NEPI-2021 v2)
 │   ├── atlas_export.py        # Atlas artefacts: aggregates + PMTiles + postcode shards → site/
-│   ├── ledger.py              # Result-number ledger → paper/latex/numbers.tex (\nepi macros)
-│   └── archive/               # Archived LSOA analysis scripts
+│   └── ledger.py              # Result-number ledger → paper/latex/numbers.tex (\nepi macros)
 ├── site/                      # The Atlas static site (deployed to Cloudflare R2; heavy artefacts gitignored)
 ├── dissemination/             # Score spec, Atlas architecture, launch checklist, frozen bands JSON
 ├── tests/                     # pytest suite (49 tests: compositional model, travel constraint, inference, aggregation, EPC bands, postcode, NEPI score)
@@ -195,8 +194,8 @@ are run on demand rather than wired as pipeline stages.
 > `stats/nepi_score.py` (A–G on the rate, bands frozen) + `stats/atlas_export.py` → `site/`,
 > deployed to Cloudflare R2 under `noindex` (see
 > [`dissemination/launch_checklist.md`](dissemination/launch_checklist.md)). XGBoost is
-> dropped from the plan. The old three-surface draft is archived at
-> [`paper/archive/PAPER_three_surface_deferred.md`](paper/archive/PAPER_three_surface_deferred.md). See
+> dropped from the plan. The old three-surface draft and the archive directories were
+> pruned from the tree (git history holds them). See
 > [`paper/summary.md`](paper/summary.md) and [ROADMAP.md](ROADMAP.md).
 
 ---

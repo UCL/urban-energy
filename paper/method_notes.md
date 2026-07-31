@@ -224,6 +224,6 @@ part of the raw form gap; it is now netted out of the direct term.
 1. The markdown draft was rebuilt on the two-axis basis and later superseded by the
    LaTeX manuscript (`paper/latex/main.tex`), which carries the canonical numbers via
    the ledger. The old three-surface / coverage / XGBoost draft (dominant-type numbers
-   1.46×, 2.00×, A–G scorecard) is archived at
-   `paper/archive/PAPER_three_surface_deferred.md`. This file is a decision ledger;
+   1.46×, 2.00×, A–G scorecard) is in git history (formerly
+   `paper/archive/PAPER_three_surface_deferred.md`). This file is a decision ledger;
    entries above record the state at their date.

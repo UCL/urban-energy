@@ -2,7 +2,7 @@
 Argument figures for the NEPI paper and summary.md.
 
 The set carries the argument on its own. Read in order it is the paper (the full
-story scaffold is in ``paper/figure_design.md``):
+story scaffold is in ``paper/figure_notes.md``):
 
   F1 inversion   — detached spends more energy and reaches less (the hook).
   F2 country     — the same pattern across all 178,353 Output Areas.
