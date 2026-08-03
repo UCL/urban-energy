@@ -107,6 +107,10 @@ After: "... should place greater emphasis on compact urban form."
 
 **F14. Rhetorical inversion.** "That the gap survives full electrification is the evidence that ...". Rewrite as a plain subject-verb-object statement of what survived and what that implies.
 
+**F15. Casual register.** Conversational idiom in place of formal statement: "for decades" (use "has long"), "if anything", "on its own" (use "alone"), "does not move" (use "remains unchanged"), the pronoun "one" standing for a technical noun ("a delta-method one"), "however often". The test: would the phrase survive in a methods section? If not, it does not belong in the abstract or discussion either.
+
+**F16. Mirrored noun pairs.** Two coordinated concrete pairs balanced across a verb: "the walls and distances that set demand outlast the boilers and cars that policy replaces". One concrete pair per sentence at most; the second pair converts a claim into an epigram. Related to F8 and F12.
+
 ## 6. Section-level construction
 
 - **Abstract.** Context in one or two sentences, the measure in one, the data and scope in one, three or four result sentences, one implication sentence. No sentence describing the paper's own novelty. No appositive after the first. Target 200 to 250 words with sentence lengths inside the §2 band.
