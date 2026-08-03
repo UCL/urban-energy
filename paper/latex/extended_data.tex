@@ -21,8 +21,8 @@
 
 \title[Extended Data]{Extended Data: The energy productivity of neighbourhood form}
 
-\author*[1]{\fnm{Gareth} \sur{Simons}}\email{gareth@benchmarkurbanism.com}
-%% Co-author surnames, emails and any second affiliations to be supplied.
+\author*[1]{\fnm{Gareth} \sur{TODO}}
+%% Author surnames, emails and any second affiliations to be supplied.
 \author[1]{\fnm{Steve} \sur{TODO}}
 \author[1]{\fnm{Daniel} \sur{TODO}}
 \author[1]{\fnm{Matteo} \sur{TODO}}
@@ -54,7 +54,7 @@
 \begin{figure}[p]
 \centering
 \includegraphics[width=0.85\textwidth]{fig12_equity}
-\caption{\textbf{The deprivation gradient of walkable access.} Top: median everyday amenities within a 1.6\,km walk by income-deprivation decile of the Indices of Deprivation 2025; nationally, the most deprived decile holds about \nepiimdAccessRatio$\times$ the walkable access of the least deprived. Bottom: the rank correlation between walkable access and income deprivation for inner London and twenty-two major cities, sorted by correlation, with the England-wide correlation (\nepiimdRhoNat) as the dashed reference line; marker area is proportional to each area's Output Area count (a population measure). The gradient is steepest in weak housing markets (Bradford, Derby), flattens in inner London ($\nepiimdRhoInner$ against \nepiimdRhoNat{} nationally), and inverts in the strongest markets, including Manchester ($\nepiimdRhoManchester$), Bristol ($\nepiimdRhoBristol$), Cambridge ($\nepiimdRhoCambridge$) and Oxford ($\nepiimdRhoOxford$), where the least deprived areas hold the highest-access cores.}
+\caption{\textbf{The deprivation gradient of walkable access.} Top: median everyday amenities within a 1.6\,km walk by income-deprivation decile of the Indices of Deprivation 2025; nationally, the most deprived decile holds about \nepiimdAccessRatio$\times$ the walkable access of the least deprived. Bottom: the rank correlation between walkable access and income deprivation for inner London and twenty-two major cities, sorted by correlation, with the England-wide correlation (\nepiimdRhoNat) as the dashed reference line; marker area is proportional to each area's Output Area count (a population measure). The gradient is steepest in weak housing markets (Bradford, Derby) and flattens in inner London ($\nepiimdRhoInner$ against \nepiimdRhoNat{} nationally). It inverts in the strongest markets, including Manchester ($\nepiimdRhoManchester$), Bristol ($\nepiimdRhoBristol$), Cambridge ($\nepiimdRhoCambridge$) and Oxford ($\nepiimdRhoOxford$), where the least deprived areas hold the highest-access cores.}
 \label{edfig:equity}
 \end{figure}
 
@@ -97,7 +97,7 @@ People & Census 2021 TS001 & --- & resident population \\
 \end{table}
 
 \begin{table}[p]
-\caption{Public-transport sensitivity. The headline energy axis counts car travel only. Here bus, rail and Underground passenger mileage, measured by the same National Travel Survey table, is disaggregated to Output Areas by the same constrained method and added to the energy axis, on the common sample of \nepiptSampleN{} areas. Energy per passenger-mile has no measured counterpart, because it depends on vehicle load factors that no Output-Area source records, so it is expressed as a fraction of the petrol-car intensity. Rail and Underground carry \nepiptRailShare\% of public-transport mileage and run well below a car per passenger-mile, while buses run near one, which places the mileage-weighted blend near a third; \nepiptIntensityAssumed$\times$ rounds it upward. The final row charges every passenger-mile as though it had been driven alone in a petrol car, an upper bound no mode approaches and one that requires no external factor. Both public-transport rows allocate each class's mileage by the Census TS061 public-transport share of commuters, concentrating it in the compact areas that use it, which is the variant least favourable to the reported gap; allocating the class average to every area instead leaves the total gap at \nepiptClassAssumedTotal$\times$ and \nepiptClassCeilingTotal$\times$ respectively. Class marginals are preserved exactly in every row.}
+\caption{Public-transport sensitivity. The headline energy axis counts car travel only. Here bus, rail and Underground passenger mileage, measured by the same National Travel Survey table, is disaggregated to Output Areas by the same constrained method and added to the energy axis, on the common sample of \nepiptSampleN{} areas. Energy per passenger-mile has no measured counterpart, because it depends on vehicle load factors that no Output-Area source records, so it is expressed as a fraction of the petrol-car intensity. Rail and Underground carry \nepiptRailShare\% of public-transport mileage and run well below a car per passenger-mile, while buses run near one, which places the mileage-weighted blend near a third; \nepiptIntensityAssumed$\times$ rounds it upward. The final row charges every passenger-mile as though it had been driven alone in a petrol car, an upper bound no mode approaches and one that requires no external factor. Both public-transport rows allocate each class's mileage by the Census TS061 public-transport share of commuters, concentrating it in the compact areas that use it, which is the variant least favourable to the reported gap. Allocating the class average to every area instead leaves the total gap at \nepiptClassAssumedTotal$\times$ and \nepiptClassCeilingTotal$\times$ respectively. Class marginals are preserved exactly in every row.}
 \label{edtab:publictransport}
 \input{tab_publictransport.tex}
 \end{table}

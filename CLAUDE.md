@@ -11,7 +11,7 @@ theory synopsis, and current status read [README.md](README.md). The manuscript 
 recipe is [REPRODUCTION.md](REPRODUCTION.md); current scope and what is KEEP / DEFER /
 CUT lives in [ROADMAP.md](ROADMAP.md). Prefer those over the prose command lists below.
 
-**Author:** Gareth Simons · **License:** GPL-3.0-only · **Repo:** [UCL/urban-energy](https://github.com/UCL/urban-energy)
+**Author:** Gareth TODO · **License:** GPL-3.0-only · **Repo:** [UCL/urban-energy](https://github.com/UCL/urban-energy)
 
 ---
 
@@ -25,6 +25,7 @@ urban-energy/
 │   ├── latex/main.tex         # The manuscript (ledger-wired numbers)
 │   ├── latex/extended_data.tex # Extended Data (4 figures + 5 tables)
 │   ├── summary.md             # Narrative two-axis statement (companion)
+│   ├── prose_guide.md         # House prose style: sentence rules + fault catalogue + revision pass
 │   ├── literature_review.md   # Thematic literature review
 │   └── references.bib         # BibTeX bibliography
 ├── src/urban_energy/
@@ -273,6 +274,10 @@ All `data/` scripts follow this pattern:
 5. **Reproducibility:** set random seeds; document data versions; use deterministic ordering.
 
 ### Academic writing
+
+House prose style, the sentence-level rules and the revision pass are in
+[paper/prose_guide.md](paper/prose_guide.md). Read §5 (fault catalogue) before
+drafting manuscript, caption or site prose, and run §9 before calling a section done.
 
 1. **Style:** formal, no contractions or first-person singular.
 2. **Citations:** author-date (APA/Harvard); all claims supported.

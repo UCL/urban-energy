@@ -2,6 +2,8 @@
 
 Working state as of 2026-07-11. Items marked (user) need an action only the author can take; everything else is prepared in-repo.
 
+Prose changes to either document follow [prose_guide.md](prose_guide.md); its §9 revision pass is the check to run before a section is called finished.
+
 ## Number wiring (no hand-typed results)
 
 Every model number in `latex/main.tex` and `latex/extended_data.tex` is a `\nepi<Key>` macro from `latex/numbers.tex`, and the results tables are `\input` fragments (`latex/tab_*.tex`). Both are written by the stats scripts through `stats/ledger.py` at the point of computation. To refresh after any analysis change:
@@ -33,6 +35,8 @@ A hand-typed result number in the manuscript is a bug. Static exceptions (kept l
 - Citation metadata: `CITATION.cff` and `.zenodo.json` at the repo root, ready for the archived release.
 - References: all cited keys resolve, and every cited entry was verified against the published record (2026-07-11). Four entries corrected (winkler2023 and summerfield2019 author lists, firth2024 authors + volume/issue/pages/year, ukgovernment2023 year/publisher); three citations added for previously unreferenced claims (patterson1996 energy productivity, sorrell2007 rebound, alonso1964 access capitalisation); miscast citations fixed (buyuklieva2023 dropped from "metered" claims, crawley2019 re-scoped to measurement error, ewing2017 meta-analysis now cited).
 - **Full prose pass applied** (2026-07-11): 132 sentence-level findings across main.tex, extended_data.tex and the cover letter — terminology standardised (rate/ratio, car catchment, home vs household energy, measure vs instrument, median counterpart, British adverbs), long sentences split, elliptical constructions expanded, two cross-document inconsistencies reconciled (the argument rests on access and the rate; MAUP home contrast "attenuates towards parity" with CI spanning one).
+- **Prose-guide pass applied** (2026-08-03): abstract rebuilt; the limitations paragraph split into four scope and five inference items, each numbered (the previous "eight" was not verifiable); three terminology collisions resolved (ratio/rate/gap, measure, home/household/total energy); sentences over 45 words split in the introduction, Results and Discussion; cross-section repetitions cut; both PDFs recompiled at 23 and 6 pages.
+- **Abstract reworked through editorial iteration** (2026-08-03): asset-level framing in sentence one (policy evaluates homes and vehicles directly, blind to the form they constitute), planning's counts-and-travel-times convention in sentence two, the joint evaluation and the lock-in payoff closing the opening block; the introduction's first two sentences aligned to the same framing. Author emails removed and surnames placeholdered as TODO across the repo pending co-author confirmation.
 - **Computed robustness values wired** (2026-07-11): the Methods trip-rate claim now cites the computed sweep (300/370/440 trips/yr → advantages 1.37/1.26/1.28×, rates 4.2/3.9/3.9×), and the travel section reports the equal-household-size travel gap (2.68×, CI 2.41–2.97) via `\nepitravelFamGap`.
 - Co-author review guide: `review_guide.md`, kept local (gitignored submission correspondence).
 - Affiliation confirmed and filled as "Building Stock Lab, UCL Energy Institute, University College London" in the manuscript, Extended Data and cover letter. Co-author details are placeholdered in `main.tex`, still to be supplied (user).
