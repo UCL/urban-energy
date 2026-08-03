@@ -89,7 +89,7 @@ After: "Heat pumps widen the energy ratio, and no modelled measure changes the a
 
 **F6. The hedge beat.** The same hedge word in the same slot before every number. Fix with the hedge budget in §4.
 
-**F7. The meta-move sentence.** A sentence describing what the paper does rather than reporting what it found: "We ask what this evaluation shows for England". Abstracts and results sections report; only the last paragraph of an introduction may describe the paper's structure, and only in one sentence.
+**F7. The meta-move sentence.** A sentence describing what the paper does rather than reporting what it found: "We ask what this evaluation shows for England". Abstracts and results sections report; only the last paragraph of an introduction may describe the paper's structure, and only in one sentence. The same fault includes bare taxonomic announcements ("Three families of checks apply."): fold the classification into a sentence that carries content, or attach the first item with a colon.
 
 **F8. The closing epigram.** A final clause built for emphasis rather than content, usually an appositive, often ending in "itself", "alone" or "the whole point".
 Before: "... should place greater emphasis on compact urban form, the lever that acts on the lock-in itself."
