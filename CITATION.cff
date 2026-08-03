@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use this software or the derived datasets, please cite it as below."
 title: "urban-energy: the energy productivity of neighbourhood form"
 authors:
-  - family-names: Simons
+  - family-names: TODO
     given-names: Gareth
     affiliation: "Building Stock Lab, UCL Energy Institute, University College London"
 repository-code: "https://github.com/UCL/urban-energy"

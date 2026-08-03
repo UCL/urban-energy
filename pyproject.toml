@@ -9,7 +9,7 @@ description = ""
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
 license = "GPL-3.0-only"
-authors = [{ name = "Gareth Simons" }]
+authors = [{ name = "Gareth TODO" }]
 dependencies = [
     "geopandas>=1.1.2",
     "numpy>=2.2.6",
