@@ -111,6 +111,8 @@ After: "... should place greater emphasis on compact urban form."
 
 **F16. Mirrored noun pairs.** Two coordinated concrete pairs balanced across a verb: "the walls and distances that set demand outlast the boilers and cars that policy replaces". One concrete pair per sentence at most; the second pair converts a claim into an epigram. Related to F8 and F12.
 
+**F17a. Colon chains.** The colon as default connector: "X: Y" used sentence after sentence to attach an elaboration, definition, example or payoff. Budget: at most one colon per paragraph, and only for a genuine enumeration or definition; never in consecutive sentences. The fix is usually a plain conjunction ("for", "because", "so"), a relative clause, or a second sentence.
+
 **F17. Absolutist claims about literatures and instruments.** "Neither field currently answers", "never entered", "not scored by any existing instrument", "at all". These invite a counterexample the paper then has to defend. Scope them: "ordinarily", "typically", "chiefly", "in current use", "no established". The exception is a claim true by construction ("none of these technologies alters the distance between dwellings and destinations"), which stays absolute because hedging it would misstate the model. Do not over-correct into vagueness; the scoped claim must still commit.
 
 ## 6. Section-level construction
