@@ -62,6 +62,7 @@ One term per concept, repeated without variation. Synonym rotation is a literary
 Other standing conventions:
 
 - British spelling and British adverb forms throughout.
+- Oxford (serial) comma in every list of three or more items.
 - No contractions. No first-person singular. "We" is acceptable for method decisions.
 - **Hedge budget: "about" once per paragraph.** Repeating the same hedge before every number turns it into a beat and stops signalling anything. Where several approximate values appear together, hedge the set once and give the values plain.
 - **"X times the amenities", not "X times more amenities".** The second is ambiguous between the ratio and the increment.
