@@ -50,7 +50,7 @@ One term per concept, repeated without variation. Synonym rotation is a literary
 | The access measure | access | reach, everyday reach, the count |
 | The planning good itself | proximity | (correct in policy contexts; do not use it for the measured count) |
 | Access per unit energy | the rate | ratio, productivity (except where energy productivity is defined as the concept) |
-| The two axes and the rate together | the two-axis evaluation, NEPI | the measure, the combined measure (collides with policy measures) |
+| The two quantities and the rate together | access and energy, and the rate between them; NEPI | axis, the two axes, the two-axis evaluation (geometry metaphor for two measured quantities); the measure, the combined measure (collides with policy measures) |
 | Compositional contrast | the gap | difference, penalty, disparity |
 | Insulation, heat pumps, electrification | measures | interventions, solutions |
 | Energy at the dwelling | home energy | household energy (that is the equal-household-size view) |
@@ -128,6 +128,7 @@ After: "... should place greater emphasis on compact urban form."
 ## 7. Analogies
 
 - One analogy per document, used once, never revived as shorthand for the result.
+- Standing exception (author's decision, 2026-08-07): the rainforest/desert analogy returns once in the Discussion's Jacobs paragraph, carrying the measured numbers.
 - The analogy must map onto the measured quantity in the same direction. The standing example: the "equivalent amount of energy" belongs on the desert, not on the rainforest.
 - If an analogy needs a sentence of explanation, it is not doing useful work.
 
