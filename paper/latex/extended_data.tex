@@ -102,4 +102,27 @@ People & Census 2021 TS001 & --- & resident population \\
 \input{tab_publictransport.tex}
 \end{table}
 
+\begin{table}[p]
+\caption{Sensitivity of the energy gaps to construction choices. The upper panel varies the car-travel construction: the compositional detached:flat car-travel gap under the headline proportional allocator and under within-class ownership elasticities of 0.8, 0.6, and 0, where the zero elasticity removes the ownership signal and leaves the measured between-class mileage gradient, the floor of the contrast. Class mileage totals are anchored to the measured survey figures in every variant, and the commute-distance row gives the dominant-type median range over elasticities of 0.15 to 0.45. The lower panel restricts the home-energy measurement, with the headline home-energy gap for comparison. The gas-coverage restriction also lowers the total gap to \nepigasCovTotal$\times$, a composition effect of the subsample, which excludes the off-gas rural detached areas with the highest travel energy. Flat-type areas hold \nepimeterFlat{} domestic gas meters per household against \nepimeterDet{} for detached, largely because all-electric flats heat with electricity, which the total captures; communal heating metered as non-domestic is a genuine but smaller undercount.}
+\label{edtab:sensitivity}
+\begin{tabular}{lcc}
+\toprule
+ & Detached:Flat & 95\% CI \\
+\midrule
+\multicolumn{3}{l}{\itshape Car-travel allocation (compositional car-travel gap)} \\
+Proportional to household cars (headline) & \nepitravelGap$\times$ & \nepitravelGapCI \\
+Ownership elasticity 0.8 & \nepialphaEightGap$\times$ & \nepialphaEightGapCI \\
+Ownership elasticity 0.6 & \nepialphaSixGap$\times$ & \nepialphaSixGapCI \\
+Ownership elasticity 0 (allocation floor) & \nepialphaZeroGap$\times$ & \nepialphaZeroGapCI \\
+Commute-distance elasticity 0.15--0.45 (dominant-type medians) & \nepicommuteSweepLo$\times$--\nepicommuteSweepHi$\times$ & --- \\
+\midrule
+\multicolumn{3}{l}{\itshape Home-energy measurement (compositional home-energy gap)} \\
+Headline & \nepiheatGap$\times$ & \nepiheatGapCI \\
+Gas-meter coverage $\geq 0.9$ & \nepigasCovHeat$\times$ & --- \\
+Electricity-meter restriction & \nepielecHeat$\times$ & --- \\
+Winsorised consumption & \nepiwinsorHeat$\times$ & --- \\
+\botrule
+\end{tabular}
+\end{table}
+
 \end{document}
