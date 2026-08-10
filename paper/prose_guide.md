@@ -77,6 +77,7 @@ Before: "Energy and decarbonisation policy evaluate neighbourhoods through their
 After: "Energy and decarbonisation policy evaluate neighbourhoods through the energy that homes and vehicles use."
 
 **F2. Mirrored restatement.** Two consecutive sentences make the same claim in different words. Diagnostic: the two sentences share a subject and a verb sense.
+Standing exception (author's decision, 2026-08-07): the Jacobs conduit paragraph states the principle twice before the rainforest illustration. The repetition is deliberate, so that the reader grasps the magnitude of the claim before the analogy lands. Do not flag or delete it.
 Before: "This paper combines the two into a single evaluation, the everyday access a neighbourhood obtains per unit of energy spent. The combined measure captures how effectively a place converts energy into everyday reach, and it expresses proximity in the same unit as retrofit and electrification."
 After: "This paper measures the everyday access a neighbourhood obtains per unit of energy spent. The measure expresses access in the same unit as retrofit and electrification, so the three can be compared in one accounting."
 
