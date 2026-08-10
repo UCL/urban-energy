@@ -155,7 +155,7 @@ def inversion(cf: pd.DataFrame, confounds: list[str], income: list[str]) -> None
     fs.deck(
         ax,
         "Energy against access",
-        "A detached neighbourhood spends more energy and reaches fewer amenities",
+        "Detached areas spend more energy and reach fewer amenities",
     )
     fs.footer(fig)
     print(f"  F1 inversion: energy {e_ratio:.2f}× · access {a_ratio:.0f}×")
