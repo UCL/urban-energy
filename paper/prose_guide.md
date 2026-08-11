@@ -47,7 +47,7 @@ One term per concept, repeated without variation. Synonym rotation is a literary
 
 | Concept | Use | Do not use |
 |---|---|---|
-| The access measure | access | reach, everyday reach, the count |
+| The access measure | access | reach, everyday reach, the count (as names for the measure; reach in its ordinary sense is fine) |
 | The planning good itself | proximity | (correct in policy contexts; do not use it for the measured count) |
 | Access per unit energy | the rate | ratio, productivity (except where energy productivity is defined as the concept) |
 | The two quantities and the rate together | access and energy, and the rate between them; NEPI | axis, the two axes, the two-axis evaluation (geometry metaphor for two measured quantities); the measure, the combined measure (collides with policy measures) |
