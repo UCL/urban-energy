@@ -52,7 +52,8 @@ One term per concept, repeated without variation. Synonym rotation is a literary
 | Access per unit energy | the rate | ratio, productivity (except where energy productivity is defined as the concept) |
 | The two quantities and the rate together | access and energy, and the rate between them; NEPI | axis, the two axes, the two-axis evaluation (geometry metaphor for two measured quantities); the measure, the combined measure (collides with policy measures) |
 | Compositional contrast | the gap | difference, penalty, disparity |
-| Insulation, heat pumps, electrification | measures | interventions, solutions |
+| Insulation, heat pumps, electrification | measures, mitigation measures | interventions, solutions, demand-side measures (reads as demand response; the paper's contrast is assets vs form) |
+| The Jacobs-inspired premise | the energy productivity principle (lowercase; named at first use in the intro) | the Jacobs premise, the conduit principle, her hypothesis |
 | Energy at the dwelling | home energy | household energy (that is the equal-household-size view) |
 | Home plus travel per dwelling | total energy | household energy |
 | Car travel distance band | car catchment | catchment (unqualified), range |
@@ -142,6 +143,21 @@ Full conventions are in [figure_notes.md](figure_notes.md). The prose-facing rul
 - Log axes are marked with a short "(log)", not a phrase.
 - Dwelling types are always Flats, Terraced, Semi-detached, Detached, in that order.
 - Text in a figure follows every rule in this guide, at greater strictness, because it cannot be revised in proof.
+
+## 8a. The gate (run on every sentence before it is shown)
+
+The faults in §5 return in rotation because each correction removes one device and leaves the impulse intact: an em-dash becomes a colon, a colon becomes a fragment, a fragment becomes a fronted count. The constraint that stops the rotation is on content, not form. **Each sentence names an actor that can literally act and reports one measured fact or one standing state. A sentence carrying emphasis instead of a fact is deleted, not rewritten.** Ten yes/no checks:
+
+1. **Subject.** Is the grammatical subject a discourse object (paper, study, results, analysis, design, comparison, test, argument, strand, literature) governing an agentive verb? Licensed actors: people, residents, neighbourhoods, dwellings, destinations, records, measurements, policy instruments.
+2. **Given-new.** Does the first noun phrase name something absent from the preceding sentence, or open with a bare cardinal plus a new noun ("Three hazards could mislead...")?
+3. **Length.** Under 10 words without being a definition or a scope statement, or over 45 words.
+4. **Punctuation.** An em-dash or en-dash; a colon introducing anything but a list or a definition; a semicolon whose second clause concludes from the first.
+5. **Symmetry.** Two clauses with matched verbs or matched noun pairs, a paired conditional, "not X but Y", a terminal "rather than", a triad for rhythm.
+6. **Closer.** Does the final clause add a fact? Fail if it only re-weights what precedes it.
+7. **Literal verbs.** Can the named subject literally perform the verb, and is any metaphor used once rather than as the name of a finding?
+8. **Meta-move.** No "we show/ask/argue/present", no "this paper ...". Permitted after "we": measured, compared, fitted, held, recomputed, applied, anchored, read, restricted.
+9. **Tense.** Completed work in the past, standing states in the present, never both in one clause.
+10. **Stub openers.** A one-sentence opener carrying no context or rationale is a headline. Fold it into the sentence that carries the evidence.
 
 ## 9. The revision pass
 
