@@ -32,6 +32,8 @@
  "evGap": "1.85",
  "evGapCI": "1.72--1.99",
  "fabricClosed": "20",
+ "fabricEvGap": "1.51",
+ "fabricEvGapCI": "1.43--1.59",
  "fabricFactorMedian": "0.50",
  "fabricGap": "1.83",
  "fabricGapCI": "1.75--1.91",

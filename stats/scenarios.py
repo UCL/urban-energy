@@ -72,6 +72,8 @@ SCENARIOS: list[tuple[str, str, float, float]] = [
     ("Fabric only (100%)", "fabric", 1.0, 0.0),
     ("Heat pumps only (100%)", "hp", 1.0, 0.0),
     ("EVs only (100%)", "none", 0.0, 1.0),
+    # The headline lock-in bound (lock_in.py): both demand-side levers, no heat pumps.
+    ("Fabric + EVs (100%)", "fabric", 1.0, 1.0),
     ("CCC Balanced Pathway 2040", "fabric+hp", HEAT_UPTAKE_2040, EV_UPTAKE_2040),
     ("Full rollout (100%)", "fabric+hp", 1.0, 1.0),
 ]
@@ -237,6 +239,7 @@ def main() -> None:
         "Fabric only (100%)": ("fabricGap", "Insulation only (100\\%)"),
         "Heat pumps only (100%)": ("hpGap", "Heat pumps only (100\\%)"),
         "EVs only (100%)": ("evGap", "Electric vehicles only (100\\%)"),
+        "Fabric + EVs (100%)": ("fabricEvGap", "Insulation + electric vehicles (100\\%)"),
         "CCC Balanced Pathway 2040": ("cccGap", "CCC Balanced Pathway 2040"),
         "Full rollout (100%)": ("fullGap", "Full rollout (100\\%)"),
     }

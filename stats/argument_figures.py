@@ -641,6 +641,7 @@ def scenario_ladder(cf: pd.DataFrame, confounds: list[str]) -> None:
         "Fabric only (100%)": "Insulation only",
         "Heat pumps only (100%)": "Heat pumps only",
         "EVs only (100%)": "Electric vehicles only",
+        "Fabric + EVs (100%)": "Insulation + electric vehicles",
         "CCC Balanced Pathway 2040": "CCC pathway (2040)",
         "Full rollout (100%)": "Full rollout of all three",
     }
