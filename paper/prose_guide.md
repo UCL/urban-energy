@@ -152,7 +152,7 @@ The faults in §5 return in rotation because each correction removes one device 
 2. **Given-new.** Does the first noun phrase name something absent from the preceding sentence, or open with a bare cardinal plus a new noun ("Three hazards could mislead...")?
 3. **Length.** Under 10 words without being a definition or a scope statement, or over 45 words.
 4. **Punctuation.** An em-dash or en-dash; a colon introducing anything but a list or a definition; a semicolon whose second clause concludes from the first.
-5. **Symmetry.** Two clauses with matched verbs or matched noun pairs, a paired conditional, "not X but Y", a terminal "rather than", a triad for rhythm.
+5. **Symmetry.** Two clauses with matched verbs or matched noun pairs, a paired conditional, "not X but Y", a terminal "rather than", a triad for rhythm. The trailing contrast and the ", so ..." payoff clause share a back rhythm: a clause riding after the sentence's real content. When the contrast is incidental, front the rejected alternative ("Rather than relying on models, we measure...") or delete the trailer and fold its content into the spine; a trailing contrast that is itself the sentence's finding stays.
 6. **Closer.** Does the final clause add a fact? Fail if it only re-weights what precedes it.
 7. **Literal verbs.** Can the named subject literally perform the verb, and is any metaphor used once rather than as the name of a finding?
 8. **Meta-move.** No "we show/ask/argue/present", no "this paper ...". Permitted after "we": measured, compared, fitted, held, recomputed, applied, anchored, read, restricted.
