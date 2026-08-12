@@ -24,6 +24,13 @@
 
 \graphicspath{{../figures/}}
 
+%% Float tuning: let large figures share pages with text so each lands
+%% near its reference instead of queueing onto trailing float pages.
+\renewcommand{\topfraction}{0.95}
+\renewcommand{\bottomfraction}{0.6}
+\renewcommand{\textfraction}{0.05}
+\renewcommand{\floatpagefraction}{0.8}
+
 \input{numbers.tex}
 
 \begin{document}
@@ -63,10 +70,10 @@ The comparison between compact and dispersed forms is subject to three hazards. 
 
 The third hazard is the choice of denominator. Energy per person, per dwelling, and per square metre give different verdicts: a low-density premium that is large per capita narrows or reverses per square metre \citep{norman2006}. Two people sharing a home use less than twice the energy of one \citep{druckman2008,huebner2017}, and a large home spreads its heating over more floor area, so dividing by persons or by square metres rewards the larger household or the larger home. Energy therefore enters per dwelling, and household size and floor area enter as controls, with their effects estimated from the data rather than fixed by the choice of denominator. A final caution concerns who lives where. Households choose their dwellings \citep{cao2009,stevens2017}, so the comparison is between places rather than between households, describing a neighbourhood type conditional on the observed confounds. Its exposure to residential self-selection is bounded with a coefficient-stability test. Figure~\ref{fig:inversion} shows that comparison, setting energy against access for the four dwelling types.
 
-\begin{figure}[t]
+\begin{figure}[!htbp]
   \centering
   \includegraphics[width=\textwidth]{fig1_inversion}
-  \caption{\textbf{Energy against access by dwelling type.} Compositional pure-type predictions at mean confounds (Methods) across \nepisampleN{} English Census 2021 Output Areas, for the four principal dwelling types: everyday amenities within a 1.6\,km walk (logarithmic) against total energy per dwelling. Moving from flats to detached houses, energy rises and access falls; a detached neighbourhood uses about \nepitotalGapRound$\times$ the energy of a flat-type one and reaches 1/\nepiwalkAmenRound{} of the amenities.}
+  \caption{\textbf{Energy against access by dwelling type.} Compositional pure-type predictions at mean confounds (Methods) across \nepisampleN{} English Census 2021 Output Areas, for the four principal dwelling types: amenities of the benchmark basket within a 1.6\,km walk (logarithmic) against total energy per dwelling. Moving from flats to detached houses, energy rises and access falls; a detached neighbourhood uses about \nepitotalGapRound$\times$ the energy of a flat-type one and reaches 1/\nepiwalkAmenRound{} of the amenities.}
   \label{fig:inversion}
 \end{figure}
 
@@ -80,7 +87,7 @@ The comparison begins with home energy, where the policy instruments concentrate
 
 The larger share of the difference lies in travel. Anchored to the measured mileage of each settlement class (Methods), the car-travel energy of a detached neighbourhood is \nepitravelGap$\times$ (\nepitravelGapCI) that of a flat-type one. Unlike the home component, the contrast is not primarily a household-size effect; at equal household size it remains \nepitravelFamGap$\times$. Together the components put total energy per dwelling at \nepitotalGap$\times$ (\nepitotalGapCI), or \nepifamNowGap$\times$ at equal household size (Table~\ref{tab:axes}). Read the other way, the energy that houses one detached-type household houses about two flat-type households.
 
-\begin{table}[t]
+\begin{table}[!htbp]
   \caption{Access and energy by dwelling type. Type columns are observed medians; ratios are compositional pure-type estimates (Methods), not quotients of the columns: flat:detached for access, detached:flat for energy. The final column re-estimates each energy ratio with log household size as a freely estimated control; access is a property of the location, so no equal-household-size variant applies. The energy total is the per-area median of home plus travel energy, and medians are not additive.}
   \label{tab:axes}
   {\footnotesize\setlength{\tabcolsep}{3pt}
@@ -91,17 +98,17 @@ The larger share of the difference lies in travel. Anchored to the measured mile
 
 We next count the amenities, jobs, and people each neighbourhood can reach over the road network. The amenities are a benchmark basket of six everyday destination types, from general practitioners to grocery shops, counted identically for every neighbourhood in the country (Methods; Extended Data Table~1). On foot, within 1,600\,m (a twenty-minute walk), a flat-type neighbourhood reaches \nepiwalkAmen$\times$ the amenities, \nepiwalkJobs$\times$ the jobs, and \nepiwalkPeople$\times$ the people of a detached-type one (95\% CIs in Fig.~\ref{fig:forest}); between typical mixed areas the amenity gap is \nepiwalkAmenDomMed$\times$ to \nepiwalkAmenSupport$\times$ (per-service counts in Extended Data Fig.~2). On the map, dispersed, high-energy form covers most of England's land area and walkable access is confined to the compact cities (Fig.~\ref{fig:map}; Extended Data Figs.~1 and~3). At each type's own car catchment, the distance its residents actually drive, the counts nearly converge (amenities \nepicatchAmen$\times$, \nepicatchAmenCI); residents of dispersed areas extend their driving until their access is equivalent. Even at a 25.6\,km drive, the flat-type area still reaches \nepidriveAmen$\times$ the amenities, \nepidriveJobs$\times$ the jobs, and \nepidrivePeople$\times$ the people (Table~\ref{tab:axes}, Fig.~\ref{fig:reach}).
 
-\begin{figure}[t]
+\begin{figure}[!htbp]
   \centering
   \includegraphics[width=\textwidth]{fig6_access_curve}
-  \caption{\textbf{Access against distance.} Everyday amenities reachable against network distance by dwelling type (compositional pure-type predictions): a flat-type neighbourhood reaches about \nepiwalkAmenRound$\times$ the amenities of a detached-type one on foot and \nepidriveAmenRound$\times$ at a 25.6\,km drive. The gap is largest at walking distance and remains open at every distance shown.}
+  \caption{\textbf{Access against distance.} Amenities of the benchmark basket reachable against network distance, by dwelling type (compositional pure-type predictions): a flat-type neighbourhood reaches about \nepiwalkAmenRound$\times$ the amenities of a detached-type one on foot and \nepidriveAmenRound$\times$ at a 25.6\,km drive. The gap is largest at walking distance and remains open at every distance shown.}
   \label{fig:reach}
 \end{figure}
 
-\begin{figure}[t]
+\begin{figure}[!htbp]
   \centering
   \includegraphics[width=\textwidth]{fig9_england.png}
-  \caption{\textbf{Energy and access, mapped.} Each English Output Area is mapped by total energy (home plus car travel) per dwelling (left, continuous power-scaled colour ramp) and by everyday amenities within a 1.6\,km walk (right, logarithmic colour scale). Dispersed high-energy form covers most of the land area, while walkable access is concentrated in the compact cities; the insets repeat Greater London on the same scales, aggregated to Lower-layer Super Output Areas for legibility.}
+  \caption{\textbf{Energy and access, mapped.} Each English Output Area is mapped by total energy (home plus car travel) per dwelling (left, continuous power-scaled colour ramp) and by amenities of the benchmark basket within a 1.6\,km walk (right, logarithmic colour scale). Dispersed high-energy form covers most of the land area, while walkable access is concentrated in the compact cities; the insets repeat Greater London on the same scales, aggregated to Lower-layer Super Output Areas for legibility.}
   \label{fig:map}
 \end{figure}
 
@@ -111,10 +118,10 @@ That equivalence costs the detached area about three times the car-travel energy
 
 We test the rate against two objections. First, the same driving distance enters both sides of the division, because it sets the catchment radius and it also sets the car-travel energy. Recomputing the denominator with every car at electric consumption breaks that shared dependence, and the flat-type area still obtains \nepirateCirc$\times$ (\nepirateCircCI) the access per kilowatt-hour. Second, the amenity ratio is estimated holding income constant, while the energy ratio holds the full confound set. Re-estimating the energy ratio with the identical income-only control gives \nepirateHarm$\times$ (\nepirateHarmCI). Between typical mixed areas the rate is \nepirateDomMedian$\times$, and the flat-type area obtains the most access per kilowatt-hour in every case (Methods).
 
-\begin{figure}[t]
+\begin{figure}[!htbp]
   \centering
   \includegraphics[width=\textwidth]{fig7_rate}
-  \caption{\textbf{The rate as its construction.} Amenities reachable at each area's own car catchment (left, nearly equal across types), the car-travel energy through which that reach is obtained (centre, \nepitravelGap$\times$ higher for detached), and the resulting access per kilowatt-hour (right): a flat-type area obtains about \nepirate$\times$ (95\% CI \nepirateCI) that of a detached-type one. The non-monotonic middle of the right panel reflects the two middle types' differing catchment energies rather than walkable supply. Compositional pure-type predictions; F, T, S, D denote flat, terraced, semi-detached, and detached.}
+  \caption{\textbf{The rate as its construction.} Amenities of the benchmark basket reachable at each area's own car catchment (left, nearly equal across types), the car-travel energy through which that reach is obtained (centre, \nepitravelGap$\times$ higher for detached), and the resulting access per kilowatt-hour (right): a flat-type area obtains about \nepirate$\times$ (95\% CI \nepirateCI) that of a detached-type one. The non-monotonic middle of the right panel reflects the two middle types' differing catchment energies rather than walkable supply. Compositional pure-type predictions; F, T, S, D denote flat, terraced, semi-detached, and detached.}
   \label{fig:rate}
 \end{figure}
 
@@ -124,7 +131,7 @@ The national strategy, carried through in full, narrows the energy gap only part
 
 The headline lock-in bound is read at fully deployed insulation plus vehicle electrification, without heat pumps. Heat pumps switch the fuel of delivered heat rather than reducing the demand for it, and so widen the gap. Excluding them grants the technology pathway its most favourable case. Under that bound the total gap is \nepilockinGap$\times$ (\nepilockinGapCI), with \nepisurvivesShare\% (\nepisurvivesShareCI\%) of the log gap surviving; at equal household size the same measures move \nepifamNowGap$\times$ to \nepifamOptGap$\times$. The access deficit persists in every scenario because no measure addresses the street layout or the location of destinations, which change only when places are rebuilt.
 
-\begin{figure}[t]
+\begin{figure}[!htbp]
   \centering
   \includegraphics[width=\textwidth]{fig8_scenarios}
   \caption{\textbf{The energy gap under each decarbonisation measure.} The detached:flat total energy gap under each measure; the on-foot access gap, \nepiwalkAmenRound$\times$, is unchanged in every scenario. Bars show compositional pure-type ratios, unadjusted (left) and at equal household size (right); the vertical line marks each panel's status-quo gap. Heat pumps alone widen the gap: they cut home energy, on which the gap is smaller, near-uniformly, leaving the larger travel gap to dominate the total. The insulation-plus-electric-vehicles rung, both levers in full without heat pumps, is the headline lock-in bound of \nepilockinGap$\times$.}
@@ -135,7 +142,7 @@ The headline lock-in bound is read at fully deployed insulation plus vehicle ele
 
 The gaps could in principle be artefacts of residential sorting, of the mileage allocation, of the metering, or of the zoning unit, and their intervals could be too narrow if dependence crosses district boundaries. Each check moves the estimates little, and none reverses them. Access is a property of the location rather than of its residents, so residential sorting cannot create its gap. Households who choose detached homes may differ in unmeasured ways, so the energy gaps are read as place-level profiles rather than household effects. Adding occupational class changes them little, and a coefficient-stability bound \citep{oster2019} gives $\delta^{*} \approx \nepiosterDeltaTotal$ for total energy, survival at the margin rather than insensitivity; the home-energy component is weaker still (Extended Data Table~3). In the travel construction, the mileage of each settlement class is anchored to the measured survey totals, and sweeping the within-class allocator to its limit leaves the travel gap at or above \nepialphaZeroGap$\times$ (\nepialphaZeroGapCI); charging public transport to residents on the same construction leaves the total gap at \nepiptAssumedTotal$\times$ (\nepiptAssumedTotalCI) (Extended Data Tables~5 and~6). In measurement, flat-type areas hold fewer domestic gas meters than households, and the coverage restrictions that address it leave the home-energy gap slightly higher, so the bias understates the gap (Extended Data Table~6). In zonation, re-fitting the same model at the two coarser census geographies leaves the total gap at \nepimaupTotalLsoa$\times$ and \nepimaupTotalMsoa$\times$, so the result is not an artefact of the unit, although the home-energy contrast alone attenuates at the coarsest scale (Extended Data Table~4). In inference, we merged the districts into fifty contiguous spatial blocks to check that dependence crossing their boundaries is contained. The total-gap interval widens only to \nepispatialBlockGapCI, the estimate is unchanged, and clustering on districts is therefore sufficient. Figure~\ref{fig:forest} collects every headline ratio with its clustered confidence interval.
 
-\begin{figure}[t]
+\begin{figure}[!htbp]
   \centering
   \includegraphics[width=\textwidth]{fig11_forest}
   \caption{\textbf{All headline ratios with confidence intervals.} Compositional pure-type ratios with 95\% confidence intervals clustered on \nepiclusters{} local-authority districts: energy gaps (detached:flat, upper panel; filled markers unadjusted, open markers at equal household size) and access gaps (flat:detached, lower panel), each panel on its own logarithmic scale. The rate row (diamond) is the product of the catchment-amenity and car-travel rows and carries a cluster-bootstrap interval rather than a delta-method interval.}
