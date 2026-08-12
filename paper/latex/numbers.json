@@ -114,6 +114,8 @@
  "scenarioBase": "2.12",
  "scenarioBaseCI": "2.01--2.24",
  "scenarioN": "178,341",
+ "spatialBlockGap": "2.12",
+ "spatialBlockGapCI": "1.89--2.38",
  "survivesShare": "55",
  "survivesShareCI": "51--58",
  "totalGap": "2.12",
