@@ -14,6 +14,9 @@
 # 2026-07-31: stats/mixed_use.py added — jobs-housing balance carries no independent
 # signal on the rate at MSOA scale (x0.98), so the mixed-use half of the
 # recommendation is attributed to the literature, not to these data.
+# 2026-08-13: pure-type levels at mean confounds + the starting-line ratio
+# (treated detached / untreated flat, 1.15x [1.09, 1.20]) added to lock_in.py;
+# its section below is reprinted from that run (all prior numbers reproduced).
 
 ############################################################
 # stats/form_size_decomposition.py
@@ -177,10 +180,17 @@ Assembling OA data …
 
   Flat→Detached TOTAL energy gap (per dwelling, compositional, method D):
   (ratios with LAD-clustered 95% CIs)
-    as-lived:            now 2.12× [2.01, 2.24] → opt 1.51× [1.43, 1.59]
+    unadjusted:          now 2.12× [2.01, 2.24] → opt 1.51× [1.43, 1.59]
     equal family size:   now 1.71× [1.62, 1.81] → opt 1.18× [1.11, 1.25]
 
+  Pure-type levels at mean confounds (kWh per dwelling per year):
+    flat:     now  11,468 → opt   8,702
+    detached: now  24,342 → opt  13,138
+    form saving (det now − flat now):      12,874
+    package saving on detached (now−opt):  11,205
+
   55% of the per-dwelling gap (log scale) survives best insulation + a full EV fleet [95% CI 51%, 58%].
+  Starting line: treated detached / untreated flat = 1.15× [1.09, 1.20] (full technology lands about where compact form starts).
   Access deficit on foot 27.23× [19.45, 38.14]: UNCHANGED — no technology moves destinations closer.
 
 ############################################################

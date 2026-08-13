@@ -39,7 +39,13 @@ from form_size_decomposition import (
     _imd_income_col,
     _tenure_cols,
 )
-from inference import CLUSTER_COL, NAN_CI, cluster_bootstrap, fmt_ci, log_contrast_ci
+from inference import (
+    CLUSTER_COL,
+    NAN_CI,
+    cluster_bootstrap_multi,
+    fmt_ci,
+    log_contrast_ci,
+)
 from oa_data import load_and_aggregate
 from travel_energy import KWH_PER_MILE_EV, fleet_intensity_kwh_per_mile
 
@@ -75,6 +81,17 @@ def _d_ratio_ci(
     if m is None:
         return NAN_CI
     return log_contrast_ci(m, "s_detached", "s_flat")
+
+
+def _pure_levels(model: object, frame: pd.DataFrame, confounds: list[str]) -> dict:
+    """Flat/detached pure-type predicted levels (kWh per dwelling) at mean
+    confounds — the same convention as the figure predictions
+    (``argument_figures._pure_preds``)."""
+    params = model.params  # type: ignore[attr-defined]
+    base = sum(float(params[c]) * float(_num(frame[c]).mean()) for c in confounds)
+    return {
+        t: float(np.exp(float(params[f"s_{t}"]) + base)) for t in ("flat", "detached")
+    }
 
 
 def main() -> None:
@@ -128,6 +145,14 @@ def main() -> None:
     now_fam = _d_ratio_ci(cf, "_log_total_now", conf_fam)
     opt_fam = _d_ratio_ci(cf, "_log_total_opt", conf_fam)
 
+    # Pure-type levels at mean confounds (the figure convention), for the
+    # absolute framing: what form is worth in kWh, and where the fully treated
+    # detached type lands relative to the untreated flat type.
+    m_now = _comp_ols(cf, "_log_total_now", _SHARE_FRACS + conf, "total_hh")
+    m_opt = _comp_ols(cf, "_log_total_opt", _SHARE_FRACS + conf, "total_hh")
+    lev_now = _pure_levels(m_now, cf, conf)
+    lev_opt = _pure_levels(m_opt, cf, conf)
+
     import ledger
 
     ledger.record(
@@ -136,6 +161,12 @@ def main() -> None:
         famNowGap=ledger.pt(now_fam[0]),
         famOptGap=ledger.pt(opt_fam[0]),
         fabricFactorMedian=ledger.pt(float(factor.median())),
+        lockinFlatNow=f"{lev_now['flat']:,.0f}",
+        lockinDetNow=f"{lev_now['detached']:,.0f}",
+        lockinFlatOpt=f"{lev_opt['flat']:,.0f}",
+        lockinDetOpt=f"{lev_opt['detached']:,.0f}",
+        lockinFormSaving=f"{lev_now['detached'] - lev_now['flat']:,.0f}",
+        lockinPackageSaving=f"{lev_now['detached'] - lev_opt['detached']:,.0f}",
     )
 
     print(
@@ -147,28 +178,57 @@ def main() -> None:
     print(f"    unadjusted:          now {fmt_ci(now_hh)} → opt {fmt_ci(opt_hh)}")
     print(f"    equal family size:   now {fmt_ci(now_fam)} → opt {fmt_ci(opt_fam)}")
 
-    # Surviving share on the model-native log scale: log(optimised) / log(now).
-    # (An earlier version used the (ratio−1) excess scale, which understated it.)
-    # Its CI combines two model fits, so it comes from a LAD-cluster bootstrap.
-    survives = np.log(opt_hh[0]) / np.log(now_hh[0]) if now_hh[0] > 1 else float("nan")
+    print("\n  Pure-type levels at mean confounds (kWh per dwelling per year):")
+    print(f"    flat:     now {lev_now['flat']:>7,.0f} → opt {lev_opt['flat']:>7,.0f}")
+    print(
+        f"    detached: now {lev_now['detached']:>7,.0f} → opt "
+        f"{lev_opt['detached']:>7,.0f}"
+    )
+    print(
+        f"    form saving (det now − flat now):     "
+        f"{lev_now['detached'] - lev_now['flat']:>7,.0f}"
+    )
+    print(
+        f"    package saving on detached (now−opt): "
+        f"{lev_now['detached'] - lev_opt['detached']:>7,.0f}"
+    )
 
-    def _survives_stat(frame: pd.DataFrame) -> float:
+    # Two composite quantities share the same pair of fits per resample, so one
+    # LAD-cluster bootstrap carries both CIs:
+    # * surviving share, on the model-native log scale: log(optimised)/log(now)
+    #   (an earlier version used the (ratio−1) excess scale, which understated it);
+    # * the starting line: the fully treated detached level over the untreated
+    #   flat level, exp of a cross-model coefficient contrast plus the confound
+    #   base shift, i.e. where full technology lands relative to compact form.
+    def _lockin_stats(frame: pd.DataFrame) -> dict[str, float]:
         a = _comp_ols(frame, "_log_total_now", _SHARE_FRACS + conf, "total_hh")
         b = _comp_ols(frame, "_log_total_opt", _SHARE_FRACS + conf, "total_hh")
         if a is None or b is None:
-            return float("nan")
+            return {"survives": float("nan"), "startline": float("nan")}
         rn = np.exp(a.params["s_detached"] - a.params["s_flat"])
         ro = np.exp(b.params["s_detached"] - b.params["s_flat"])
-        return float(np.log(ro) / np.log(rn)) if rn > 1 else float("nan")
+        lv_now = _pure_levels(a, frame, conf)
+        lv_opt = _pure_levels(b, frame, conf)
+        return {
+            "survives": float(np.log(ro) / np.log(rn)) if rn > 1 else float("nan"),
+            "startline": lv_opt["detached"] / lv_now["flat"],
+        }
 
-    surv = cluster_bootstrap(cf, _survives_stat)
+    boot = cluster_bootstrap_multi(cf, _lockin_stats)
+    surv, start = boot["survives"], boot["startline"]
     ledger.record(
-        survivesShare=f"{survives * 100:.0f}",
+        survivesShare=f"{surv[0] * 100:.0f}",
         survivesShareCI=f"{surv[1] * 100:.0f}--{surv[2] * 100:.0f}",
+        lockinStartLine=ledger.pt(start[0]),
+        lockinStartLineCI=ledger.ci(start[1], start[2]),
     )
     print(
-        f"\n  {survives:.0%} of the per-dwelling gap (log scale) survives best "
+        f"\n  {surv[0]:.0%} of the per-dwelling gap (log scale) survives best "
         f"insulation + a full EV fleet [95% CI {surv[1]:.0%}, {surv[2]:.0%}]."
+    )
+    print(
+        f"  Starting line: treated detached / untreated flat = {fmt_ci(start)} "
+        "(full technology lands about where compact form starts)."
     )
 
     # Access deficit is unchanged by construction (no technology moves destinations
