@@ -116,6 +116,10 @@ After: "... should place greater emphasis on compact urban form."
 
 **F17a. Colon chains.** The colon as default connector: "X: Y" used sentence after sentence to attach an elaboration, definition, example or payoff. Budget: at most one colon per paragraph, and only for a genuine enumeration or definition; never in consecutive sentences. The fix is usually a plain conjunction ("for", "because", "so"), a relative clause, or a second sentence.
 
+**F18. Personified machinery.** An abstraction performing a human act, usually as an opener: "Two checks guard the rate", "The scenario ladder recomputes". Open with "we" and a plain verb. A paired construction whose pair is the content (the scenario's two levers) is not this fault; rewriting it into marked syntax trades a false positive for a real mannerism.
+
+**F19. The trailing payoff clause.** A ", so ..." or "rather than ..." clause riding after the sentence's real content, re-weighting rather than adding (see the fix under gate check 5 in §8a).
+
 **F17. Absolutist claims about literatures and instruments.** "Neither field currently answers", "never entered", "not scored by any existing instrument", "at all". These invite a counterexample the paper then has to defend. Scope them: "ordinarily", "typically", "chiefly", "in current use", "no established". The exception is a claim true by construction ("none of these technologies alters the distance between dwellings and destinations"), which stays absolute because hedging it would misstate the model. Do not over-correct into vagueness; the scoped claim must still commit.
 
 ## 6. Section-level construction
@@ -146,7 +150,15 @@ Full conventions are in [figure_notes.md](figure_notes.md). The prose-facing rul
 
 ## 8a. The gate (run on every sentence before it is shown)
 
-The faults in §5 return in rotation because each correction removes one device and leaves the impulse intact: an em-dash becomes a colon, a colon becomes a fragment, a fragment becomes a fronted count. The constraint that stops the rotation is on content, not form. **Each sentence names an actor that can literally act and reports one measured fact or one standing state. A sentence carrying emphasis instead of a fact is deleted, not rewritten.** Ten yes/no checks:
+The faults in §5 return in rotation because each correction removes one device and leaves the impulse intact: an em-dash becomes a colon, a colon becomes a fragment, a fragment becomes a fronted count. The constraint that stops the rotation is on content, not form. **Each sentence names an actor that can literally act and reports one measured fact or one standing state. A sentence carrying emphasis instead of a fact is deleted, not rewritten.**
+
+Three generative rules precede the checks, and they are the method rather than the filter:
+
+1. **Intuition first, then detail.** Write the paragraph's nutshell as a person would say it aloud (the claim, the reason, the consequence), then hang the numbers and machinery on that skeleton. The numbers, abstractions, and tests serve the stated intention, never the reverse; deriving from the machinery and decorating it with words is the failure mode.
+2. **Given-new chaining.** Each sentence opens from what the previous sentence just delivered and pushes it one step. A sentence that opens a fresh subject from nowhere and closes on itself produces chunked, flat logic regardless of how its words are polished.
+3. **The explanation test.** Whatever has to be said in conversation to make a passage land is what the passage owed the reader: why the construction exists, its numbers as before-and-after pairs, and what it establishes. A term is defined at the moment it first appears or it does not appear ("conditioning variants", "both readings", "parity" all failed this). When a reader says a passage makes no sense, explain the substance in plain words first and only then redraft; the complaint is about comprehension, not wording.
+
+Ten yes/no checks:
 
 1. **Subject.** Is the grammatical subject a discourse object (paper, study, results, analysis, design, comparison, test, argument, strand, literature) governing an agentive verb? Licensed actors: people, residents, neighbourhoods, dwellings, destinations, records, measurements, policy instruments.
 2. **Given-new.** Does the first noun phrase name something absent from the preceding sentence, or open with a bare cardinal plus a new noun ("Three hazards could mislead...")?
