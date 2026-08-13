@@ -656,17 +656,17 @@ def main() -> None:
         cells = "".join(f" & {m[t]:,.0f}" for t in TYPES)
         # The median ratio is the flat:detached quotient of the median columns,
         # the observed counterpart to the compositional pure-type ratio.
+        # Access is a property of the location, so the access half carries no
+        # equal-household-size column.
         med_ratio = m["Flat"] / m["Detached"] if m["Detached"] else float("nan")
-        # Access is a property of the location, so an equal-household-size
-        # variant does not apply: the final column carries a dash.
         return (
             f"{label}{cells} & {med_ratio:.1f}$\\times$ & "
-            f"\\nepi{macro}$\\times$ & --- \\\\\n"
+            f"\\nepi{macro}$\\times$ \\\\\n"
         )
 
     ledger.table(
         "axesaccess",
-        "\\multicolumn{8}{l}{\\textit{Access: opportunities within reach "
+        "\\multicolumn{7}{l}{\\textit{Access: opportunities within reach "
         "(median count)}} \\\\\n"
         + _table_row("Amenities, on foot", "net_total_1600", "walkAmen")
         + _table_row("Amenities, own catchment", "net_amen", "catchAmen")

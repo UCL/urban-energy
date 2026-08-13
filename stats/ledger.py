@@ -73,13 +73,20 @@ def record(**kv: str | float | int) -> None:
 #: tabular (TeX cannot ``\input`` rows inside an alignment), assembled from one
 #: or more recorded parts so multi-script tables stay single-sourced.
 _TABLES: dict[str, dict[str, object]] = {
-    "axes": {
+    "axesaccess": {
+        "cols": "lrrrrrr",
+        "header": " & Flat & Terraced & \\shortstack[r]{Semi-\\\\detached} & "
+        "Detached & \\shortstack[r]{Dominant-\\\\type median} & "
+        "\\shortstack[r]{Pure-type\\\\ratio} \\\\",
+        "parts": ["axesaccess"],
+    },
+    "axesenergy": {
         "cols": "lrrrrrrr",
         "header": " & Flat & Terraced & \\shortstack[r]{Semi-\\\\detached} & "
         "Detached & \\shortstack[r]{Dominant-\\\\type median} & "
         "\\shortstack[r]{Pure-type\\\\ratio} & "
         "\\shortstack[r]{Equal\\\\household size} \\\\",
-        "parts": ["axesaccess", "axesenergy"],
+        "parts": ["axesenergy"],
     },
     "scenarios": {
         "cols": "lcc",
