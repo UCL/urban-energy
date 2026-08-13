@@ -74,9 +74,11 @@ def record(**kv: str | float | int) -> None:
 #: or more recorded parts so multi-script tables stay single-sourced.
 _TABLES: dict[str, dict[str, object]] = {
     "axes": {
-        "cols": "lrrrrrr",
-        "header": " & Flat & Terraced & Semi-detached & Detached & Ratio & "
-        "Equal household size \\\\",
+        "cols": "lrrrrrrr",
+        "header": " & Flat & Terraced & \\shortstack[r]{Semi-\\\\detached} & "
+        "Detached & \\shortstack[r]{Dominant-\\\\type median} & "
+        "\\shortstack[r]{Pure-type\\\\ratio} & "
+        "\\shortstack[r]{Equal\\\\household size} \\\\",
         "parts": ["axesaccess", "axesenergy"],
     },
     "scenarios": {

@@ -571,14 +571,19 @@ def _demo() -> None:
             f" & {med[kind][t]:,.0f}" for t in ["Flat", "Terraced", "Semi", "Detached"]
         )
 
+    def _med_ratio(kind: str) -> str:
+        # Detached:flat quotient of the dominant-type median columns — the
+        # observed counterpart to the compositional pure-type ratio.
+        return f"{med[kind]['Detached'] / med[kind]['Flat']:.2f}$\\times$"
+
     ledger.table(
         "axesenergy",
-        "\\multicolumn{7}{l}{\\textit{Energy (kWh per dwelling per year)}} \\\\\n"
-        f"Home (gas + electricity){_cells('heat')} & "
+        "\\multicolumn{8}{l}{\\textit{Energy (kWh per dwelling per year)}} \\\\\n"
+        f"Home energy{_cells('heat')} & {_med_ratio('heat')} & "
         "\\nepiheatGap$\\times$ & \\nepiheatFamGap$\\times$ \\\\\n"
-        f"Car travel (NTS-anchored){_cells('car')} & \\nepitravelGap$\\times$ & "
-        "\\nepitravelFamGap$\\times$ \\\\\n"
-        f"Total{_cells('tot')} & \\nepitotalGap$\\times$ & "
+        f"Car travel{_cells('car')} & {_med_ratio('car')} & "
+        "\\nepitravelGap$\\times$ & \\nepitravelFamGap$\\times$ \\\\\n"
+        f"Total{_cells('tot')} & {_med_ratio('tot')} & \\nepitotalGap$\\times$ & "
         "\\nepifamNowGap$\\times$ \\\\\n",
     )
     ledger.record(
