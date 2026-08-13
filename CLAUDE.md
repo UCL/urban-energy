@@ -23,7 +23,7 @@ urban-energy/
 ├── CLAUDE.md                  # This file — technical brief
 ├── paper/
 │   ├── latex/main.tex         # The manuscript (ledger-wired numbers)
-│   ├── latex/extended_data.tex # Extended Data (4 figures + 5 tables)
+│   ├── latex/extended_data.tex # Extended Data (4 figures + 6 tables)
 │   ├── summary.md             # Narrative two-axis statement (companion)
 │   ├── prose_guide.md         # House prose style: sentence rules + fault catalogue + revision pass
 │   ├── literature_review.md   # Thematic literature review
