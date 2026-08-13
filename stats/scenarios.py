@@ -239,7 +239,10 @@ def main() -> None:
         "Fabric only (100%)": ("fabricGap", "Insulation only (100\\%)"),
         "Heat pumps only (100%)": ("hpGap", "Heat pumps only (100\\%)"),
         "EVs only (100%)": ("evGap", "Electric vehicles only (100\\%)"),
-        "Fabric + EVs (100%)": ("fabricEvGap", "Insulation + electric vehicles (100\\%)"),
+        "Fabric + EVs (100%)": (
+            "fabricEvGap",
+            "Insulation + electric vehicles (100\\%)",
+        ),
         "CCC Balanced Pathway 2040": ("cccGap", "CCC Balanced Pathway 2040"),
         "Full rollout (100%)": ("fullGap", "Full rollout (100\\%)"),
     }
@@ -257,6 +260,13 @@ def main() -> None:
                 key + "CI": ledger.ci(as_lived[1], as_lived[2]),
             }
         )
+        if label == "Full rollout (100%)":
+            # The full-rollout equal-household-size gap carries the abstract's
+            # companion number, so it is ledgered alongside the unadjusted gap.
+            ledger.record(
+                fullFamGap=ledger.pt(equal_fam[0]),
+                fullFamGapCI=ledger.ci(equal_fam[1], equal_fam[2]),
+            )
         table_rows.append(
             f"{pretty} & {as_lived[0]:.2f}$\\times$ [{as_lived[1]:.2f}, "
             f"{as_lived[2]:.2f}] & {equal_fam[0]:.2f}$\\times$ "

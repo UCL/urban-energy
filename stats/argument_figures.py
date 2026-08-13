@@ -641,13 +641,15 @@ def scenario_ladder(cf: pd.DataFrame, confounds: list[str]) -> None:
         "Fabric only (100%)": "Insulation only",
         "Heat pumps only (100%)": "Heat pumps only",
         "EVs only (100%)": "Electric vehicles only",
-        "Fabric + EVs (100%)": "Insulation + electric vehicles",
         "CCC Balanced Pathway 2040": "CCC pathway (2040)",
         "Full rollout (100%)": "Full rollout of all three",
     }
     cf["log_hh_size"] = np.log(_num(cf["avg_hh_size"]).clip(lower=1))
     labels, ratios, fam_ratios = [], [], []
     for label, heat_transform, u_heat, u_ev in SCENARIOS:
+        if label == "Fabric + EVs (100%)":
+            continue  # ladder rung reported in Extended Data Table 2 only
+
         heat, trav = scenario_energy(
             cf, gas, elec, travel, heat_transform, u_heat, u_ev
         )
