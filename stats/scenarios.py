@@ -180,6 +180,127 @@ def _d_ratio_ci(
     return log_contrast_ci(m, "s_detached", "s_flat")
 
 
+def _sufficiency_report(
+    df: pd.DataFrame,
+    gas: pd.Series,
+    elec: pd.Series,
+    travel: pd.Series,
+) -> None:
+    """Sufficiency bar and absolute premium under the full rollout.
+
+    The bar for a negated premium is the within-type spread: the residual
+    variation among areas of the same composition and confounds, taken from the
+    same fit that produces the gap and summarised as the interquartile factor
+    of the residuals. The surviving gap is also expressed in residual standard
+    deviations. The residual includes OA-level allocation noise, so the spread
+    overstates true place-to-place variation; the bar is generous, and a gap
+    that still exceeds it does so conservatively.
+
+    The absolute premium is the difference between the pure-type kWh levels at
+    household-weighted mean confounds. The stock-wide figure re-prices each
+    area at all-flat composition with its own confounds (and, in the
+    equal-household variant, its own household size) and residual kept; it is
+    an accounting of what dispersed form costs, not a saving on offer.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        OA frame on the common scenario sample.
+    gas, elec, travel : pandas.Series
+        Baseline per-household energy components (kWh/dwelling/yr).
+    """
+    heat, travel_s = scenario_energy(df, gas, elec, travel, "fabric+hp", 1.0, 1.0)
+    total = (heat + travel_s).clip(lower=1)
+    cf = _compositional_frame(df)
+    cf["_log_total"] = np.log(total.to_numpy())
+    cf["_total"] = total.to_numpy()
+    cf["log_hh_size"] = np.log(_num(cf["avg_hh_size"]).clip(lower=1))
+    conf = (
+        ["median_build_year"] + _deprivation_cols(cf) + _tenure_cols(cf) + _hdd_cols(cf)
+    )
+    print(
+        "\n  Sufficiency bar (within-type spread) and absolute premium, full rollout:"
+    )
+    out: dict[str, str] = {}
+    variants: list[tuple[list[str], str, tuple[str, ...]]] = [
+        (
+            conf,
+            "per dwelling",
+            (
+                "withinSpread",
+                "fullGapSd",
+                "fullFlatKwh",
+                "fullDetKwh",
+                "fullPremiumKwh",
+                "fullPremiumHundredK",
+                "stockPremiumTwh",
+            ),
+        ),
+        (
+            conf + ["log_hh_size"],
+            "equal household size",
+            (
+                "withinSpreadFam",
+                "fullFamGapSd",
+                "fullFamFlatKwh",
+                "fullFamDetKwh",
+                "fullFamPremiumKwh",
+                "fullFamPremiumHundredK",
+                "stockFamPremiumTwh",
+            ),
+        ),
+    ]
+    for confounds, tag, keys in variants:
+        m = _comp_ols(
+            cf,
+            "_log_total",
+            _SHARE_FRACS + confounds,
+            "total_hh",
+            cluster_col=CLUSTER_COL,
+        )
+        if m is None:
+            return
+        used = cf.dropna(
+            subset=["_log_total"] + _SHARE_FRACS + confounds + ["total_hh"]
+        )
+        w = used["total_hh"].to_numpy(dtype=float)
+        gap = log_contrast_ci(m, "s_detached", "s_flat")
+        resid = np.asarray(m.resid, dtype=float)
+        q25, q75 = np.percentile(resid, [25, 75])
+        iqr_factor = float(np.exp(q75 - q25))
+        d = float(np.log(gap[0]) / np.std(resid))
+        levels: list[float] = []
+        for share in ("s_flat", "s_detached"):
+            x = pd.Series(0.0, index=m.params.index)
+            x[share] = 1.0
+            for c in confounds:
+                x[c] = float(np.average(used[c].to_numpy(dtype=float), weights=w))
+            levels.append(float(np.exp(float(m.params @ x))))
+        premium = levels[1] - levels[0]
+        shares = used[_SHARE_FRACS].to_numpy(dtype=float)
+        beta = np.array([float(m.params[c]) for c in _SHARE_FRACS])
+        shift = float(m.params["s_flat"]) - shares @ beta
+        twh = float((used["_total"].to_numpy() * (1.0 - np.exp(shift)) * w).sum()) / 1e9
+        out[keys[0]] = ledger.pt(iqr_factor)
+        out[keys[1]] = ledger.pt(d, 1)
+        out[keys[2]] = f"{round(levels[0], -2):,.0f}"
+        out[keys[3]] = f"{round(levels[1], -2):,.0f}"
+        out[keys[4]] = f"{round(premium, -2):,.0f}"
+        out[keys[5]] = f"{premium * 1e5 / 1e9:.1f}"
+        out[keys[6]] = f"{twh:.0f}"
+        print(
+            f"    {tag}: gap {fmt_ci(gap)} vs within-type IQR factor "
+            f"{iqr_factor:.2f} ({d:.1f} residual SDs)"
+        )
+        print(
+            f"      pure-type levels {levels[0]:,.0f} -> {levels[1]:,.0f} kWh/dwelling "
+            f"(premium {premium:,.0f} kWh/yr; {premium * 1e5 / 1e9:.2f} TWh/yr "
+            "per 100,000 dwellings)"
+        )
+        print(f"      stock-wide vs all-flat composition: {twh:.0f} TWh/yr")
+    ledger.record(**out)
+
+
 def _access_deficit(cf: pd.DataFrame) -> str:
     """On-foot amenity Flat:Detached gap (unchanged across scenarios)."""
     net_path = DATA_DIR / "statistics" / "oa_network_access.parquet"
@@ -317,6 +438,8 @@ def main() -> None:
             f"\n  {label}: {survives:.0%} of the status-quo per-dwelling energy gap "
             f"survives\n  (log scale); {1 - survives:.0%} closed."
         )
+
+    _sufficiency_report(df, gas, elec, travel)
 
     cf = _compositional_frame(df)
     print(
