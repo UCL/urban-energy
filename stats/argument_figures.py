@@ -571,7 +571,7 @@ def rate(cf: pd.DataFrame, income: list[str], confounds: list[str]) -> None:
         # Each bar carries its multiple of the flat bar, centred at the top.
         for i, val in enumerate(v):
             ax.annotate(
-                f"{val / v[0]:.2f}",
+                f"{val / v[0]:.1f}×",
                 (i, val),
                 textcoords="offset points",
                 xytext=(0, -2),
