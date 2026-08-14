@@ -126,6 +126,7 @@
  "spatialBlockGap": "2.12",
  "spatialBlockGapCI": "1.89--2.38",
  "stockFamPremiumTwh": "14",
+ "stockPremiumShare": "21",
  "stockPremiumTwh": "36",
  "totalGap": "2.12",
  "totalGapCI": "2.01--2.24",

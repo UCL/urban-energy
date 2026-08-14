@@ -288,6 +288,15 @@ def _sufficiency_report(
         out[keys[4]] = f"{round(premium, -2):,.0f}"
         out[keys[5]] = f"{premium * 1e5 / 1e9:.1f}"
         out[keys[6]] = f"{twh:.0f}"
+        if keys[6] == "stockPremiumTwh":
+            # The premium's share of the fully treated stock total, backing the
+            # Discussion's "roughly a fifth" reading.
+            stock_twh = float((used["_total"].to_numpy() * w).sum()) / 1e9
+            out["stockPremiumShare"] = f"{twh / stock_twh * 100:.0f}"
+            print(
+                f"      treated stock total {stock_twh:.0f} TWh/yr "
+                f"(premium share {twh / stock_twh:.0%})"
+            )
         print(
             f"    {tag}: gap {fmt_ci(gap)} vs within-type IQR factor "
             f"{iqr_factor:.2f} ({d:.1f} residual SDs)"
