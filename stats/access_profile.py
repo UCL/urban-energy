@@ -221,6 +221,16 @@ def compositional_access(d: pd.DataFrame) -> None:
         if col == "net_amen":
             access_ratio = ci[0]  # catchment-amenity advantage, flat:det
             access_ratio_ci = ci
+            # Pure-type catchment amenity levels, rounded for prose (the
+            # Discussion quotes all four to show the balance).
+            for t, key_t in (
+                ("flat", "catchAmenFlat"),
+                ("terraced", "catchAmenTerr"),
+                ("semi", "catchAmenSemi"),
+                ("detached", "catchAmenDet"),
+            ):
+                level = float(np.exp(m.params[f"s_{t}"] + base))
+                ledger.record(**{key_t: f"{round(level, -2):,.0f}"})
         key, nd = ledger_keys[col]
         ledger.record(
             **{key: ledger.pt(ci[0], nd), key + "CI": ledger.ci(ci[1], ci[2], nd)}

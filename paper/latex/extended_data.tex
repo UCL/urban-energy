@@ -33,13 +33,6 @@
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=\textwidth]{fig2_country}
-\caption{\textbf{The joint distribution across all areas.} Every English Output Area is plotted by total energy per dwelling against amenities of the benchmark basket reachable on foot (grey points). Contours are kernel-density estimates (fitted on log access) for the two extreme dominant-type classes, drawn at 8--92\% of each class's peak density: flat-dominant areas concentrate at low energy and high access, detached-dominant areas at high energy and low access.}
-\label{edfig:country}
-\end{figure}
-
-\begin{figure}[p]
-\centering
 \includegraphics[width=\textwidth]{fig5_doorstep}
 \caption{\textbf{Per-service counts at walking distance.} Median counts within a 1.6\,km network walk are shown by service for the four dominant dwelling-type classes (flats, terraced, semi-detached, detached); the flat and detached extremes are labelled. The median detached-dominant area has no general practitioner within the 1.6\,km walk.}
 \label{edfig:doorstep}
@@ -47,9 +40,23 @@
 
 \begin{figure}[p]
 \centering
+\includegraphics[width=\textwidth]{fig2_country}
+\caption{\textbf{The joint distribution across all areas.} Every English Output Area is plotted by total energy per dwelling against amenities of the benchmark basket reachable on foot (grey points). Contours are kernel-density estimates (fitted on log access) for the two extreme dominant-type classes, drawn at 8--92\% of each class's peak density: flat-dominant areas concentrate at low energy and high access, detached-dominant areas at high energy and low access.}
+\label{edfig:country}
+\end{figure}
+
+\begin{figure}[p]
+\centering
 \includegraphics[width=\textwidth]{fig10_city.png}
 \caption{\textbf{Energy and access within a single city.} Sheffield is mapped at Lower-layer Super Output Area aggregation by total energy (home plus car travel) per dwelling (left, continuous power-scaled colour ramp) and amenities of the benchmark basket within a 1.6\,km walk (right, logarithmic colour scale). The high-energy ring around the compact core coincides with the areas of lowest walkable access, reproducing outside London the core-to-edge pattern the main-text insets show for the capital.}
 \label{edfig:city}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.85\textwidth]{fig13_bands}
+\caption{\textbf{The sufficiency bar as two bands.} The distribution of total energy per dwelling under full deployment of all three measures, for the two pure types: the within-type residual distribution of the fitted model is placed at each type's predicted level, with the middle half of like areas shaded (Methods). The shaded bands do not meet in either reading; they would meet only if each were widened from the middle half to the central \nepibandTouchShare\% of its type's areas per dwelling, or to the central \nepibandTouchShareFam\% at equal household size. Left, per dwelling; right, at equal household size.}
+\label{edfig:bands}
 \end{figure}
 
 \begin{figure}[p]
@@ -91,19 +98,6 @@ People & Census 2021 TS001 & --- & resident population \\
 \end{table}
 
 \begin{table}[p]
-\caption{Scale sensitivity (modifiable areal unit problem). The identical compositional model re-fitted after household-weighted aggregation to the two coarser census geographies, with 95\% LAD-clustered confidence intervals, alongside the dominant-type median ratios. The home-energy vertex contrast attenuates toward parity at MSOA scale, with a confidence interval spanning one, because almost no MSOA approaches a pure dwelling-type composition; the median counterpart remains above one at every scale.}
-\label{edtab:maup}
-\setlength{\tabcolsep}{3pt}
-\input{tab_maup.tex}
-\end{table}
-
-\begin{table}[p]
-\caption{Public-transport sensitivity. The headline energy counts car travel only. Here bus, rail, and Underground passenger mileage, measured by the same National Travel Survey table, is disaggregated to Output Areas by the same constrained method and added to the energy total, on the common sample of \nepiptSampleN{} areas. Energy per passenger-mile has no measured counterpart, because it depends on vehicle load factors that no Output-Area source records, so it is expressed as a fraction of the petrol-car intensity. Rail and Underground carry \nepiptRailShare\% of public-transport mileage and run well below a car per passenger-mile, while buses run near one, which places the mileage-weighted blend near a third; \nepiptIntensityAssumed$\times$ rounds it upward. The final row charges every passenger-mile as though it had been driven alone in a petrol car, an upper bound no mode approaches and one that requires no external factor. Both public-transport rows allocate each class's mileage by the Census TS061 public-transport share of commuters, concentrating it in the compact areas that use it, which is the variant least favourable to the reported gap. Allocating the class average to every area instead leaves the total gap at \nepiptClassAssumedTotal$\times$ and \nepiptClassCeilingTotal$\times$ respectively. Class marginals are preserved exactly in every row.}
-\label{edtab:publictransport}
-\input{tab_publictransport.tex}
-\end{table}
-
-\begin{table}[p]
 \caption{Sensitivity of the energy gaps to construction choices. The upper panel varies the car-travel construction: the compositional detached:flat car-travel gap under the headline proportional allocator and under within-class ownership elasticities of 0.8, 0.6, and 0, where the zero elasticity removes the ownership signal and leaves the measured between-class mileage gradient, the floor of the contrast. Class mileage totals are anchored to the measured survey figures in every variant, and the commute-distance row gives the dominant-type median range over elasticities of 0.15 to 0.45. The lower panel restricts the home-energy measurement, with the headline home-energy gap for comparison. The gas-coverage restriction also lowers the total gap to \nepigasCovTotal$\times$, a composition effect of the subsample, which excludes the off-gas rural detached areas with the highest travel energy. Flat-type areas hold \nepimeterFlat{} domestic gas meters per household against \nepimeterDet{} for detached, largely because all-electric flats heat with electricity, which the total captures; communal heating metered as non-domestic is a genuine but smaller undercount.}
 \label{edtab:sensitivity}
 \begin{tabular}{lcc}
@@ -124,6 +118,19 @@ Electricity-meter restriction & \nepielecHeat$\times$ & --- \\
 Winsorised consumption & \nepiwinsorHeat$\times$ & --- \\
 \botrule
 \end{tabular}
+\end{table}
+
+\begin{table}[p]
+\caption{Public-transport sensitivity. The headline energy counts car travel only. Here bus, rail, and Underground passenger mileage, measured by the same National Travel Survey table, is disaggregated to Output Areas by the same constrained method and added to the energy total, on the common sample of \nepiptSampleN{} areas. Energy per passenger-mile has no measured counterpart, because it depends on vehicle load factors that no Output-Area source records, so it is expressed as a fraction of the petrol-car intensity. Rail and Underground carry \nepiptRailShare\% of public-transport mileage and run well below a car per passenger-mile, while buses run near one, which places the mileage-weighted blend near a third; \nepiptIntensityAssumed$\times$ rounds it upward. The final row charges every passenger-mile as though it had been driven alone in a petrol car, an upper bound no mode approaches and one that requires no external factor. Both public-transport rows allocate each class's mileage by the Census TS061 public-transport share of commuters, concentrating it in the compact areas that use it, which is the variant least favourable to the reported gap. Allocating the class average to every area instead leaves the total gap at \nepiptClassAssumedTotal$\times$ and \nepiptClassCeilingTotal$\times$ respectively. Class marginals are preserved exactly in every row.}
+\label{edtab:publictransport}
+\input{tab_publictransport.tex}
+\end{table}
+
+\begin{table}[p]
+\caption{Scale sensitivity (modifiable areal unit problem). The identical compositional model re-fitted after household-weighted aggregation to the two coarser census geographies, with 95\% LAD-clustered confidence intervals, alongside the dominant-type median ratios. The home-energy vertex contrast attenuates toward parity at MSOA scale, with a confidence interval spanning one, because almost no MSOA approaches a pure dwelling-type composition; the median counterpart remains above one at every scale.}
+\label{edtab:maup}
+\setlength{\tabcolsep}{3pt}
+\input{tab_maup.tex}
 \end{table}
 
 \end{document}

@@ -283,6 +283,25 @@ def _sufficiency_report(
         twh = float((used["_total"].to_numpy() * (1.0 - np.exp(shift)) * w).sum()) / 1e9
         out[keys[0]] = ledger.pt(iqr_factor)
         out[keys[1]] = ledger.pt(d, 1)
+        # The coverage at which the two types' bands would first touch: the
+        # central residual band whose width equals the logarithmic gap.
+        target = float(np.log(gap[0]))
+        lo, hi = 0.5, 0.999
+        for _ in range(60):
+            mid = (lo + hi) / 2
+            width = float(
+                np.percentile(resid, 50 * (1 + mid))
+                - np.percentile(resid, 50 * (1 - mid))
+            )
+            if width < target:
+                lo = mid
+            else:
+                hi = mid
+        touch_key = (
+            "bandTouchShare" if keys[0] == "withinSpread" else "bandTouchShareFam"
+        )
+        out[touch_key] = f"{lo * 100:.0f}"
+        print(f"      bands touch at the central {lo:.0%} of areas")
         out[keys[2]] = f"{round(levels[0], -2):,.0f}"
         out[keys[3]] = f"{round(levels[1], -2):,.0f}"
         out[keys[4]] = f"{round(premium, -2):,.0f}"

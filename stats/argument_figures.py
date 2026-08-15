@@ -1264,6 +1264,126 @@ def equity(cf: pd.DataFrame) -> None:
     fs.save(fig, "fig12_equity")
 
 
+def bands(cf: pd.DataFrame, confounds: list[str]) -> None:
+    """F13: the two types as bands under full deployment, and the space between.
+
+    The within-type residual distribution of the full-rollout fit is placed at
+    each pure-type level (the same construction as the sufficiency bar in the
+    manuscript), with the middle half of like areas shaded. The deck carries the
+    ledgered touching point (``bandTouchShare``).
+    """
+    cf = cf.copy()
+    hh = _num(cf["total_hh"])
+    gas = (_num(cf["oa_gas_mean_kwh"]) * _num(cf["oa_gas_num_meters"])).fillna(0) / hh
+    elec = (_num(cf["oa_elec_mean_kwh"]) * _num(cf["oa_elec_num_meters"])).fillna(
+        0
+    ) / hh
+    travel = _num(cf["transport_kwh_per_hh_total_est"])
+    heat, trav = scenario_energy(cf, gas, elec, travel, "fabric+hp", 1.0, 1.0)
+    cf["_log_full"] = np.log((heat + trav).clip(lower=1).to_numpy())
+    cf["log_hh_size"] = np.log(_num(cf["avg_hh_size"]).clip(lower=1))
+
+    fig, axes = plt.subplots(1, 2, figsize=(fs.COL2, 3.7), sharey=True)
+    fig.subplots_adjust(top=0.70, bottom=0.16, left=0.07, right=0.985, wspace=0.10)
+    variants = [
+        ("per", "Per dwelling", "bandTouchShare"),
+        ("fam", "At equal household size", "bandTouchShareFam"),
+    ]
+    for ax, (conf_key, title, touch_key) in zip(axes, variants, strict=True):
+        touch = ledger.value(touch_key, "")
+        conf_v = confounds + ["log_hh_size"] if conf_key == "fam" else confounds
+        m = _comp_ols(cf, "_log_full", _SHARE_FRACS + conf_v, "total_hh")
+        used = cf.dropna(subset=["_log_full"] + _SHARE_FRACS + conf_v + ["total_hh"])
+        resid = np.asarray(m.resid, dtype=float)
+        levels = _pure_preds(m, used, conf_v)
+        q25, q75 = np.percentile(resid, [25, 75])
+        kde = gaussian_kde(resid)
+        lo, hi = np.percentile(resid, [0.5, 99.5])
+        grid = np.linspace(lo * 1.4, hi * 1.4, 400)
+        dens = kde(grid)
+        for t in ("Flat", "Detached"):
+            centre = float(np.log(levels[t]))
+            x = np.exp(grid + centre)
+            colour = fs.DWELLING[t]
+            ax.plot(x, dens, color=colour, lw=1.6, zorder=3)
+            mask = (grid >= q25) & (grid <= q75)
+            ax.fill_between(x[mask], 0, dens[mask], color=colour, alpha=0.22, zorder=2)
+            peak_x = float(np.exp(grid[int(np.argmax(dens))] + centre))
+            dx, align = (-4, "right") if t == "Flat" else (4, "left")
+            ax.annotate(
+                fs.DWELLING_LABEL[t],
+                xy=(peak_x, float(dens.max())),
+                xytext=(dx, 4),
+                textcoords="offset points",
+                ha=align,
+                fontsize=8.5,
+                fontweight="bold",
+                color=colour,
+            )
+        flat_top = float(np.exp(np.log(levels["Flat"]) + q75))
+        det_bot = float(np.exp(np.log(levels["Detached"]) + q25))
+        ymid = float(dens.max()) * 0.20
+        ax.annotate(
+            "",
+            xy=(det_bot, ymid),
+            xytext=(flat_top, ymid),
+            arrowprops=dict(
+                arrowstyle="|-|", color=fs.INK_SECONDARY, lw=0.9, mutation_scale=3
+            ),
+        )
+        ax.set_xscale("log")
+        ax.set_xlim(
+            float(np.exp(grid[0] + np.log(levels["Flat"]))),
+            float(np.exp(grid[-1] + np.log(levels["Detached"]))),
+        )
+        ticks = [4000, 6000, 9000, 14000]
+        ax.set_xticks(ticks, [f"{v:,}" for v in ticks])
+        ax.minorticks_off()
+        ax.set_yticks([])
+        ax.set_ylim(0, float(dens.max()) * 1.18)
+        ax.set_title(
+            title, loc="left", fontsize=8.5, fontweight="bold", color=fs.INK, pad=16
+        )
+        ax.text(
+            0.0,
+            1.02,
+            f"bands meet only at the central {touch}% of areas",
+            transform=ax.transAxes,
+            fontsize=7.5,
+            color=fs.INK_SECONDARY,
+        )
+        ax.set_xlabel("Total energy per dwelling (kWh / yr, log)", fontsize=9)
+    axes[0].set_ylabel("Density of areas", fontsize=9)
+    if os.environ.get("NEPI_PLAIN_FIGS") != "1":
+        fig.text(
+            fs.LEFT_X,
+            0.945,
+            "THE SUFFICIENCY BAR",
+            fontsize=8.5,
+            fontweight="bold",
+            color=fs.ACCENT,
+        )
+        fig.text(
+            fs.LEFT_X,
+            0.885,
+            "Fully treated, the two types remain separate bands",
+            fontsize=13,
+            fontweight="bold",
+            color=fs.INK,
+        )
+        fig.text(
+            fs.LEFT_X,
+            0.835,
+            "Within-type distributions at each pure-type level; the shaded bands "
+            "are the middle half of like areas",
+            fontsize=9,
+            color=fs.INK_SECONDARY,
+        )
+    fs.footer(fig)
+    fs.save(fig, "fig13_bands")
+    print(f"  F13 bands: middle halves apart; bands touch at the central {touch}%")
+
+
 def main() -> None:
     """Build the argument chart figures into paper/figures/ (method-D basis)."""
     fs.apply_style()
@@ -1287,6 +1407,7 @@ def main() -> None:
     access_curve(cf, income, dists)
     rate(cf, income, confounds)
     scenario_ladder(cf, confounds)
+    bands(cf, confounds)
     forest(cf, confounds, income)
     equity(cf)
     print(f"\n  → {fs.FIG_DIR}")
