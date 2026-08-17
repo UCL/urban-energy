@@ -462,6 +462,12 @@ def main() -> None:
                 c_key: f"{(1 - survives) * 100:.0f}",
             }
         )
+        if label == "Full rollout (100%)":
+            # Companion convention: the share of the excess over parity that
+            # survives, reported in Methods so the log-scale choice is transparent.
+            excess = (r - 1) / (r0 - 1) if r0 > 1 else float("nan")
+            ledger.record(fullSurvivesExcess=f"{excess * 100:.0f}")
+            print(f"    (excess-over-parity convention: {excess:.0%} survives)")
         print(
             f"\n  {label}: {survives:.0%} of the status-quo per-dwelling energy gap "
             f"survives\n  (log scale); {1 - survives:.0%} closed."

@@ -61,6 +61,7 @@
  "fullPremiumHundredK": "0.4",
  "fullPremiumKwh": "3,900",
  "fullSurvives": "69",
+ "fullSurvivesExcess": "60",
  "gasCovHeat": "1.61",
  "gasCovTotal": "1.74",
  "heatFamGap": "1.27",
