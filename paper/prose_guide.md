@@ -4,6 +4,8 @@ House style for everything written in this repository that a reader will see: th
 
 The guide exists because drafted prose (whether written fast by hand or produced by a language model) converges on a small set of faults. They are faults of rhythm rather than of grammar, so proofreading does not catch them. Each one below has been found in this manuscript at least once. The rules are stated as budgets and procedures so that a draft can be audited rather than argued about.
 
+The rules bind drafted text. Most correct an overused device rather than the device itself: the em-dash, the punch sentence, contrast and cadence are legitimate at low dose in the author's hand, and author-placed instances are intentional and locked (no pass removes, normalises, or flags them). The agent drafts plain and, where a passage wants colour, proposes the device rather than applying it. Faults with no legitimate dose (backloading above all, then drama refrains, appositive glosses, synonym rotation, inventory packing) are fixed on sight. Flatness is a co-equal failure: emphasis earned by content stays.
+
 Read §5 before drafting and §9 before declaring any section finished.
 
 ---
@@ -24,7 +26,7 @@ A section is finished when nothing can be deleted without losing a fact.
 - **Length band 15 to 35 words.** Below 10 words is reserved for definitions and statements of scope. Above 45 words the sentence carries more than one idea by construction and must be split.
 - **No deliberate contrast in length.** A short sentence placed after a long one reads as a rhetorical device. If a fact deserves its own sentence, give it a normal-length one.
 - **Subject and verb in the first eight words.** Long adverbial lead-ins ("Comparing idealised pure dwelling types, ...") are acceptable once per paragraph and never twice in succession.
-- **No em-dashes.** Use a comma, a parenthesis, or a new sentence. This is absolute, in prose, captions, and site copy.
+- **No agent-drafted em-dashes**, in prose, captions, and site copy. Use a comma, a parenthesis, or a new sentence. The author's conventional em-dash, used sparingly for a genuine break, stands and is not flagged.
 - **Semicolons join two clauses at most**, and the second must not be a conclusion drawn from the first. A semicolon followed by "therefore" is always a rewrite.
 - **Colons introduce a list or a definition**, not a payoff.
 - **Negation states a fact, not an emphasis.** One negated construction per paragraph. "Technology reduces consumption without closing either gap" is a finding; three negations in four sentences is a drumbeat.
@@ -180,7 +182,7 @@ Ten yes/no checks:
 Run in order on each section. This is a deletion pass; if a step produces an addition, something is wrong.
 
 1. **Count the appositives.** Find every comma followed by "the", "a" or "an", and check whether the phrase after it restates the noun before it. Enforce §3.
-2. **Check for em-dashes.** `grep -n -- "---" latex/main.tex` and the en-dash and em-dash characters. Zero is the only acceptable count.
+2. **Check for em-dashes.** `grep -n -- "---" latex/main.tex` and the en-dash and em-dash characters. Zero agent-introduced dashes; author-placed dashes stand (the Robustness control list is one).
 3. **Measure the sentences.** Any sentence over 45 words is split. Any sentence under 10 words is checked against F3.
 4. **List the sentence openings.** Repeated openings mean the paragraph has one idea spread over several sentences.
 5. **Check consecutive sentence pairs for F2.** Same subject and same verb sense means one of them goes.
