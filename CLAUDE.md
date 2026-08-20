@@ -28,6 +28,7 @@ urban-energy/
 │   ├── prose_guide.md         # House prose style: sentence rules + fault catalogue + revision pass
 │   ├── literature_review.md   # Thematic literature review
 │   └── references.bib         # BibTeX bibliography
+├── papers/                    # Future papers: prospectus + pilot scripts each (allometry; NEPI score + Atlas)
 ├── src/urban_energy/
 │   ├── paths.py               # Centralised storage paths (loads URBAN_ENERGY_DATA_DIR from .env)
 │   └── pipeline.py            # Acquisition orchestrator: doctor / status / list / run
