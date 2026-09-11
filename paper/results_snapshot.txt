@@ -348,6 +348,8 @@ Assembling OA data …
   Terraced      1.04      5088    13017    18282
   Semi          1.33      6660    13892    20581
   Detached      1.65      9272    15070    23903
+
+  National battery-electric share of licensed cars: 4.4%
 Assembling OA data …
   178,353 metered OAs; 178,322 with a certificate floor area, fabric ratio and travel figure (the analysis sample)
   178,322 OAs

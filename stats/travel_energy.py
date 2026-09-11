@@ -586,9 +586,21 @@ def _demo() -> None:
         f"Total{_cells('tot')} & {_med_ratio('tot')} & \\nepitotalGap$\\times$ & "
         "\\nepifamNowGap$\\times$ \\\\\n",
     )
+    # National battery-electric share of licensed cars (DVLA), quoted in the
+    # Methods where the home-charging double count is dismissed.
+    veh = pd.read_parquet(
+        DATA_DIR / "statistics" / "lsoa_vehicles.parquet",
+        columns=["ulev_battery_electric", "cars_total"],
+    )
+    bev_share = float(
+        pd.to_numeric(veh["ulev_battery_electric"], errors="coerce").sum()
+        / pd.to_numeric(veh["cars_total"], errors="coerce").sum()
+    )
+    print(f"\n  National battery-electric share of licensed cars: {bev_share:.1%}")
     ledger.record(
         travelIce=ledger.pt(KWH_PER_MILE_ICE),
         travelEv=ledger.pt(KWH_PER_MILE_EV),
+        bevSharePct=ledger.pt(bev_share * 100, 1),
     )
 
 
