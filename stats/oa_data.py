@@ -320,9 +320,12 @@ def load_and_aggregate(
         )
 
     print(f"  {len(oa):,} OAs")
-    import ledger
+    # The manuscript's N is the analysis sample; a caller that keeps every
+    # metered area (the NEPI score) must not overwrite it.
+    if epc_complete:
+        import ledger
 
-    ledger.record(sampleN=f"{len(oa):,}")
+        ledger.record(sampleN=f"{len(oa):,}")
     print(f"    heat   median {oa['building_kwh_per_hh'].median():>8,.0f} kWh/hh")
     print(
         f"    travel median {oa['transport_kwh_per_hh_total_est'].median():>8,.0f} "
