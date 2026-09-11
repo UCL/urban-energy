@@ -62,13 +62,19 @@ Stages skip when their declared outputs already exist (`--force` to rebuild).
 
 ```bash
 uv run python stats/oa_network_access.py        # build network-access cache (cityseer, ~12 min)
-uv run python stats/lock_in.py                  # energy per dwelling 2.12× → optimised 1.51× (equal family size 1.71× → 1.18×)
+uv run python stats/lock_in.py                  # energy per dwelling 2.11× → optimised 1.50× (equal family size 1.70× → 1.17×)
 uv run python stats/access_profile.py           # network 3.9× access per kWh + on-foot gap ~27×
 uv run python stats/form_size_decomposition.py  # heat vs dwelling/household size
 uv run python stats/scenarios.py                # decarbonisation-scenario ladder
 uv run python stats/maup_scale.py               # MAUP scale check (OA/LSOA/MSOA)
-uv run python stats/travel_energy.py            # travel marginals + allocator sensitivities
+uv run python stats/travel_energy.py            # travel marginals + allocator sensitivities + public-transport bound
+uv run python stats/mixed_use.py                # jobs-housing balance (null at MSOA)
+uv run python stats/cluster_sensitivity.py      # total-gap CI on ~50 spatial blocks
 ```
+
+Every script above writes its manuscript numbers to `paper/latex/numbers.json` through
+`stats/ledger.py`; the full set regenerates `numbers.tex` and the `tab_*.tex` fragments
+(recipe in `paper/submission_checklist.md`).
 
 The loader (`stats/oa_data.py`) assembles the per-OA frame from the acquired artefacts
 in-process. The **network** access rate needs `statistics/oa_network_access.parquet`

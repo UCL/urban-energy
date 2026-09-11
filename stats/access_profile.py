@@ -670,8 +670,7 @@ def main() -> None:
         # equal-household-size column.
         med_ratio = m["Flat"] / m["Detached"] if m["Detached"] else float("nan")
         return (
-            f"{label}{cells} & {med_ratio:.1f}$\\times$ & "
-            f"\\nepi{macro}$\\times$ \\\\\n"
+            f"{label}{cells} & {med_ratio:.1f}$\\times$ & \\nepi{macro}$\\times$ \\\\\n"
         )
 
     ledger.table(

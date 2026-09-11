@@ -67,9 +67,9 @@ less access per Joule.** This is the carbon/infrastructure lock-in (Seto et al. 
 
 | kWh/dwelling/year | Flat | Detached | gap (flat→detached) |
 | --- | ---: | ---: | ---: |
-| Heat (metered) | 10,194 | 15,020 | 1.6× |
+| Heat (metered) | 10,253 | 15,070 | 1.6× |
 | Car travel (NTS-anchored) | 3,240 | 9,272 | 3.1× |
-| **Total energy** (per-OA median) | **13,674** | **23,832** | **2.1×** |
+| **Total energy** (per-OA median) | **13,735** | **23,903** | **2.1×** |
 
 The Flat/Detached columns are observed medians; the gap is the compositional flat-to-detached
 estimate per dwelling, so it is not the column quotient. Energy is modelled per dwelling with
@@ -85,9 +85,9 @@ detached area gets there only by driving much further, so per kilowatt-hour a fl
 **Lock-in** — no decarbonisation lever closes much of the energy gap, and none moves access at all.
 Taken separately, insulation closes about a fifth of the gap, heat pumps leave it marginally wider (a
 delivered-energy fuel switch that unmasks car travel), electric vehicles close about a fifth. The
-CCC's 2040 Balanced Pathway leaves **1.89×** and a full rollout of all three leaves **1.68×**, about
+CCC's 2040 Balanced Pathway leaves **1.88×** and a full rollout of all three leaves **1.67×**, about
 two-thirds surviving, while the access deficit is **100% unchanged**. Fabric plus full electrification
-without heat pumps is the conventional bound, **2.12× → 1.51×**. Built form fixes demand for generations.
+without heat pumps is the conventional bound, **2.11× → 1.50×**. Built form fixes demand for generations.
 
 (Full numbers and method: [paper/summary.md](paper/summary.md); reproduce with
 `stats/scenarios.py` + `stats/lock_in.py` + `stats/access_profile.py`.)
@@ -141,11 +141,11 @@ echo "URBAN_ENERGY_DATA_DIR=$(pwd)/temp" > .env
 
 # Two-axis analysis — energy gradient, scenarios, access profile, form/size
 uv run python stats/oa_network_access.py        # build network-access cache (cityseer, ~12 min)
-uv run python stats/lock_in.py                  # fabric+EV bound 2.12× → 1.51× (per dwelling)
+uv run python stats/lock_in.py                  # fabric+EV bound 2.11× → 1.50× (per dwelling)
 uv run python stats/scenarios.py                # scenario ladder: fabric/heat-pump/EV separate levers, CCC pathway
-uv run python stats/maup_scale.py               # MAUP: gap re-fit at OA/LSOA/MSOA (2.12/1.88/1.72×)
+uv run python stats/maup_scale.py               # MAUP: gap re-fit at OA/LSOA/MSOA (2.11/1.87/1.71×)
 uv run python stats/access_profile.py           # access per kWh 3.9×, on-foot gap ~27×
-uv run python stats/form_size_decomposition.py  # heat 1.60× → 1.17× size-held (family size a free control, γ≈0.5)
+uv run python stats/form_size_decomposition.py  # heat 1.59× → 1.17× size-held (family size a free control, γ≈0.5)
 ```
 
 Full reproduction recipe (raw downloads → analysis) is in

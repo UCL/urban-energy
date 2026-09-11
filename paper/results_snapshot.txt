@@ -1,39 +1,37 @@
-# Results snapshot — regenerated 2026-07-10
+# Results snapshot — regenerated 2026-09-11
 # Every number below is printed straight from the named script (no hand-editing;
 # only statsmodels stderr warnings are stripped).
-# This run: 999-rep cluster bootstraps (was 200/300), t(G-1) critical values for
-# clustered CIs (was z), common EPC complete-case sample in lock_in/scenarios
-# (178,341 of 178,353 OAs), ownership-elasticity sweep added to travel_energy,
-# and people / 25.6 km / jobs-companion rows added to access_profile.
-# Amenity basket: cleaned six-service basket (2026-07-09): hospital dropped
-# (NHS ETS = all trust sites), greenspace filtered to parks/fields/play/allotments,
-# grocery = supermarkets + convenience. On-foot amenity gap 27x, rate 3.9x.
-# 2026-07-31: public-transport sensitivity appended to the travel_energy section
-# (bus/rail/Underground mileage from the same NTS table, TS061 commute-share
-# allocator; total gap 2.12x -> 1.99x assumed, 1.84x at the car-intensity ceiling).
-# 2026-07-31: stats/mixed_use.py added — jobs-housing balance carries no independent
-# signal on the rate at MSOA scale (x0.98), so the mixed-use half of the
-# recommendation is attributed to the literature, not to these data.
-# 2026-08-13: pure-type levels at mean confounds + the starting-line ratio
-# (treated detached / untreated flat, 1.15x [1.09, 1.20]) added to lock_in.py;
-# its section below is reprinted from that run (all prior numbers reproduced).
+# 2026-09-11: (1) data/aggregate_energy_oa.py corrected: a postcode absent from
+# one fuel's DESNZ file (no meters, NaN mean) had entered that fuel's OA mean with
+# weight 1, diluting it (gas total understated ~1% on average, up to 79% in one
+# OA); such rows now carry zero weight. (2) One analysis sample: the loader keeps
+# the 178,322 metered OAs that also carry a certificate floor area, fabric ratio
+# and travel figure, so the heat ladder, scenarios, MAUP and public-transport
+# tables all fit on the same rows (previously 178,353 / 178,341 / 178,328 / 178,347).
+# Headline ratios move by at most 0.01 (total 2.12 -> 2.11, full rollout
+# 1.68 -> 1.67, heat 1.60 -> 1.59). (3) New rows: the class-average travel
+# allocation (both elasticities 0) and the unconditioned total gap.
+# Earlier history: 2026-07-10 run (999-rep bootstraps, t(G-1) CIs); 2026-07-09
+# six-service basket; 2026-07-31 public-transport and mixed-use sections;
+# 2026-08-13 lock_in pure-type levels; 2026-08-12 cluster_sensitivity.
 
 ############################################################
 # stats/form_size_decomposition.py
 ############################################################
 Assembling OA data …
-  178,353 OAs
-    heat   median   13,248 kWh/hh
+  178,353 metered OAs; 178,322 with a certificate floor area, fabric ratio and travel figure (the analysis sample)
+  178,322 OAs
+    heat   median   13,278 kWh/hh
     travel median    6,297 kWh/hh
-    dominant type: Flat 32,743  Terraced 43,946  Semi 58,318  Detached 43,346
+    dominant type: Flat 32,732  Terraced 43,944  Semi 58,314  Detached 43,332
 
-Loaded 178,353 OAs
+Loaded 178,322 OAs
 
 ======================================================================
 1. FLOOR-AREA ELASTICITY OF BUILDING ENERGY (the per-m² kill-shot)
 ======================================================================
 
-  d log(kWh/hh) / d log(m²) = 0.536  (N = 178,328)
+  d log(kWh/hh) / d log(m²) = 0.536  (N = 178,322)
   → energy scales as floor_area^0.54
   → kWh/m² scales as floor_area^-0.46 (DECLINES with size): per-m² mechanically favours larger dwellings.
 
@@ -43,10 +41,10 @@ Loaded 178,353 OAs
 
   Dominant type    per household      per person          per m²
   --------------------------------------------------------------
-  Flat                    10,194           4,861           165.9
-  Terraced                12,995           5,334           167.1
-  Semi                    13,876           5,779           171.4
-  Detached                15,020           6,377           152.6
+  Flat                    10,253           4,891           167.0
+  Terraced                13,017           5,341           167.4
+  Semi                    13,892           5,787           171.6
+  Detached                15,070           6,402           153.0
 
   Flat→Detached gradient:   hh=1.47×  person=1.31×  m2=0.92×
   (DESCRIPTIVE ONLY. per-hh rises toward detached; per-person compresses
@@ -60,11 +58,11 @@ Loaded 178,353 OAs
 
   Quintile   floor m²   Flat n   Flat kWh    Det n    Det kWh  Det:Flat
   ------------------------------------------------------------------
-  Q1               60    22368      9,624     1267     11,960     1.24×
-  Q2               73     7263     11,128     2705     13,022     1.17×
-  Q3               82     1791     12,573     4356     13,979     1.11×
-  Q4               90      857     14,232     9752     14,870     1.04×
-  Q5              116      458     18,039    25252     16,366     0.91×
+  Q1               60    22366      9,697     1267     11,982     1.24×
+  Q2               73     7261     11,170     2705     13,036     1.17×
+  Q3               82     1790     12,630     4356     13,997     1.11×
+  Q4               90      857     14,351     9752     14,893     1.04×
+  Q5              116      458     18,095    25252     16,435     0.91×
 
   Within-quintile Det:Flat ratios isolate form from size. Thin cells in
   the tails (few large flats / small detached) = limited common support:
@@ -74,7 +72,7 @@ Loaded 178,353 OAs
 4. TOTAL → DIRECT REGRESSION LADDER (fixed common-support sample)
 ======================================================================
 
-  Common sample: N = 178,328 OAs (complete cases on form, median_build_year, imd_overall_score, imd_income_score, pct_social_rented, pct_private_rented, hdd, family size, floor area)
+  Common sample: N = 178,322 OAs (complete cases on form, median_build_year, imd_overall_score, imd_income_score, pct_social_rented, pct_private_rented, hdd, family size, floor area)
   Confounds held throughout: ['median_build_year', 'imd_overall_score', 'imd_income_score', 'pct_social_rented', 'pct_private_rented', 'hdd']
 
   (Secondary specification: unweighted intercept OLS. The compositional 
@@ -83,17 +81,17 @@ Loaded 178,353 OAs
 
   Model                               R² Det:Flat [95% CI, LAD-clustered]  floor e
   --------------------------------------------------------------------------
-  M0 total  (form + confounds)     0.246               1.58× [1.43, 1.74]        —
-  M1        (+ family size)        0.275               1.30× [1.17, 1.44]        —
-  M2 direct (+ dwelling size)      0.281               1.20× [1.08, 1.33]    0.207
+  M0 total  (form + confounds)     0.244               1.57× [1.43, 1.74]        —
+  M1        (+ family size)        0.272               1.30× [1.17, 1.44]        —
+  M2 direct (+ dwelling size)      0.279               1.19× [1.07, 1.33]    0.214
 
   Household-size elasticity of heat: γ = 0.47 (per-person division would impose γ = 1).
   γ < 1 ⇒ heat is sub-linear in occupants (economies of scale), so
   per-person flatters large households — the form gap is read off the
   family-size-controlled M1, not a per-person ratio.
 
-  Total form gap: 1.58×  →  family-size-held 1.30×  →  size-held direct 1.20×
-  Family + dwelling size account for 60% of the log gap [95% CI 49%, 80%]; the residual direct effect is 1.20× (+20%).
+  Total form gap: 1.57×  →  family-size-held 1.30×  →  size-held direct 1.19×
+  Family + dwelling size account for 61% of the log gap [95% CI 49%, 80%]; the residual direct effect is 1.19× (+19%).
 
   Direct term is net of build era, income, tenure and climate (HDD).
 
@@ -101,19 +99,19 @@ Loaded 178,353 OAs
 5. COMPOSITIONAL NO-INTERCEPT LADDER — option D (all shares, hh-weighted)
 ======================================================================
 
-  Common sample: N = 178,328 OAs (household-weighted, HC1 SEs)
+  Common sample: N = 178,322 OAs (household-weighted, HC1 SEs)
   Confounds held throughout: ['median_build_year', 'imd_overall_score', 'imd_income_score', 'pct_social_rented', 'pct_private_rented', 'hdd']
 
   Model                            Det:Flat [95% CI, LAD-clustered]             HC1 CI
   ----------------------------------------------------------------------------------
-  D0 total  (shares + confounds)                 1.60× [1.45, 1.76]   [1.57, 1.62]
+  D0 total  (shares + confounds)                 1.59× [1.45, 1.76]   [1.57, 1.62]
   D1        (+ family size)                      1.27× [1.15, 1.40]   [1.25, 1.29]
-  D2 direct (+ dwelling size)                    1.17× [1.06, 1.30]   [1.16, 1.19]
+  D2 direct (+ dwelling size)                    1.17× [1.06, 1.29]   [1.15, 1.19]
 
   Household-size elasticity of heat: γ = 0.54 (per-person would impose γ = 1; economies of scale ⇒ γ < 1).
 
-  Total form gap: 1.60×  →  family-size-held 1.27×  →  size-held direct 1.17×
-  Family + dwelling size account for 66% of the log gap [95% CI 54%, 85%]; the residual direct effect is 1.17× (+17%).
+  Total form gap: 1.59×  →  family-size-held 1.27×  →  size-held direct 1.17×
+  Family + dwelling size account for 66% of the log gap [95% CI 55%, 86%]; the residual direct effect is 1.17× (+17%).
   (Descriptive covariate-adjustment decomposition on cross-sectional
    ecological data, not an identified causal mediation: floor area and
    family size are selected, so sequential ignorability is not claimed,
@@ -121,14 +119,16 @@ Loaded 178,353 OAs
    post-treatment.)
 
   Same estimator on each energy axis (shares + confounds, LAD-clustered):
-    heat    Det:Flat 1.60× [1.45, 1.76]
+    heat    Det:Flat 1.59× [1.45, 1.76]
     travel  Det:Flat 3.07× [2.81, 3.35]
-    total   Det:Flat 2.12× [2.01, 2.24]
-    (fitted on this ladder's common-support sample; access_profile fits travel on the
-     full frame, so its 3.07× interval differs marginally.)
+    total   Det:Flat 2.11× [2.00, 2.23]
+    travel, equal family size: Det:Flat 2.68× [2.41, 2.97]
+    total, no confounds:       Det:Flat 2.91× [2.77, 3.06]
+    (the loader's analysis sample is complete on floor area and fabric, so this
+     common-support sample is the same frame every other script fits on.)
 
-  D0 predicted heat at mean confounds (kWh/hh):  Flat 8,421   Detached 13,446
-  vs descriptive medians (same sample):          Flat 10,194   Detached 15,022
+  D0 predicted heat at mean confounds (kWh/hh):  Flat 8,501   Detached 13,543
+  vs descriptive medians (same sample):          Flat 10,253   Detached 15,070
   pure-type vs median gap:                        Flat 17%   Detached 10%  (extrapolation beyond common support)
 
 ======================================================================
@@ -138,8 +138,8 @@ Loaded 178,353 OAs
   Treatment: detached share (0→100%), intercept OLS over all OAs.
   DV           raw +confounds  +NS-SeC  Oster δ*  adj δ=1
   -------------------------------------------------------
-  heat       1.30×      1.02×    1.02×      0.30    0.94×
-  total      1.87×      1.28×    1.28×      1.14    1.03×
+  heat       1.30×      1.03×    1.02×      0.37    0.95×
+  total      1.87×      1.29×    1.29×      1.15    1.03×
 
   δ* = how strong unobserved selection must be (vs observed confounds) to
   nullify the gap; δ* > 1 ⇒ survives selection stronger than all measured.
@@ -160,47 +160,42 @@ Loaded 178,353 OAs
   Detached           0.99        0.94                    4%
 
   Det:Flat gaps under denominator/outlier sensitivities (LAD-clustered CIs):
-  all OAs (headline)                 N=178,353  heat 1.60× [1.45, 1.76]   total 2.12× [2.01, 2.24]
-  electricity meters ≈ households    N=173,188  heat 1.55× [1.41, 1.71]   total 2.08× [1.97, 2.19]
-  gas-meter coverage ≥ 0.9           N=119,995  heat 1.61× [1.54, 1.67]   total 1.74× [1.69, 1.80]
-  winsorised at p99.5 (33,188 kWh; 892 capped) N=178,353  heat 1.59× [1.44, 1.76]   total 2.12× [2.01, 2.23]
+  all OAs (headline)                 N=178,322  heat 1.59× [1.45, 1.76]   total 2.11× [2.00, 2.23]
+  electricity meters ≈ households    N=173,173  heat 1.55× [1.41, 1.70]   total 2.07× [1.97, 2.19]
+  gas-meter coverage ≥ 0.9           N=119,988  heat 1.60× [1.54, 1.67]   total 1.74× [1.69, 1.80]
+  winsorised at p99.5 (33,339 kWh; 892 capped) N=178,322  heat 1.59× [1.44, 1.75]   total 2.11× [2.00, 2.22]
 
 ############################################################
 # stats/lock_in.py
 ############################################################
 Assembling OA data …
-  178,353 OAs
-    heat   median   13,248 kWh/hh
+  178,353 metered OAs; 178,322 with a certificate floor area, fabric ratio and travel figure (the analysis sample)
+  178,322 OAs
+    heat   median   13,278 kWh/hh
     travel median    6,297 kWh/hh
-    dominant type: Flat 32,743  Terraced 43,946  Semi 58,318  Detached 43,346
+    dominant type: Flat 32,732  Terraced 43,944  Semi 58,314  Detached 43,332
 
-  Common sample: 178,341 of 178,353 OAs (complete EPC fabric factor + travel; now and optimised fit on these rows).
+  Common sample: 178,322 of 178,322 OAs (complete EPC fabric factor + travel; now and optimised fit on these rows).
 
   Fabric-improvement factor (EPC potential/current, median): 0.50
 
   Flat→Detached TOTAL energy gap (per dwelling, compositional, method D):
   (ratios with LAD-clustered 95% CIs)
-    unadjusted:          now 2.12× [2.01, 2.24] → opt 1.51× [1.43, 1.59]
-    equal family size:   now 1.71× [1.62, 1.81] → opt 1.18× [1.11, 1.25]
+    unadjusted:          now 2.11× [2.00, 2.23] → opt 1.50× [1.42, 1.58]
+    equal family size:   now 1.70× [1.61, 1.80] → opt 1.17× [1.11, 1.24]
 
-  Pure-type levels at mean confounds (kWh per dwelling per year):
-    flat:     now  11,468 → opt   8,702
-    detached: now  24,342 → opt  13,138
-    form saving (det now − flat now):      12,874
-    package saving on detached (now−opt):  11,205
-
-  55% of the per-dwelling gap (log scale) survives best insulation + a full EV fleet [95% CI 51%, 58%].
-  Starting line: treated detached / untreated flat = 1.15× [1.09, 1.20] (full technology lands about where compact form starts).
-  Access deficit on foot 27.23× [19.45, 38.14]: UNCHANGED — no technology moves destinations closer.
+  54% of the per-dwelling gap (log scale) survives fully deployed insulation + EVs (point estimate).
+  Access deficit on foot 27.18× [19.41, 38.08]: UNCHANGED — no technology moves destinations closer.
 
 ############################################################
 # stats/access_profile.py
 ############################################################
 Assembling OA data …
-  178,353 OAs
-    heat   median   13,248 kWh/hh
+  178,353 metered OAs; 178,322 with a certificate floor area, fabric ratio and travel figure (the analysis sample)
+  178,322 OAs
+    heat   median   13,278 kWh/hh
     travel median    6,297 kWh/hh
-    dominant type: Flat 32,743  Terraced 43,946  Semi 58,318  Detached 43,346
+    dominant type: Flat 32,732  Terraced 43,944  Semi 58,314  Detached 43,332
 
   [1] WALKABLE — network count within 1,600 m, by type (the doorstep)
   service        Flat     Det   %Det=0
@@ -211,8 +206,8 @@ Assembling OA data …
   Grocery          48       3      25%
   Greenspace       15       4      17%
   walkable basket (of 6 on foot, mean):  Flat 5.8   Terraced 5.7   Semi 5.4   Detached 4.1
-  jobs within 1,600 m (median):  Flat 6,927  Terraced 3,790  Semi 2,100  Detached 598   (Flat:Det 11.6x)
-  people within 1,600 m (median):  Flat 17,838  Terraced 11,861  Semi 8,207  Detached 2,766   (Flat:Det 6.4x)
+  jobs within 1,600 m (median):  Flat 6,928  Terraced 3,790  Semi 2,101  Detached 598   (Flat:Det 11.6x)
+  people within 1,600 m (median):  Flat 17,841  Terraced 11,861  Semi 8,208  Detached 2,766   (Flat:Det 6.4x)
 
   [1b] STRUCTURAL INTENSITY — by type (compactness → complexity)
                         Flat  Terraced      Semi  Detached  Flat:Det
@@ -223,107 +218,121 @@ Assembling OA data …
   [2] LIKE-FOR-LIKE — amenities within the SAME network distance, by type
   dist (m)        Flat  Terraced      Semi  Detached  Flat:Det
   1600             184       101        57        19     9.7x
-  3200             613       351       223        80     7.7x
+  3200             614       351       223        80     7.7x
   4800            1168       661       478       169     6.9x
-  6400            1887      1030       779       286     6.6x
-  8000            2743      1405      1109       437     6.3x
-  9600            3831      1782      1490       633     6.1x
+  6400            1888      1030       779       286     6.6x
+  8000            2744      1405      1109       437     6.3x
+  9600            3832      1782      1490       633     6.1x
   11200           4663      2144      1873       847     5.5x
-  12800           5578      2624      2239      1107     5.0x
-  14400           6782      3028      2740      1359     5.0x
-  16000           8208      3546      3236      1653     5.0x
-  17600           9479      4170      3741      1957     4.8x
-  19200          11318      5033      4300      2302     4.9x
-  20800          13080      5822      5031      2683     4.9x
-  22400          14580      6681      5903      3092     4.7x
-  24000          16339      7408      6740      3516     4.6x
-  25600          18021      8520      7460      3906     4.6x
+  12800           5580      2624      2239      1107     5.0x
+  14400           6788      3028      2740      1358     5.0x
+  16000           8212      3546      3236      1653     5.0x
+  17600           9484      4171      3741      1957     4.8x
+  19200          11323      5034      4300      2301     4.9x
+  20800          13087      5822      5032      2683     4.9x
+  22400          14598      6681      5904      3092     4.7x
+  24000          16341      7410      6740      3516     4.6x
+  25600          18029      8522      7460      3906     4.6x
 
   [2b] LIKE-FOR-LIKE JOBS — jobs reachable within the SAME network distance
   dist (m)          Flat    Terraced        Semi    Detached  Flat:Det
-  1600             6,927       3,790       2,100         598    11.6x
-  3200            26,790      15,142       9,693       2,954     9.1x
-  4800            54,242      29,920      21,613       6,702     8.1x
-  6400            87,970      47,826      35,508      11,748     7.5x
-  8000           125,369      65,596      50,889      18,279     6.9x
-  9600           172,991      83,220      68,034      26,887     6.4x
-  11200          218,080     102,264      86,363      36,090     6.0x
-  12800          266,617     118,531     105,058      46,886     5.7x
-  14400          316,699     138,768     122,518      57,148     5.5x
-  16000          370,561     160,966     142,878      70,214     5.3x
-  17600          433,691     193,938     166,234      83,682     5.2x
-  19200          506,754     221,216     195,163      98,410     5.1x
-  20800          575,198     261,608     224,766     116,257     4.9x
-  22400          649,920     302,850     255,334     133,518     4.9x
-  24000          728,337     346,288     292,582     153,328     4.8x
-  25600          807,658     382,638     337,938     173,447     4.7x
+  1600             6,928       3,790       2,101         598    11.6x
+  3200            26,791      15,142       9,694       2,954     9.1x
+  4800            54,246      29,920      21,616       6,702     8.1x
+  6400            87,999      47,826      35,510      11,746     7.5x
+  8000           125,386      65,596      50,894      18,274     6.9x
+  9600           173,025      83,224      68,036      26,886     6.4x
+  11200          218,146     102,276      86,364      36,082     6.0x
+  12800          266,670     118,534     105,062      46,879     5.7x
+  14400          316,752     138,774     122,526      57,146     5.5x
+  16000          370,710     160,984     142,887      70,182     5.3x
+  17600          433,962     193,950     166,240      83,674     5.2x
+  19200          507,376     221,218     195,169      98,393     5.2x
+  20800          575,274     261,666     224,790     116,264     4.9x
+  22400          650,033     302,880     255,342     133,518     4.9x
+  24000          728,545     346,296     292,626     153,328     4.8x
+  25600          808,035     382,646     338,062     173,426     4.7x
 
   [2c] LIKE-FOR-LIKE PEOPLE — residents reachable within the SAME network distance
   dist (m)          Flat    Terraced        Semi    Detached  Flat:Det
-  1600            17,838      11,861       8,207       2,766     6.4x
-  3200            69,828      42,098      29,040      10,171     6.9x
-  4800           147,257      80,951      59,210      20,096     7.3x
-  6400           239,825     124,448      95,810      33,858     7.1x
-  8000           350,791     171,572     137,214      51,923     6.8x
-  9600           471,085     222,536     182,030      73,734     6.4x
-  11200          581,158     274,476     231,482      98,198     5.9x
-  12800          695,017     323,598     281,666     128,595     5.4x
-  14400          858,417     375,460     339,092     158,170     5.4x
-  16000        1,024,406     441,588     398,094     189,632     5.4x
-  17600        1,202,870     528,924     460,170     226,914     5.3x
-  19200        1,408,838     620,569     538,978     267,868     5.3x
-  20800        1,624,359     718,326     622,330     307,306     5.3x
-  22400        1,864,562     821,230     712,552     359,286     5.2x
-  24000        2,099,382     915,854     807,107     408,944     5.1x
-  25600        2,343,165   1,032,734     913,638     472,236     5.0x
+  1600            17,841      11,861       8,208       2,766     6.4x
+  3200            69,833      42,098      29,042      10,171     6.9x
+  4800           147,260      80,951      59,213      20,092     7.3x
+  6400           239,902     124,448      95,828      33,858     7.1x
+  8000           350,991     171,578     137,228      51,923     6.8x
+  9600           471,200     222,552     182,040      73,730     6.4x
+  11200          581,208     274,537     231,498      98,162     5.9x
+  12800          695,204     323,628     281,684     128,562     5.4x
+  14400          858,504     375,472     339,099     158,129     5.4x
+  16000        1,024,684     441,604     398,140     189,512     5.4x
+  17600        1,203,284     528,946     460,190     226,874     5.3x
+  19200        1,409,016     620,582     538,992     267,837     5.3x
+  20800        1,624,704     718,354     622,440     307,283     5.3x
+  22400        1,865,198     821,285     712,584     359,161     5.2x
+  24000        2,100,752     915,870     807,250     408,780     5.1x
+  25600        2,344,603   1,032,844     913,668     472,052     5.0x
 
   [3] DRIVABLE RATE — amenities per kWh, at each OA's own catchment
                       Flat  Terraced      Semi  Detached  Flat:Det
   trip dist (km)       7.5       9.9      13.1      18.3     0.4x
-  amenities         2233.9    1934.9    2357.3    2312.6     1.0x
-  travel kWh        3239.7    5087.9    6659.8    9271.7     0.3x
+  amenities         2234.1    1935.0    2357.6    2312.8     1.0x
+  travel kWh        3239.7    5088.2    6659.6    9272.4     0.3x
   access / kWh         0.7       0.4       0.4       0.2     3.0x
-  jobs (catchment)   102,652    87,077   107,065   101,215     1.0x
+  jobs (catchment)   102,698    87,077   107,065   101,207     1.0x
   jobs / kWh            33        18        17        11     3.1x
-  people (catch)   255,216   236,228   285,772   270,115     0.9x
+  people (catch)   255,384   236,228   285,787   270,084     0.9x
 
   [4] COMPOSITIONAL (option D) — pure all-flat vs all-detached area
       Poisson log-link · hh-weighted (var_weights) · income-only · NOT density
       Flat:Det CIs: 95% LAD-clustered (delta method, share contrast).
   measure                             Flat           Det         Flat:Det [95% CI]
-  amenities, walk 1,600 m            372.1          13.7     27.22× [19.44, 38.12]
-  jobs, walk 1,600 m              22,576.6         430.6     52.43× [30.02, 91.59]
-  people, walk 1,600 m            25,683.2       2,062.3      12.45× [9.39, 16.52]
-  amenities, catchment             2,988.3       2,372.2        1.26× [1.05, 1.51]
-  jobs, catchment                163,183.5      97,701.6        1.67× [1.30, 2.15]
-  people, catchment              333,381.8     285,835.9        1.17× [0.99, 1.38]
-  amenities, drive 25.6 km        39,229.1       3,484.3      11.26× [8.18, 15.50]
-  jobs, drive 25.6 km          2,113,653.0     147,340.8     14.35× [10.25, 20.08]
-  people, drive 25.6 km        4,665,823.5     418,733.5      11.14× [8.03, 15.47]
+  amenities, walk 1,600 m            371.7          13.7     27.18× [19.41, 38.08]
+  jobs, walk 1,600 m              22,564.1         430.8     52.38× [29.99, 91.50]
+  people, walk 1,600 m            25,655.6       2,062.8      12.44× [9.37, 16.50]
+  amenities, catchment             2,986.7       2,372.0        1.26× [1.05, 1.51]
+  jobs, catchment                163,095.7      97,689.4        1.67× [1.30, 2.15]
+  people, catchment              333,264.7     285,802.9        1.17× [0.99, 1.38]
+  amenities, drive 25.6 km        39,198.9       3,484.5      11.25× [8.17, 15.49]
+  jobs, drive 25.6 km          2,111,962.0     147,355.0     14.33× [10.24, 20.06]
+  people, drive 25.6 km        4,662,297.8     418,754.5      11.13× [8.02, 15.45]
 
   on-foot amenity gap companions (vs the pure-type Poisson above):
     dominant-type medians   Flat 184 / Det 19 = 9.7×
-    support-restricted (≥50% share) medians = 12.2×  (n≥50%-flat 20,100, n≥50%-det 32,626)
+    support-restricted (≥50% share) medians = 12.2×  (n≥50%-flat 20,090, n≥50%-det 32,626)
 
   on-foot jobs gap companions (vs the pure-type Poisson above):
-    dominant-type medians   Flat 6,927 / Det 598 = 11.6×
-    support-restricted (≥50% share) medians = 14.2×  (n≥50%-flat 20,100, n≥50%-det 32,626)
+    dominant-type medians   Flat 6,928 / Det 598 = 11.6×
+    support-restricted (≥50% share) medians = 14.2×  (n≥50%-flat 20,090, n≥50%-det 32,626)
+
+  public-transport stops within 1,600 m (straight-line, bus + rail):
+    pure-type Flat:Det = 4.31× [3.60, 5.16]
+
+  IMD income deciles (least -> most deprived):
+    amenities on foot 32 -> 124  (3.9x, most-deprived leads)
+    total energy 25,151 -> 16,115 kWh  (1.6x, least-deprived leads)
+  rank corr (amenities vs income deprivation): Nat 0.40  Inner -0.04  Manchester -0.24  Bristol -0.27  Cambridge -0.35  Oxford -0.38
 
   access-per-kWh RATE (headline) = access advantage × energy saving
-    = 1.26 × 3.07 = 3.87×  [95% CI 3.06, 4.76, cluster bootstrap]
+    = 1.26 × 3.07 = 3.86×  [95% CI 3.07, 4.76, cluster bootstrap]
       access advantage 1.26× [1.05, 1.51] · energy saving (full conf) 3.07× [2.81, 3.35]
-  harmonised rate (both income-only, like-for-like conditioning) = 1.26 × 4.24 = 5.35×  [95% CI 4.16, 6.71]
-  circularity-robust rate (access ÷ [heat + electrified travel]) = 1.26 × 1.85 = 2.33×  [95% CI 1.97, 2.70]
+  harmonised rate (both income-only, like-for-like conditioning) = 1.26 × 4.24 = 5.34×  [95% CI 4.15, 6.70]
+  circularity-robust rate (access ÷ [heat + electrified travel]) = 1.26 × 1.84 = 2.32×  [95% CI 1.96, 2.69]
   non-parametric companion: dominant-type median access/kWh — see the 'access / kWh' row in section [3] above.
+
+  trip-rate sensitivity — catchment radius = miles/person ÷ trips/yr (headline 370):
+    300 trips/yr:  access advantage 1.37x  ->  rate 4.2x
+    370 trips/yr:  access advantage 1.26x  ->  rate 3.9x
+    440 trips/yr:  access advantage 1.28x  ->  rate 3.9x
 
 ############################################################
 # stats/travel_energy.py
 ############################################################
 Assembling OA data …
-  178,353 OAs
-    heat   median   13,248 kWh/hh
+  178,353 metered OAs; 178,322 with a certificate floor area, fabric ratio and travel figure (the analysis sample)
+  178,322 OAs
+    heat   median   13,278 kWh/hh
     travel median    6,297 kWh/hh
-    dominant type: Flat 32,743  Terraced 43,946  Semi 58,318  Detached 43,346
+    dominant type: Flat 32,732  Terraced 43,944  Semi 58,314  Detached 43,332
 
   Marginal check (pop-weighted class mean == NTS figure):
     Larger rural: Further from a major town or city got   4671  nts   4671
@@ -335,21 +344,22 @@ Assembling OA data …
 
   type       cars/hh   car kWh     heat    TOTAL
   (TOTAL is the per-OA median of heat+travel, not the sum of the columns)
-  Flat          0.68      3240    10194    13674
-  Terraced      1.04      5088    12995    18265
-  Semi          1.33      6660    13876    20564
-  Detached      1.65      9272    15020    23832
+  Flat          0.68      3240    10253    13735
+  Terraced      1.04      5088    13017    18282
+  Semi          1.33      6660    13892    20581
+  Detached      1.65      9272    15070    23903
 Assembling OA data …
-  178,353 OAs
-    heat   median   13,248 kWh/hh
+  178,353 metered OAs; 178,322 with a certificate floor area, fabric ratio and travel figure (the analysis sample)
+  178,322 OAs
+    heat   median   13,278 kWh/hh
     travel median    6,297 kWh/hh
-    dominant type: Flat 32,743  Terraced 43,946  Semi 58,318  Detached 43,346
+    dominant type: Flat 32,732  Terraced 43,944  Semi 58,314  Detached 43,332
 
 ======================================================================
 TRAVEL-ENERGY SENSITIVITY
 ======================================================================
 
-  Allocator coverage of 178,353 OAs: 0 fallback (flat class average, marginal preserved), 0 rural-urban-class join failures (NaN mileage, dropped downstream).
+  Allocator coverage of 178,322 OAs: 0 fallback (flat class average, marginal preserved), 0 rural-urban-class join failures (NaN mileage, dropped downstream).
 
   Commute-elasticity sensitivity — Det:Flat car kWh/hh:
     elasticity 0.15:  dominant-type median 2.74×  (Flat median 3,316 kWh)
@@ -362,18 +372,25 @@ TRAVEL-ENERGY SENSITIVITY
    removes the ownership signal entirely, leaving the measured NTS
    between-class gradient — the floor of the contrast. Class marginals
    are preserved exactly at every alpha.)
-    alpha 1.0:  dominant-type median 2.86×   compositional 3.07× [2.81, 3.35]
+    alpha 1.0:  dominant-type median 2.86×   compositional 3.07× [2.82, 3.35]
     alpha 0.8:  dominant-type median 2.53×   compositional 2.93× [2.72, 3.15]
     alpha 0.6:  dominant-type median 2.22×   compositional 2.80× [2.62, 2.99]
-    alpha 0.0:  dominant-type median 1.52×   compositional 2.50× [2.35, 2.65]
+    alpha 0.0:  dominant-type median 1.52×   compositional 2.50× [2.36, 2.65]
+    class average (both elasticities 0):  dominant-type median 1.38×   compositional 2.36× [2.22, 2.50]
 
   (TRIPS_PER_YEAR=370 sets the access catchment radius in oa_network_access.py; a full sweep needs the network cache rebuilt and is documented there, not run here.)
+Assembling OA data …
+  178,353 metered OAs; 178,322 with a certificate floor area, fabric ratio and travel figure (the analysis sample)
+  178,322 OAs
+    heat   median   13,278 kWh/hh
+    travel median    6,297 kWh/hh
+    dominant type: Flat 32,732  Terraced 43,944  Semi 58,314  Detached 43,332
 
 ======================================================================
 PUBLIC-TRANSPORT SENSITIVITY (not in the headline energy axis)
 ======================================================================
 
-  Common sample: N = 178,347 OAs
+  Common sample: N = 178,322 OAs
 
   Measured NTS9904 class marginals (miles per person per year):
     class                                                car  public transport  rail %
@@ -388,15 +405,15 @@ PUBLIC-TRANSPORT SENSITIVITY (not in the headline energy axis)
 
   Baseline on this sample (car travel only):
     travel Det:Flat 3.07× [2.81, 3.35]
-    total  Det:Flat 2.12× [2.01, 2.24]
+    total  Det:Flat 2.11× [2.00, 2.23]
 
   Commute-share allocator (the variant least favourable to the gap):
     public-transport energy                               travel                 total
-    excluded (headline axis)                  3.07× [2.81, 3.35]    2.12× [2.01, 2.24]
-    included, 0.35× car intensity             2.55× [2.40, 2.71]    1.99× [1.90, 2.10]
-    included, at car intensity                2.13× [2.00, 2.26]    1.84× [1.74, 1.93]
+    excluded (headline axis)                  3.07× [2.81, 3.35]    2.11× [2.00, 2.23]
+    included, 0.35× car intensity             2.55× [2.40, 2.71]    1.99× [1.89, 2.09]
+    included, at car intensity                2.13× [2.00, 2.27]    1.83× [1.74, 1.93]
 
-  Class-average allocator, total: 2.07× at 0.35× car intensity, 1.98× at car intensity
+  Class-average allocator, total: 2.06× at 0.35× car intensity, 1.98× at car intensity
 
   Every row preserves the measured NTS class marginals for both modes;
   only the intensity assumption varies.
@@ -408,10 +425,11 @@ PUBLIC-TRANSPORT SENSITIVITY (not in the headline energy axis)
 MIXED USE — jobs-housing balance alongside dwelling-type composition
 ======================================================================
 Assembling OA data …
-  178,353 OAs
-    heat   median   13,248 kWh/hh
+  178,353 metered OAs; 178,322 with a certificate floor area, fabric ratio and travel figure (the analysis sample)
+  178,322 OAs
+    heat   median   13,278 kWh/hh
     travel median    6,297 kWh/hh
-    dominant type: Flat 32,743  Terraced 43,946  Semi 58,318  Detached 43,346
+    dominant type: Flat 32,732  Terraced 43,944  Semi 58,314  Detached 43,332
 
   Mix by dominant dwelling type (medians):
     type         jobs/hh   balance    types reachable (q1)
@@ -424,25 +442,40 @@ Assembling OA data …
      0 is wholly dormitory or wholly workplace. q1 is Hill diversity over
      the six destination types within 1,600 m, descriptive only.)
 
-  Effect of a p10 -> p90 shift in jobs-housing balance, holding
+  Effect of a p10 → p90 shift in jobs-housing balance, holding
   dwelling-type composition and the confounds:
     scale        units      p10      p90   amenities    energy      rate
-    OA         178,353     0.16     0.87        1.15      1.07      1.07
-    MSOA         6,855     0.50     0.95        1.00      1.02      0.98
+    OA         178,322     0.16     0.87        1.15      1.07      1.07
+    MSOA         6,855     0.50     0.95        1.00      1.02      0.97
 
-  Finding: at MSOA scale the rate moves x0.98, so once dwelling-type
+  Finding: at MSOA scale the rate moves ×0.97, so once dwelling-type
   composition is held, jobs-housing balance carries no independent signal. These
   data support the compact-form recommendation and do not support the mixed-use
   half of it either way.
+
+  Caveats that govern how far this can be read:
+   * At Output Area scale the measure is dominated by area size: a small
+     area needs few jobs to reach parity, which is why detached areas score
+     higher on it than flats. MSOA is the interpretable scale.
+   * Balance is one facet of mixed use. It says nothing about whether homes
+     and workplaces share a building or a street, which is what the planning
+     term usually means.
+   * The q1 column is *balance*, the wrong construct for mixed use: it
+     marks down a high street with many food outlets and one surgery.
+     Mixed use is richness and proximity, which the per-service walkable
+     counts in access_profile already carry, compact areas reaching more
+     of every type within 1,600 m. Read q1 as a note on evenness, not as
+     evidence about mix.
 
 ############################################################
 # stats/maup_scale.py
 ############################################################
 Assembling OA data …
-  178,353 OAs
-    heat   median   13,248 kWh/hh
+  178,353 metered OAs; 178,322 with a certificate floor area, fabric ratio and travel figure (the analysis sample)
+  178,322 OAs
+    heat   median   13,278 kWh/hh
     travel median    6,297 kWh/hh
-    dominant type: Flat 32,743  Terraced 43,946  Semi 58,318  Detached 43,346
+    dominant type: Flat 32,732  Terraced 43,944  Semi 58,314  Detached 43,332
 
 ==========================================================================
 MAUP SCALE LADDER — compositional flat→detached gap by zonation
@@ -452,9 +485,9 @@ MAUP SCALE LADDER — compositional flat→detached gap by zonation
 
   scale      units            heat Det:Flat           total Det:Flat
   ------------------------------------------------------------------
-  OA       178,353       1.60× [1.45, 1.76]       2.12× [2.01, 2.24]
-  LSOA      33,742       1.17× [1.02, 1.34]       1.88× [1.74, 2.02]
-  MSOA       6,855       0.91× [0.76, 1.09]       1.72× [1.54, 1.91]
+  OA       178,322       1.59× [1.45, 1.76]       2.11× [2.00, 2.23]
+  LSOA      33,742       1.17× [1.02, 1.33]       1.87× [1.73, 2.02]
+  MSOA       6,855       0.91× [0.76, 1.09]       1.71× [1.54, 1.91]
 
   Reading: the compositional contrast reads the gap at pure-type vertices (100%
   flat vs 100% detached). Few LSOAs and almost no MSOAs approach a pure mix, so at
@@ -469,51 +502,80 @@ MAUP SCALE LADDER — compositional flat→detached gap by zonation
 
   scale    flat n    det n      heat Det:Flat     total Det:Flat
   ------------------------------------------------------------
-  OA       32,743   43,346              1.47×              1.74×
-  LSOA      5,169    8,778              1.32×              1.59×
+  OA       32,732   43,332              1.47×              1.74×
+  LSOA      5,167    8,777              1.32×              1.59×
   MSOA        957    1,909              1.17×              1.47×
 
 ############################################################
 # stats/scenarios.py
 ############################################################
 Assembling OA data …
-  178,353 OAs
-    heat   median   13,248 kWh/hh
+  178,353 metered OAs; 178,322 with a certificate floor area, fabric ratio and travel figure (the analysis sample)
+  178,322 OAs
+    heat   median   13,278 kWh/hh
     travel median    6,297 kWh/hh
-    dominant type: Flat 32,743  Terraced 43,946  Semi 58,318  Detached 43,346
+    dominant type: Flat 32,732  Terraced 43,944  Semi 58,314  Detached 43,332
 
-  Common scenario sample: 178,341 of 178,353 OAs (complete EPC fabric factor + travel; every scenario fits on these rows).
+  Common scenario sample: 178,322 of 178,322 OAs (complete EPC fabric factor + travel; every scenario fits on these rows).
 
   Heat-pump COP 2.8, boiler efficiency 0.9 (heat-pump delivered-energy factor 0.32 vs a gas boiler).
   Pathway uptakes: CCC 7CB Balanced Pathway 2040 (heat pumps 50%, EVs 75%).
 
   Flat→Detached TOTAL energy gap (per dwelling, compositional, method D):
 
-  scenario                             as-lived [95% CI]       equal family size
+  scenario                           unadjusted [95% CI]       equal family size
   ----------------------------------------------------------------------------
-  S0 status quo                       2.12× [2.01, 2.24]      1.71× [1.62, 1.81]
-  Fabric only (100%)                  1.83× [1.75, 1.91]      1.46× [1.39, 1.55]
-  Heat pumps only (100%)              2.16× [2.08, 2.25]      1.79× [1.70, 1.88]
-  EVs only (100%)                     1.85× [1.72, 1.99]      1.48× [1.37, 1.59]
-  CCC Balanced Pathway 2040           1.89× [1.80, 1.98]      1.52× [1.44, 1.59]
-  Full rollout (100%)                 1.68× [1.62, 1.74]      1.35× [1.29, 1.42]
+  S0 status quo                       2.11× [2.00, 2.23]      1.70× [1.61, 1.80]
+  Fabric only (100%)                  1.82× [1.74, 1.91]      1.46× [1.38, 1.54]
+  Heat pumps only (100%)              2.16× [2.08, 2.24]      1.79× [1.70, 1.88]
+  EVs only (100%)                     1.84× [1.71, 1.98]      1.47× [1.37, 1.58]
+  Fabric + EVs (100%)                 1.50× [1.42, 1.58]      1.17× [1.11, 1.24]
+  CCC Balanced Pathway 2040           1.88× [1.79, 1.97]      1.51× [1.44, 1.59]
+  Full rollout (100%)                 1.67× [1.61, 1.73]      1.35× [1.29, 1.42]
 
-  Fabric only (100%): 1.83× closes the status-quo gap by 20% (log scale).
+  Fabric only (100%): 1.82× closes the status-quo gap by 20% (log scale).
 
-  Heat pumps only (100%): 2.16× widens the status-quo gap by 2% (log scale).
+  Heat pumps only (100%): 2.16× widens the status-quo gap by 3% (log scale).
 
-  EVs only (100%): 1.85× closes the status-quo gap by 18% (log scale).
+  EVs only (100%): 1.84× closes the status-quo gap by 18% (log scale).
 
   CCC Balanced Pathway 2040: 84% of the status-quo per-dwelling energy gap survives
   (log scale); 16% closed.
+    (excess-over-parity convention: 60% survives)
 
   Full rollout (100%): 69% of the status-quo per-dwelling energy gap survives
   (log scale); 31% closed.
 
-  Access deficit on foot 27.23× [19.45, 38.14]: UNCHANGED in every scenario — no
+  Sufficiency bar (within-type spread) and absolute premium, full rollout:
+      bands touch at the central 85% of areas
+      treated stock total 174 TWh/yr (premium share 21%)
+    per dwelling: gap 1.67× [1.61, 1.73] vs within-type IQR factor 1.25 (2.5 residual SDs)
+      pure-type levels 5,761 -> 9,627 kWh/dwelling (premium 3,867 kWh/yr; 0.39 TWh/yr per 100,000 dwellings)
+      stock-wide vs all-flat composition: 36 TWh/yr
+      bands touch at the central 68% of areas
+    equal household size: gap 1.35× [1.29, 1.42] vs within-type IQR factor 1.22 (1.6 residual SDs)
+      pure-type levels 6,667 -> 9,004 kWh/dwelling (premium 2,337 kWh/yr; 0.23 TWh/yr per 100,000 dwellings)
+      stock-wide vs all-flat composition: 13 TWh/yr
+
+  Access deficit on foot 27.18× [19.41, 38.08]: UNCHANGED in every scenario — no
   technology moves destinations closer.
 
-  COP sensitivity — Balanced Pathway 2040 total Det:Flat (as-lived):
-    COP 2.4:  1.88× [1.79, 1.97]
-    COP 2.8:  1.89× [1.80, 1.98]
-    COP 3.2:  1.89× [1.81, 1.99]
+  COP sensitivity — Balanced Pathway 2040 total Det:Flat (unadjusted):
+    COP 2.4:  1.87× [1.78, 1.96]
+    COP 2.8:  1.88× [1.79, 1.97]
+    COP 3.2:  1.89× [1.80, 1.98]
+
+############################################################
+# stats/cluster_sensitivity.py
+############################################################
+Assembling OA data …
+  178,353 metered OAs; 178,322 with a certificate floor area, fabric ratio and travel figure (the analysis sample)
+  178,322 OAs
+    heat   median   13,278 kWh/hh
+    travel median    6,297 kWh/hh
+    dominant type: Flat 32,732  Terraced 43,944  Semi 58,314  Detached 43,332
+
+  Detached:Flat total-energy gap by clustering unit:
+  LAD (headline)         G= 309  2.11× [2.00, 2.23]
+  50 spatial blocks      G=  50  2.11× [1.89, 2.37]
+  100 spatial blocks     G= 100  2.11× [1.95, 2.30]

@@ -13,8 +13,8 @@ Every "×" in this document is a flat-versus-detached gap, computed the same way
 - The model holds deprivation (the overall Index of Multiple Deprivation and its income domain), tenure, building age and local climate constant, and weights by the number of households, so the gap reflects the difference the form makes, not differences in deprivation, tenure, the age of the stock or how cold the place is. Access is the exception (see that section): there compactness is the mechanism, so it is not held constant.
 - Energy is reported per dwelling, the unit at which it is metered, billed and emitted. To separate the form from the household that lives in it, family size and floor area enter the model as controls with freely estimated effects, not as denominators. Per-person normalisation is avoided deliberately: heating is a property of the building, so energy rises with household size only sub-linearly (to a power of about 0.5, not 1 — an economy of scale; Huebner and Shipworth, 2017), and dividing by residents would silently impose a power of 1, crediting detached homes for nothing more than housing the larger families that self-select into low-density areas. Holding family size as a control, rather than dividing it away, both estimates that power and keeps the self-selection visible.
 - In every table the Flat and Detached columns are observed medians (metered energy, reachable counts), shown to ground the numbers. The ratio columns are the compositional estimate, so they need not equal the quotient of the two columns.
-- The model reads the gap at the extremes, a wholly flat area against a wholly detached one, which few real areas are. Each ratio therefore states the gap between idealised pure types; the gap between typical mixed areas is smaller (for total energy, 2.12× at the vertices against 1.74× between dominant-type medians), and both are reported.
-- The gap is not an artefact of the Output Area zonation. Re-aggregated household-weighted to the two coarser census scales and re-fit with the same model, the total-energy gap holds: 2.12× at OA, 1.88× at LSOA, 1.72× at MSOA (dominant-type medians 1.74/1.59/1.47×). *Reproduce: `stats/maup_scale.py`.*
+- The model reads the gap at the extremes, a wholly flat area against a wholly detached one, which few real areas are. Each ratio therefore states the gap between idealised pure types; the gap between typical mixed areas is smaller (for total energy, 2.11× at the vertices against 1.74× between dominant-type medians), and both are reported.
+- The gap is not an artefact of the Output Area zonation. Re-aggregated household-weighted to the two coarser census scales and re-fit with the same model, the total-energy gap holds: 2.11× at OA, 1.87× at LSOA, 1.71× at MSOA (dominant-type medians 1.74/1.59/1.47×). *Reproduce: `stats/maup_scale.py`.*
 
 *The regression has no intercept and is weighted by households; the flat-to-detached ratio is the exponentiated gap between the pure-flat and pure-detached coefficients. The energy axes are fitted with a log model, the access counts with a Poisson model (household counts enter as analytic weights, so the effective sample is the number of areas, not the summed household count). Standard errors are clustered by local-authority district (about 309 in England) to allow for spatial dependence between neighbouring areas, and every headline ratio carries a 95% confidence interval on this basis; composite quantities (the rate, the surviving-gap share, the mediated fraction) carry cluster-bootstrap intervals. The intervals are reported in [results_snapshot.txt](results_snapshot.txt) and drawn together in the forest figure below.*
 
@@ -44,19 +44,19 @@ A detached neighbourhood uses about 1.60 times a flat's heat per dwelling. The g
 
 | heat, kWh per dwelling/yr | Flat | Terraced | Semi | Detached | flat→detached |
 | --- | --: | --: | --: | --: | --: |
-| gas + electricity | 10,194 | 12,995 | 13,876 | 15,020 | 1.60× |
+| gas + electricity | 10,253 | 13,017 | 13,892 | 15,070 | 1.59× |
 
-Flats record fewer domestic gas meters than households (about 0.81 per household, against 0.94 for detached), for two reasons the measure treats differently. An all-electric flat heats with electricity, which is summed into the total energy figure, so its heat is captured. A block on communal heating is metered as non-domestic, so that gas is genuinely missing and the flat's heat understated. Only this second, smaller case is a true undercount, and it does not drive the result: restricting to well-measured areas (gas-meter coverage at least 0.9) leaves the heat gap at 1.61×, essentially the 1.60× headline, and restricting instead to areas whose electricity-meter count is within half the household count leaves it at 1.55×. If anything, the measurement issue slightly understates the gap. The same gas-coverage restriction lowers the *total* gap to 1.74×, but that is a composition effect of the subsample, which drops the off-gas rural detached areas that drive the most, not a weakening of the heat result.
+Flats record fewer domestic gas meters than households (about 0.81 per household, against 0.94 for detached), for two reasons the measure treats differently. An all-electric flat heats with electricity, which is summed into the total energy figure, so its heat is captured. A block on communal heating is metered as non-domestic, so that gas is genuinely missing and the flat's heat understated. Only this second, smaller case is a true undercount, and it does not drive the result: restricting to well-measured areas (gas-meter coverage at least 0.9) leaves the heat gap at 1.60×, essentially the 1.59× headline, and restricting instead to areas whose electricity-meter count is within half the household count leaves it at 1.55×. If anything, the measurement issue slightly understates the gap. The same gas-coverage restriction lowers the *total* gap to 1.74×, but that is a composition effect of the subsample, which drops the off-gas rural detached areas that drive the most, not a weakening of the heat result.
 
 Separating shape from size:
 
 - The detached-versus-flat heat gap blends three effects of low density: bigger homes, more people per home, and a leakier shape. The quantity of interest is the part attributable to shape alone.
-- From the compositional model (the full dwelling mix, with deprivation, tenure, building age and climate held equal), controls are added one at a time — first family size, then floor area — and the gap shrinks from 1.60× to 1.27× to 1.17×. Family and dwelling size together account for about two-thirds (66%) of the gap, as a descriptive covariate adjustment rather than an identified causal mediation. What survives once both are held fixed (about 1.17×, roughly 17%) is the direct effect of the form: exposed walls and no shared surfaces. Family size enters as a freely estimated effect (an elasticity of about 0.5), not as a per-person denominator, so the household is held without forcing energy to scale one-for-one with residents.
+- From the compositional model (the full dwelling mix, with deprivation, tenure, building age and climate held equal), controls are added one at a time — first family size, then floor area — and the gap shrinks from 1.59× to 1.27× to 1.17×. Family and dwelling size together account for about two-thirds (66%) of the gap, as a descriptive covariate adjustment rather than an identified causal mediation. What survives once both are held fixed (about 1.17×, roughly 17%) is the direct effect of the form: exposed walls and no shared surfaces. Family size enters as a freely estimated effect (an elasticity of about 0.5), not as a per-person denominator, so the household is held without forcing energy to scale one-for-one with residents.
 - Local climate (heating-degree-days, from HadUK-Grid, 1991–2020) is now held alongside the others: colder northern and rural siting is part of why detached areas use more heat, and netting it out is built into the direct term above.
 
 *Reproduce: `stats/form_size_decomposition.py` (the shape-versus-size ladder and the gas-coverage checks).*
 
-![The heat gap decomposed: 1.60× unadjusted falls to 1.27× at equal household size and 1.17× at equal floor area, so about a sixth of the gap is the building's form and the rest is bigger homes and larger households.](figures/fig4_decomposition.png)
+![The heat gap decomposed: 1.59× unadjusted falls to 1.27× at equal household size and 1.17× at equal floor area, so about a sixth of the gap is the building's form and the rest is bigger homes and larger households.](figures/fig4_decomposition.png)
 
 ## Car travel
 
@@ -82,7 +82,7 @@ Car travel accounts for about 24% of household energy in flat-dominated areas an
 
 | total energy, kWh per dwelling/yr | Flat | Terraced | Semi | Detached | flat→detached |
 | --- | --: | --: | --: | --: | --: |
-| total household energy (per-OA median) | 13,674 | 18,265 | 20,564 | 23,832 | **2.12×** |
+| total household energy (per-OA median) | 13,735 | 18,282 | 20,581 | 23,903 | **2.11×** |
 
 In each table the dwelling-type columns are observed medians; the ratio is the compositional flat-to-detached estimate per dwelling, so it is not the quotient of the columns.
 
@@ -118,14 +118,14 @@ The six amenity types (the first six rows) are summed into the amenity count; ho
 | within reach (median) | Flat | Terraced | Semi | Detached | flat:det |
 | --- | --: | --: | --: | --: | --: |
 | amenities, on foot | 184 | 101 | 57 | 19 | **27.2×** |
-| amenities, own catchment | 2,234 | 1,935 | 2,357 | 2,313 | 1.3× |
-| amenities, 25 km | 18,021 | 8,520 | 7,460 | 3,906 | 11× |
-| jobs, on foot | 6,927 | 3,790 | 2,100 | 598 | **52.4×** |
-| jobs, own catchment | 102,652 | 87,077 | 107,065 | 101,215 | 1.7× |
-| jobs, 25 km | 807,658 | 382,638 | 337,938 | 173,447 | 14.3× |
-| people, on foot | 17,838 | 11,861 | 8,207 | 2,766 | **12.5×** |
-| people, own catchment | 255,216 | 236,228 | 285,772 | 270,115 | 1.2× |
-| people, 25 km | 2,343,165 | 1,032,734 | 913,638 | 472,236 | 11.1× |
+| amenities, own catchment | 2,234 | 1,935 | 2,358 | 2,313 | 1.3× |
+| amenities, 25 km | 18,029 | 8,522 | 7,460 | 3,906 | 11× |
+| jobs, on foot | 6,928 | 3,790 | 2,101 | 598 | **52.4×** |
+| jobs, own catchment | 102,698 | 87,077 | 107,065 | 101,207 | 1.7× |
+| jobs, 25 km | 808,035 | 382,646 | 338,062 | 173,426 | 14.3× |
+| people, on foot | 17,841 | 11,861 | 8,208 | 2,766 | **12.4×** |
+| people, own catchment | 255,384 | 236,228 | 285,787 | 270,084 | 1.2× |
+| people, 25 km | 2,344,603 | 1,032,844 | 913,668 | 472,052 | 11.1× |
 
 The dwelling-type columns are observed medians; the flat:det ratio is the compositional estimate. The own-catchment row reads each area at its own typical car-trip distance: a detached area reaches a similar raw count there, because it drives much further to do so, so the on-foot gap nearly closes on count and the rate below prices that extra driving in energy. For context, a flat neighbourhood holds about 79 people per hectare against a detached one's 14, a factor of 5.7.
 
@@ -151,7 +151,7 @@ For the wider picture: on foot a flat reaches roughly 27 times the amenities, 52
 
 ![Amenities reachable per kWh of car travel by dwelling type: a flat returns about 3.9× a detached home (access advantage 1.26× × energy saving 3.1×).](figures/fig7_rate.png)
 
-The pattern is not a matter of a few pure-type extremes: it holds across every neighbourhood in the country. Plotting all 178,353 Output Areas by energy spent against amenities reached, the flat-dominant and detached-dominant areas occupy opposite corners of the joint distribution.
+The pattern is not a matter of a few pure-type extremes: it holds across every neighbourhood in the country. Plotting all 178,322 Output Areas by energy spent against amenities reached, the flat-dominant and detached-dominant areas occupy opposite corners of the joint distribution.
 
 ![Every English Output Area by energy spent against amenities reachable on foot, with kernel-density contours for the two extremes: flat-dominant areas concentrate at low energy and high access, detached-dominant areas at high energy and low access.](figures/fig2_country.png)
 
@@ -171,26 +171,26 @@ To test whether decarbonisation closes the gap, the energy is recomputed under a
 
 The three levers act differently, and reporting them separately is what shows why the gap holds:
 
-- **Insulation** scales each home's metered gas by its own EPC fabric-improvement ratio (potential over current intensity, both EPC-modelled so the performance gap cancels; median about half). Detached homes carry more headroom, so insulation closes the gap, from 2.12× to 1.83× fully deployed, about a fifth of it.
+- **Insulation** scales each home's metered gas by its own EPC fabric-improvement ratio (potential over current intensity, both EPC-modelled so the performance gap cancels; median about half). Detached homes carry more headroom, so insulation closes the gap, from 2.11× to 1.82× fully deployed, about a fifth of it.
 - **Heat pumps** deliver the heat as electricity instead of gas, at the pump's efficiency (boiler efficiency over a seasonal coefficient of performance of about 2.8, so roughly a third of the delivered energy). This cuts the smaller-gap heat sharply and leaves the larger-gap car travel, so heat pumps do not close the form gap; fully deployed they leave it marginally wider, at 2.16×. They are essential on the carbon axis, since the electricity that drives them is increasingly clean, but they do not fix the neighbourhood gap.
-- **Electric vehicles** re-price car energy at the electric fleet's energy per mile, miles unchanged. This attacks travel, where the gap is largest, and closes the most of any single lever, to 1.85×, about a fifth.
+- **Electric vehicles** re-price car energy at the electric fleet's energy per mile, miles unchanged. This attacks travel, where the gap is largest, and closes nearly as much as insulation, to 1.84×, about a fifth.
 
 | total energy gap (per dwelling, unadjusted, compositional) | Det:Flat | closed |
 | --- | --: | --: |
-| status quo | 2.12× | — |
-| insulation only (100%) | 1.83× | 20% |
-| heat pumps only (100%) | 2.16× | −2% |
-| electric vehicles only (100%) | 1.85× | 18% |
-| CCC Balanced Pathway 2040 (50% heat pumps, 75% EVs) | 1.89× | 16% |
-| full rollout (100% of all three) | 1.68× | 31% |
+| status quo | 2.11× | — |
+| insulation only (100%) | 1.82× | 20% |
+| heat pumps only (100%) | 2.16× | −3% |
+| electric vehicles only (100%) | 1.84× | 18% |
+| CCC Balanced Pathway 2040 (50% heat pumps, 75% EVs) | 1.88× | 16% |
+| full rollout (100% of all three) | 1.67× | 31% |
 
-Anchored to the Climate Change Committee's Seventh Carbon Budget Balanced Pathway, half of homes on heat pumps and three-quarters of cars electric by 2040 leaves the gap at 1.89×, a sixth of it closed. Even full deployment of all three levers leaves 1.68×, two-thirds of the gap surviving. Insulation and electrification lower the energy per unit but not the floor area or the distance, so the structural quantities, and the gap they set, remain.
+Anchored to the Climate Change Committee's Seventh Carbon Budget Balanced Pathway, half of homes on heat pumps and three-quarters of cars electric by 2040 leaves the gap at 1.88×, a sixth of it closed. Even full deployment of all three levers leaves 1.67×, two-thirds of the gap surviving. Insulation and electrification lower the energy per unit but not the floor area or the distance, so the structural quantities, and the gap they set, remain.
 
 The access gap does not move at all, because neither insulation, nor a heat pump, nor an electric car brings a school, a job or a shop closer to a house built far from them. On foot a flat still reaches about 27× the amenities of a detached area, before and after, in every scenario. The inefficiency of dispersed form is fixed in the street layout, which changes only when places are rebuilt, over generations rather than product cycles. Access therefore has to be measured and planned for directly.
 
 ![Flat-to-detached total energy gap under each decarbonisation lever: insulation closes about a fifth, heat pumps leave it marginally wider, electric vehicles close about a fifth, and even full deployment of all three leaves two-thirds of the gap; the on-foot access gap of 27× is unchanged in every scenario.](figures/fig8_scenarios.png)
 
-*Reproduce: `stats/scenarios.py` (the scenario ladder); `stats/lock_in.py` (the fabric-plus-EV bound, 1.51×).*
+*Reproduce: `stats/scenarios.py` (the scenario ladder); `stats/lock_in.py` (the fabric-plus-EV bound, 1.50×).*
 
 ## Self-selection
 

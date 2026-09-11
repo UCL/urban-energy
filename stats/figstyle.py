@@ -151,8 +151,17 @@ def save(fig: Figure, name: str, pdf: bool = True) -> Path:
 
 # Editorial accent (figure kickers) and the standing source line for every footer.
 ACCENT = "#2f6b49"  # deep green brand accent, distinct from the data hues
+
+
+def _sample_n() -> str:
+    """The analysis sample size, read from the ledger so the footer cannot drift."""
+    import ledger
+
+    return ledger.value("sampleN", "—")
+
+
 SOURCE = (
-    "178,353 English Census 2021 Output Areas.  Metered DESNZ energy, "
+    f"{_sample_n()} English Census 2021 Output Areas.  Metered DESNZ energy, "
     "NTS-anchored car travel, cityseer network access.\n"
     "Compositional pure-type estimates unless noted."
 )

@@ -655,9 +655,21 @@ def compositional_ladder(lsoa: pd.DataFrame) -> None:
             travelFamGap=ledger.pt(ci[0]), travelFamGapCI=ledger.ci(ci[1], ci[2])
         )
         print(f"    travel, equal family size: Det:Flat {fmt_ci(ci)}")
+    # Unconditioned total gap (shares only): what the confounds move the gap
+    # from, quoted beside the Oster bound so the movement is stated, not implied.
+    m = _comp_ols(
+        sample, "_log_total", _SHARE_FRACS, "total_hh", cluster_col=CLUSTER_COL
+    )
+    if m is not None:
+        ci = log_contrast_ci(m, "s_detached", "s_flat")
+        ledger.record(
+            totalGapRaw=ledger.pt(ci[0]), totalGapRawCI=ledger.ci(ci[1], ci[2])
+        )
+        print(f"    total, no confounds:       Det:Flat {fmt_ci(ci)}")
     print(
-        "    (fitted on this ladder's common-support sample; access_profile fits "
-        "travel on the\n     full frame, so its 3.07× interval differs marginally.)"
+        "    (the loader's analysis sample is complete on floor area and fabric, "
+        "so this\n     common-support sample is the same frame every other script "
+        "fits on.)"
     )
 
     if m0 is not None:

@@ -126,7 +126,20 @@ def _num(series: pd.Series) -> pd.Series:
     return pd.to_numeric(series, errors="coerce")
 
 
-def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
+#: EPC-derived columns every model in the manuscript can touch (the size rung of
+#: the heat ladder and the fabric scenarios). The analysis sample requires all
+#: three, so that every reported ratio is fitted on one sample rather than each
+#: script dropping its own handful of Output Areas.
+_EPC_COMPLETE_COLS = [
+    "oa_median_floor_area_m2",
+    "epc_potential_kwh_m2",
+    "epc_current_kwh_m2",
+]
+
+
+def load_and_aggregate(
+    cities: list[str] | None = None, epc_complete: bool = True
+) -> pd.DataFrame:
     """
     Assemble the per-OA two-axis dataset from the primary artefacts.
 
@@ -134,6 +147,16 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
     ``transport_kwh_per_hh_total_est`` (travel), ``dominant_type``, the
     dwelling-type shares, household size, EPC floor area + best-fabric intensity +
     build year, fleet/deprivation context, and straight-line access columns.
+
+    Parameters
+    ----------
+    cities : list of str or None
+        Unused; retained for call compatibility.
+    epc_complete : bool, default True
+        Restrict to Output Areas carrying a certificate-derived floor area and
+        fabric ratio and a travel figure, so that the heat ladder, the scenario
+        ladder and every headline ratio share one analysis sample. The NEPI
+        score passes ``False`` to keep every metered area on the map.
     """
     print("Assembling OA data …")
     oa = gpd.read_file(_CENSUS, columns=_CENSUS_COLS, ignore_geometry=True)
@@ -285,6 +308,16 @@ def load_and_aggregate(cities: list[str] | None = None) -> pd.DataFrame:
         & oa["building_kwh_per_hh"].notna()
         & (oa["building_kwh_per_hh"] > 0)
     ].copy()
+    n_metered = len(oa)
+    if epc_complete:
+        keep = _num(oa["transport_kwh_per_hh_total_est"]).notna()
+        for c in _EPC_COMPLETE_COLS:
+            keep &= _num(oa[c]).notna()
+        oa = oa[keep].copy()
+        print(
+            f"  {n_metered:,} metered OAs; {len(oa):,} with a certificate floor "
+            "area, fabric ratio and travel figure (the analysis sample)"
+        )
 
     print(f"  {len(oa):,} OAs")
     import ledger

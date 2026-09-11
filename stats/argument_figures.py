@@ -5,7 +5,7 @@ The set carries the argument on its own. Read in order it is the paper (the full
 story scaffold is in ``paper/figure_notes.md``):
 
   F1 inversion   — detached spends more energy and reaches less (the hook).
-  F2 country     — the same pattern across all 178,353 Output Areas.
+  F2 country     — the same pattern across every analysed Output Area.
   F3 energy      — the energy axis, ~2.1×, heat vs car travel.
   F4 decomposition — how much of the heat gap is the form itself (~17%).
   F5 doorstep    — what a flat reaches on foot that a detached does not.

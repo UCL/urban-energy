@@ -87,18 +87,25 @@ def aggregate_postcode_to_oa(
     )
     assert_match_rate(len(energy), len(merged), name="energy postcode ↔ OA lookup")
 
-    # Compute meter counts per postcode (use max of gas/elec meters)
-    elec_meters = pd.to_numeric(
-        merged.get("elec_num_meters", 0), errors="coerce"
-    ).fillna(0)
-    gas_meters = pd.to_numeric(merged.get("gas_num_meters", 0), errors="coerce").fillna(
-        0
+    # Meter counts per postcode. The gas and electricity files are outer-joined
+    # on postcode, so a postcode present in one file only carries NaN for the
+    # other fuel: no meters, no consumption. Such a row must contribute nothing
+    # to that fuel's OA mean, so its weight is zero (never floored to one, which
+    # would dilute the mean with a missing value).
+    elec_meters = (
+        pd.to_numeric(merged.get("elec_num_meters", 0), errors="coerce")
+        .fillna(0)
+        .clip(lower=0)
     )
-    merged["_meters"] = elec_meters.clip(lower=0) + gas_meters.clip(lower=0)
-    # If both are zero, use 1 to avoid division by zero
-    merged["_meters"] = merged["_meters"].replace(0, 1)
+    gas_meters = (
+        pd.to_numeric(merged.get("gas_num_meters", 0), errors="coerce")
+        .fillna(0)
+        .clip(lower=0)
+    )
+    merged["_meters"] = elec_meters + gas_meters
 
-    # Weighted mean: sum(value * weight) / sum(weight) per OA
+    # Weighted mean: sum(value * weight) / sum(weight) per OA, over the rows
+    # that carry a value. An OA with no valid row for a fuel gets NaN.
     results: dict[str, pd.Series] = {}
 
     for metric, weight_col in [
@@ -110,13 +117,13 @@ def aggregate_postcode_to_oa(
             continue
         val = pd.to_numeric(merged[metric], errors="coerce")
         raw_wt = merged.get(weight_col, merged["_meters"])
-        wt = pd.to_numeric(raw_wt, errors="coerce").fillna(1)
-        wt = wt.clip(lower=0).replace(0, 1)
+        wt = pd.to_numeric(raw_wt, errors="coerce").fillna(0).clip(lower=0)
+        wt = wt.where(val.notna(), 0.0)
 
-        weighted_sum = (val * wt).groupby(merged["OA21CD"]).sum()
+        weighted_sum = (val.fillna(0) * wt).groupby(merged["OA21CD"]).sum()
         weight_total = wt.groupby(merged["OA21CD"]).sum()
         oa_name = f"oa_{metric}" if not metric.startswith("oa_") else metric
-        results[oa_name] = weighted_sum / weight_total
+        results[oa_name] = weighted_sum / weight_total.where(weight_total > 0)
 
     # Count metrics
     results["oa_num_meters"] = merged.groupby("OA21CD")["_meters"].sum()

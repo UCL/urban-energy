@@ -304,7 +304,10 @@ def _sufficiency_report(
         print(f"      bands touch at the central {lo:.0%} of areas")
         out[keys[2]] = f"{round(levels[0], -2):,.0f}"
         out[keys[3]] = f"{round(levels[1], -2):,.0f}"
-        out[keys[4]] = f"{round(premium, -2):,.0f}"
+        # The prose quotes both levels and their difference, so the difference
+        # is taken between the rounded levels (never off by a hundred from
+        # what the reader would subtract).
+        out[keys[4]] = f"{round(levels[1], -2) - round(levels[0], -2):,.0f}"
         out[keys[5]] = f"{premium * 1e5 / 1e9:.1f}"
         out[keys[6]] = f"{twh:.0f}"
         if keys[6] == "stockPremiumTwh":

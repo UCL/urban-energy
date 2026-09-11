@@ -23,7 +23,7 @@ urban-energy/
 ├── CLAUDE.md                  # This file — technical brief
 ├── paper/
 │   ├── latex/main.tex         # The manuscript (ledger-wired numbers)
-│   ├── latex/extended_data.tex # Extended Data (4 figures + 6 tables)
+│   ├── latex/extended_data.tex # Extended Data (5 figures + 6 tables)
 │   ├── summary.md             # Narrative two-axis statement (companion)
 │   ├── prose_guide.md         # House prose style: sentence rules + fault catalogue + revision pass
 │   ├── literature_review.md   # Thematic literature review
@@ -40,7 +40,7 @@ urban-energy/
 │   ├── inference.py           # Delta-method CIs + LAD-cluster bootstrap (999 reps)
 │   ├── travel_energy.py       # NTS-anchored car-travel energy (constrained disaggregation) + public-transport bound
 │   ├── access_profile.py      # Per-service access counts + ×/kWh (incl. grocery, jobs)
-│   ├── lock_in.py             # Residual energy gap after best fabric + full EV (fabric+EV bound, 1.51×)
+│   ├── lock_in.py             # Residual energy gap after best fabric + full EV (fabric+EV bound, 1.50×)
 │   ├── scenarios.py           # Decarbonisation scenario ladder: fabric/heat-pump/EV as separate levers, CCC pathway
 │   ├── maup_scale.py          # MAUP scale check: the energy gap re-fit at OA/LSOA/MSOA
 │   ├── mixed_use.py           # Jobs-housing balance vs the rate (null at MSOA) — scopes the mixed-use claim
@@ -184,14 +184,14 @@ are run on demand rather than wired as pipeline stages.
 |--------|------------------|
 | `oa_network_access.py` | **Network access** (cityseer over OS Open Roads): network built **once**, then the full amenity-vs-distance curve (1,600 m → 25.6 km) for every OA in one pass → `oa_network_access.parquet` (~15 min) |
 | `oa_access.py` | Straight-line KD-tree counts within 1,600 m — a fast cross-check, cached |
-| `travel_energy.py` | Total car-travel energy by constrained disaggregation of measured NTS9904 mileage (the `compute_travel_energy` the loader calls). `public_transport_report` adds the **public-transport bound**: bus/rail/Underground mileage from the same NTS table, same disaggregation, TS061 commute share as allocator — total gap 2.12× → 1.99× at an assumed 0.35× car intensity, → 1.84× at the car-intensity ceiling (Extended Data Table 5) |
+| `travel_energy.py` | Total car-travel energy by constrained disaggregation of measured NTS9904 mileage (the `compute_travel_energy` the loader calls). `public_transport_report` adds the **public-transport bound**: bus/rail/Underground mileage from the same NTS table, same disaggregation, TS061 commute share as allocator — total gap 2.11× → 1.99× at an assumed 0.35× car intensity, → 1.83× at the car-intensity ceiling (Extended Data Table 5) |
 | `access_profile.py` | Access gaps: on-foot (network 1,600 m) **~27×**, 25 km drive **~11–14×**, and the rate **~3.9× access/kWh** |
-| `lock_in.py` | Energy gap surviving best-fabric + full EV, the fabric+EV bound (per dwelling 2.12× → 1.51×; at equal family size 1.71× → 1.18×) |
-| `scenarios.py` | Decarbonisation scenario ladder — fabric / heat-pump / EV as **separate** levers, at CCC 7CB Balanced Pathway 2040 uptakes + full deployment. Fabric closes ~20%, heat pumps ~2% wider, EVs ~18%, full rollout leaves 69%; access unchanged in all. Also ledgers the sufficiency bar (within-type band 1.25/1.22 vs the surviving gap) and the absolute premium (pure-type kWh levels, stock-wide TWh, per-100k new-build) |
-| `maup_scale.py` | MAUP scale check — the compositional gap re-fit at OA/LSOA/MSOA (total survives: 2.12/1.88/1.72×; support-respecting median 1.74/1.59/1.47×) |
-| `cluster_sensitivity.py` | Clustering-unit check — the total-gap CI re-estimated with LADs merged into ~50 contiguous spatial blocks (2.12× [1.89, 2.38] vs LAD [2.01, 2.24]; estimate unchanged) |
+| `lock_in.py` | Energy gap surviving best-fabric + full EV, the fabric+EV bound (per dwelling 2.11× → 1.50×; at equal family size 1.70× → 1.17×) |
+| `scenarios.py` | Decarbonisation scenario ladder — fabric / heat-pump / EV as **separate** levers, at CCC 7CB Balanced Pathway 2040 uptakes + full deployment. Fabric closes ~20%, heat pumps ~3% wider, EVs ~18%, full rollout leaves 69%; access unchanged in all. Also ledgers the sufficiency bar (within-type band 1.25/1.22 vs the surviving gap) and the absolute premium (pure-type kWh levels, stock-wide TWh, per-100k new-build) |
+| `maup_scale.py` | MAUP scale check — the compositional gap re-fit at OA/LSOA/MSOA (total survives: 2.11/1.87/1.71×; support-respecting median 1.74/1.59/1.47×) |
+| `cluster_sensitivity.py` | Clustering-unit check — the total-gap CI re-estimated with LADs merged into ~50 contiguous spatial blocks (2.11× [1.89, 2.37] vs LAD [2.00, 2.23]; estimate unchanged) |
 | `mixed_use.py` | **Mixed use, measured.** Jobs-housing balance (workplace jobs vs households) added to the access and energy models holding dwelling-type composition. **Null at MSOA** (rate ×0.98), the interpretable scale; the OA ×1.07 is an area-size artefact. Hill *balance* (`net_mix1_*`) shows no compact gradient, but balance is the wrong construct: it penalises a high street with many food outlets and one GP. Mixed use is richness and proximity, which the per-service walkable counts already show (Extended Data Fig. 2 — compact areas reach more of *every* type). The paper's mixed-use recommendation is attributed to the planning literature because no floorspace-based land-use mix measure was built, not because mix was disproved |
-| `form_size_decomposition.py` | Heat vs dwelling/family-size: per-dwelling DV with family size + floor area as FREE controls (γ≈0.5, never per-person); 1.60× → 1.27× (family-size-held) → 1.17× (size-held direct) |
+| `form_size_decomposition.py` | Heat vs dwelling/family-size: per-dwelling DV with family size + floor area as FREE controls (γ≈0.5, never per-person); 1.59× → 1.27× (family-size-held) → 1.17× (size-held direct) |
 
 > **Atlas status.** The earlier three-surface / A–G scorecard and the old Atlas (XGBoost
 > planning models + static site) were removed in the two-axis migration (git history holds
@@ -231,11 +231,11 @@ Individual scripts also run standalone (e.g. `uv run python data/download_census
 
 ```bash
 uv run python stats/oa_network_access.py         # build network-access cache (cityseer, ~12 min)
-uv run python stats/lock_in.py                   # fabric+EV bound: per dwelling 2.12× → 1.51× (equal family size 1.71× → 1.18×)
+uv run python stats/lock_in.py                   # fabric+EV bound: per dwelling 2.11× → 1.50× (equal family size 1.70× → 1.17×)
 uv run python stats/scenarios.py                 # scenario ladder: fabric/heat-pump/EV separate levers, CCC pathway
-uv run python stats/maup_scale.py                # MAUP: gap re-fit at OA/LSOA/MSOA (2.12/1.88/1.72×)
+uv run python stats/maup_scale.py                # MAUP: gap re-fit at OA/LSOA/MSOA (2.11/1.87/1.71×)
 uv run python stats/access_profile.py            # rate ~3.9× access/kWh + on-foot gap ~27×
-uv run python stats/form_size_decomposition.py   # heat 1.60× → 1.17× size-held (family size a free control, γ≈0.5)
+uv run python stats/form_size_decomposition.py   # heat 1.59× → 1.17× size-held (family size a free control, γ≈0.5)
 uv run python stats/argument_figures.py          # regenerate F1–F8 + F11 (needs the network cache)
 uv run python stats/map_figures.py               # regenerate the F9/F10 maps
 ```

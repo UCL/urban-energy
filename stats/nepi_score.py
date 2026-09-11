@@ -199,7 +199,9 @@ def load_or_freeze_bands(frame: pd.DataFrame) -> dict:
 
 def build_scores() -> pd.DataFrame:
     """Assemble the per-OA NEPI score frame (letters, lever inputs, flags)."""
-    df = load_and_aggregate()
+    # Every metered area is scored; areas without a certificate fabric ratio
+    # are flagged (``flag_no_epc``) rather than dropped from the map.
+    df = load_and_aggregate(epc_complete=False)
     net = pd.read_parquet(NET_CACHE, columns=["net_total_1600", "net_amen"])
     df = df.merge(net, left_on="OA21CD", right_index=True, how="left", validate="m:1")
 

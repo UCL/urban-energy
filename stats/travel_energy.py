@@ -697,6 +697,23 @@ def sensitivity_report() -> None:
             f"    alpha {a:.1f}:  dominant-type median {ratio:.2f}×   "
             f"compositional {fmt_ci(comp) if comp is not None else 'n/a'}"
         )
+    # Class-average allocation: both elasticities at zero, so every OA in a
+    # class receives exactly the measured class mileage per person. Alpha 0
+    # above still carries the commute-distance term, so this row, not that one,
+    # is the true floor of the per-dwelling contrast (household size and the
+    # fleet mix are all that vary within a class).
+    d = compute_travel_energy(base, elasticity=0.0, ownership_elasticity=0.0)
+    _, ratio = _dom_medians(d)
+    comp = _comp_travel_gap(d)
+    if comp is not None:
+        ledger.record(
+            flatAllocGap=ledger.pt(comp[0]),
+            flatAllocGapCI=ledger.ci(comp[1], comp[2]),
+        )
+    print(
+        f"    class average (both elasticities 0):  dominant-type median "
+        f"{ratio:.2f}×   compositional {fmt_ci(comp) if comp is not None else 'n/a'}"
+    )
     print(
         "\n  (TRIPS_PER_YEAR=370 sets the access catchment radius in "
         "oa_network_access.py; a full sweep needs the network cache rebuilt and is "

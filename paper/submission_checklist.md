@@ -16,6 +16,7 @@ uv run python stats/travel_energy.py
 uv run python stats/maup_scale.py
 uv run python stats/mixed_use.py
 uv run python stats/scenarios.py
+uv run python stats/cluster_sensitivity.py
 cd paper/latex && latexmk -pdf main.tex extended_data.tex
 ```
 
