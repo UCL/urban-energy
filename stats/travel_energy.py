@@ -402,8 +402,9 @@ def public_transport_report() -> None:
     from oa_data import load_and_aggregate
 
     def _cell(c: tuple[float, float, float, float]) -> str:
-        """One table cell: point estimate and its clustered interval."""
-        return f"{ledger.pt(c[0])}$\\times$ {ledger.ci(c[1], c[2])}"
+        """One table cell: point estimate and its clustered interval, in the
+        bracketed style of the scenario and MAUP tables."""
+        return f"{ledger.pt(c[0])}$\\times$ [{ledger.pt(c[1])}, {ledger.pt(c[2])}]"
 
     base = load_and_aggregate()
     cf = _compositional_frame(base)
