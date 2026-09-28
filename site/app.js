@@ -375,41 +375,29 @@ async function init() {
 
   map = new maplibregl.Map({
     container: "map",
-    style: {
-      version: 8,
-      /* Basemap: Carto Positron raster (OSM-derived) for orientation — the
-       * one external runtime dependency; swap for self-hosted OS Zoomstack
-       * at full launch (dissemination/launch_checklist.md). */
-      sources: {
-        basemap: {
-          type: "raster",
-          tiles: ["a", "b", "c", "d"].map(
-            (s) => `https://${s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png`
-          ),
-          tileSize: 256,
-          attribution:
-            '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
-        },
-        labels: {
-          type: "raster",
-          tiles: ["a", "b", "c", "d"].map(
-            (s) => `https://${s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png`
-          ),
-          tileSize: 256,
-        },
-      },
-      layers: [
-        { id: "bg", type: "background", paint: { "background-color": "#eef1f4" } },
-        { id: "basemap", type: "raster", source: "basemap" },
-      ],
-    },
+    /* Basemap: OpenFreeMap's Positron style (OSM-derived vector tiles, no API
+     * key, no registration) for orientation. It replaced CARTO's raster
+     * basemap on 2026-09-28, when CARTO began serving an "API key required"
+     * tile to keyless requests. Still the site's one external runtime
+     * dependency; swap for a self-hosted OS Zoomstack layer at full launch
+     * (dissemination/launch_checklist.md). */
+    style: "https://tiles.openfreemap.org/styles/positron",
     bounds: ENGLAND,
     fitBoundsOptions: { padding: 20 },
-    attributionControl: { compact: true },
+    attributionControl: {
+      compact: true,
+      /* The OpenFreeMap style carries no attribution of its own. */
+      customAttribution:
+        '<a href="https://openfreemap.org">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/">OpenMapTiles</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    },
   });
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }));
 
   map.on("load", () => {
+    /* The grade fills sit under the basemap's place and road labels, so the
+     * atlas layers are inserted before the style's first symbol layer. */
+    const firstSymbol = map.getStyle().layers.find((l) => l.type === "symbol");
+    const beforeId = firstSymbol ? firstSymbol.id : undefined;
     const levels = [
       ["lad", 0, 8.4], ["lsoa", 8.4, 10.6], ["oa", 10.6, 24],
     ];
@@ -419,12 +407,12 @@ async function init() {
         id: `${name}-fill`, type: "fill", source: name, "source-layer": name,
         minzoom: minz, maxzoom: maxz,
         paint: { "fill-color": "#ccc", "fill-opacity": 0.75 },
-      });
+      }, beforeId);
       map.addLayer({
         id: `${name}-line`, type: "line", source: name, "source-layer": name,
         minzoom: minz, maxzoom: maxz,
         paint: { "line-color": "#ffffff", "line-width": 0.4 },
-      });
+      }, beforeId);
       /* Selection outline: a filtered line layer, empty until a click. */
       map.addLayer({
         id: `${name}-selected`, type: "line", source: name, "source-layer": name,
@@ -435,7 +423,7 @@ async function init() {
           "line-width": 2.5,
           "line-opacity": 0.95,
         },
-      });
+      }, beforeId);
       map.on("click", `${name}-fill`, (ev) => {
         const p = ev.features[0].properties;
         state.selected =

@@ -56,7 +56,18 @@ Short-term list complete 2026-07-31. The site is live under `noindex` at `https:
 
 ## Basemap dependency
 
-The map draws a Carto Positron raster basemap (OSM-derived) for orientation, with the grade fills at 55% opacity over it. This is the site's one external runtime dependency; attribution is included. For full launch, consider replacing it with a self-hosted OS Open Zoomstack layer to return to zero external dependencies.
+The map draws OpenFreeMap's Positron style (OpenMapTiles vector tiles from OpenStreetMap; no API key, no registration) for orientation, with the grade fills inserted below the style's label layers. It replaced CARTO's raster basemap on 2026-09-28, when CARTO began returning an "API key required" tile to keyless requests. This is the site's one external runtime dependency; attribution is set on the map control and stated on the sources page. For full launch, consider replacing it with a self-hosted OS Open Zoomstack layer to return to zero external dependencies.
+
+Redeploying after a change to `app.js` or `sources.html` alone:
+
+```bash
+aws s3 cp site/app.js s3://nepi-atlas/app.js --profile r2 \
+  --endpoint-url https://<ACCOUNT_ID>.r2.cloudflarestorage.com \
+  --content-type application/javascript
+aws s3 cp site/sources.html s3://nepi-atlas/sources.html --profile r2 \
+  --endpoint-url https://<ACCOUNT_ID>.r2.cloudflarestorage.com \
+  --content-type text/html
+```
 
 ## Known limits (state honestly if asked)
 
