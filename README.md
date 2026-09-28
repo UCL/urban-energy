@@ -123,4 +123,4 @@ The full recipe, including the manual downloads, is in [REPRODUCTION.md](REPRODU
 
 ## License
 
-GPL-3.0-only. Author: Gareth TODO.
+GPL-3.0-only.
